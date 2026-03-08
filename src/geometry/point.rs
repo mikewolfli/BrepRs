@@ -1,0 +1,303 @@
+use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Point {
+    pub x: Standard_Real,
+    pub y: Standard_Real,
+    pub z: Standard_Real,
+}
+
+impl Point {
+    pub fn new(x: Standard_Real, y: Standard_Real, z: Standard_Real) -> Self {
+        Self { x, y, z }
+    }
+
+    pub fn origin() -> Self {
+        Self {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
+    }
+
+    pub fn set_x(&mut self, x: Standard_Real) {
+        self.x = x;
+    }
+
+    pub fn set_y(&mut self, y: Standard_Real) {
+        self.y = y;
+    }
+
+    pub fn set_z(&mut self, z: Standard_Real) {
+        self.z = z;
+    }
+
+    pub fn set_coord(&mut self, x: Standard_Real, y: Standard_Real, z: Standard_Real) {
+        self.x = x;
+        self.y = y;
+        self.z = z;
+    }
+
+    pub fn coord(&self) -> (Standard_Real, Standard_Real, Standard_Real) {
+        (self.x, self.y, self.z)
+    }
+
+    pub fn x(&self) -> Standard_Real {
+        self.x
+    }
+
+    pub fn y(&self) -> Standard_Real {
+        self.y
+    }
+
+    pub fn z(&self) -> Standard_Real {
+        self.z
+    }
+
+    pub fn distance(&self, other: &Point) -> Standard_Real {
+        let dx = self.x - other.x;
+        let dy = self.y - other.y;
+        let dz = self.z - other.z;
+        (dx * dx + dy * dy + dz * dz).sqrt()
+    }
+
+    pub fn square_distance(&self, other: &Point) -> Standard_Real {
+        let dx = self.x - other.x;
+        let dy = self.y - other.y;
+        let dz = self.z - other.z;
+        dx * dx + dy * dy + dz * dz
+    }
+
+    pub fn is_equal(&self, other: &Point, tolerance: Standard_Real) -> bool {
+        self.distance(other) <= tolerance
+    }
+
+    pub fn mirror(&mut self, point: &Point) {
+        self.x = 2.0 * point.x - self.x;
+        self.y = 2.0 * point.y - self.y;
+        self.z = 2.0 * point.z - self.z;
+    }
+
+    pub fn mirrored(&self, point: &Point) -> Point {
+        Point {
+            x: 2.0 * point.x - self.x,
+            y: 2.0 * point.y - self.y,
+            z: 2.0 * point.z - self.z,
+        }
+    }
+
+    pub fn mirror_axis(&mut self, axis: &crate::geometry::Axis) {
+        let result = self.mirrored_axis(axis);
+        self.x = result.x;
+        self.y = result.y;
+        self.z = result.z;
+    }
+
+    pub fn mirrored_axis(&self, axis: &crate::geometry::Axis) -> Point {
+        let origin = &axis.location;
+        let direction = &axis.direction;
+
+        let p = *self - *origin;
+        let dot = direction.x * p.x + direction.y * p.y + direction.z * p.z;
+
+        let proj = crate::geometry::Vector::new(
+            direction.x * dot,
+            direction.y * dot,
+            direction.z * dot,
+        );
+
+        let result = crate::geometry::Vector::new(
+            2.0 * proj.x - p.x,
+            2.0 * proj.y - p.y,
+            2.0 * proj.z - p.z,
+        );
+
+        Point {
+            x: result.x + origin.x,
+            y: result.y + origin.y,
+            z: result.z + origin.z,
+        }
+    }
+
+    pub fn rotate(&mut self, axis: &crate::geometry::Axis, angle: Standard_Real) {
+        let result = self.rotated(axis, angle);
+        self.x = result.x;
+        self.y = result.y;
+        self.z = result.z;
+    }
+
+    pub fn rotated(&self, axis: &crate::geometry::Axis, angle: Standard_Real) -> Point {
+        let origin = &axis.location;
+        let direction = &axis.direction;
+
+        let p = *self - *origin;
+        let cos_a = angle.cos();
+        let sin_a = angle.sin();
+        let dot = direction.x * p.x + direction.y * p.y + direction.z * p.z;
+
+        let cross_x = direction.y * p.z - direction.z * p.y;
+        let cross_y = direction.z * p.x - direction.x * p.z;
+        let cross_z = direction.x * p.y - direction.y * p.x;
+
+        let x = p.x * cos_a + cross_x * sin_a + direction.x * dot * (1.0 - cos_a);
+        let y = p.y * cos_a + cross_y * sin_a + direction.y * dot * (1.0 - cos_a);
+        let z = p.z * cos_a + cross_z * sin_a + direction.z * dot * (1.0 - cos_a);
+
+        Point {
+            x: x + origin.x,
+            y: y + origin.y,
+            z: z + origin.z,
+        }
+    }
+
+    pub fn scale(&mut self, point: &Point, factor: Standard_Real) {
+        self.x = point.x + factor * (self.x - point.x);
+        self.y = point.y + factor * (self.y - point.y);
+        self.z = point.z + factor * (self.z - point.z);
+    }
+
+    pub fn scaled(&self, point: &Point, factor: Standard_Real) -> Point {
+        Point {
+            x: point.x + factor * (self.x - point.x),
+            y: point.y + factor * (self.y - point.y),
+            z: point.z + factor * (self.z - point.z),
+        }
+    }
+
+    pub fn translate(&mut self, vec: &crate::geometry::Vector) {
+        self.x += vec.x;
+        self.y += vec.y;
+        self.z += vec.z;
+    }
+
+    pub fn translated(&self, vec: &crate::geometry::Vector) -> Point {
+        Point {
+            x: self.x + vec.x,
+            y: self.y + vec.y,
+            z: self.z + vec.z,
+        }
+    }
+
+    pub fn add(&self, vec: &crate::geometry::Vector) -> Point {
+        self.translated(vec)
+    }
+
+    pub fn subtract(&self, other: &Point) -> crate::geometry::Vector {
+        crate::geometry::Vector::new(
+            self.x - other.x,
+            self.y - other.y,
+            self.z - other.z,
+        )
+    }
+
+    pub fn barycenter(&self, other: &Point, alpha: Standard_Real) -> Point {
+        Point {
+            x: self.x * (1.0 - alpha) + other.x * alpha,
+            y: self.y * (1.0 - alpha) + other.y * alpha,
+            z: self.z * (1.0 - alpha) + other.z * alpha,
+        }
+    }
+}
+
+impl Default for Point {
+    fn default() -> Self {
+        Self::origin()
+    }
+}
+
+impl std::ops::Add<crate::geometry::Vector> for Point {
+    type Output = Point;
+
+    fn add(self, vec: crate::geometry::Vector) -> Self::Output {
+        Point {
+            x: self.x + vec.x,
+            y: self.y + vec.y,
+            z: self.z + vec.z,
+        }
+    }
+}
+
+impl std::ops::Sub<Point> for Point {
+    type Output = crate::geometry::Vector;
+
+    fn sub(self, other: Point) -> Self::Output {
+        crate::geometry::Vector::new(
+            self.x - other.x,
+            self.y - other.y,
+            self.z - other.z,
+        )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_point_creation() {
+        let p = Point::new(1.0, 2.0, 3.0);
+        assert_eq!(p.x(), 1.0);
+        assert_eq!(p.y(), 2.0);
+        assert_eq!(p.z(), 3.0);
+    }
+
+    #[test]
+    fn test_point_origin() {
+        let p = Point::origin();
+        assert_eq!(p.x(), 0.0);
+        assert_eq!(p.y(), 0.0);
+        assert_eq!(p.z(), 0.0);
+    }
+
+    #[test]
+    fn test_point_distance() {
+        let p1 = Point::new(0.0, 0.0, 0.0);
+        let p2 = Point::new(3.0, 4.0, 0.0);
+        assert!((p1.distance(&p2) - 5.0).abs() < STANDARD_REAL_EPSILON);
+    }
+
+    #[test]
+    fn test_point_square_distance() {
+        let p1 = Point::new(0.0, 0.0, 0.0);
+        let p2 = Point::new(3.0, 4.0, 0.0);
+        assert!((p1.square_distance(&p2) - 25.0).abs() < STANDARD_REAL_EPSILON);
+    }
+
+    #[test]
+    fn test_point_is_equal() {
+        let p1 = Point::new(1.0, 2.0, 3.0);
+        let p2 = Point::new(1.0001, 2.0001, 3.0001);
+        assert!(p1.is_equal(&p2, 0.001));
+        assert!(!p1.is_equal(&p2, 0.00001));
+    }
+
+    #[test]
+    fn test_point_mirror() {
+        let mut p = Point::new(1.0, 2.0, 3.0);
+        let origin = Point::origin();
+        p.mirror(&origin);
+        assert_eq!(p.x(), -1.0);
+        assert_eq!(p.y(), -2.0);
+        assert_eq!(p.z(), -3.0);
+    }
+
+    #[test]
+    fn test_point_scale() {
+        let mut p = Point::new(2.0, 4.0, 6.0);
+        let origin = Point::origin();
+        p.scale(&origin, 2.0);
+        assert_eq!(p.x(), 4.0);
+        assert_eq!(p.y(), 8.0);
+        assert_eq!(p.z(), 12.0);
+    }
+
+    #[test]
+    fn test_point_barycenter() {
+        let p1 = Point::new(0.0, 0.0, 0.0);
+        let p2 = Point::new(10.0, 10.0, 10.0);
+        let p = p1.barycenter(&p2, 0.5);
+        assert_eq!(p.x(), 5.0);
+        assert_eq!(p.y(), 5.0);
+        assert_eq!(p.z(), 5.0);
+    }
+}

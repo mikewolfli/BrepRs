@@ -1,0 +1,14 @@
+/Users/mikewolfli/Desktop/workspace/rust-occt/target/debug/deps/serde-3f0081a57525c9ee.d: /Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/mikewolfli/Desktop/workspace/rust-occt/target/debug/build/serde-7e8e0060073c9b5b/out/private.rs
+
+/Users/mikewolfli/Desktop/workspace/rust-occt/target/debug/deps/libserde-3f0081a57525c9ee.rlib: /Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/mikewolfli/Desktop/workspace/rust-occt/target/debug/build/serde-7e8e0060073c9b5b/out/private.rs
+
+/Users/mikewolfli/Desktop/workspace/rust-occt/target/debug/deps/libserde-3f0081a57525c9ee.rmeta: /Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/mikewolfli/Desktop/workspace/rust-occt/target/debug/build/serde-7e8e0060073c9b5b/out/private.rs
+
+/Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs:
+/Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs:
+/Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs:
+/Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs:
+/Users/mikewolfli/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs:
+/Users/mikewolfli/Desktop/workspace/rust-occt/target/debug/build/serde-7e8e0060073c9b5b/out/private.rs:
+
+# env-dep:OUT_DIR=/Users/mikewolfli/Desktop/workspace/rust-occt/target/debug/build/serde-7e8e0060073c9b5b/out

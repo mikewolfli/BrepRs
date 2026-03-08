@@ -1,0 +1,25 @@
+pub mod shape_enum;
+pub mod topods_shape;
+pub mod topods_location;
+pub mod topods_vertex;
+pub mod topods_edge;
+pub mod topods_wire;
+pub mod topods_face;
+pub mod topods_shell;
+pub mod topods_solid;
+pub mod topods_compound;
+pub mod top_exp_explorer;
+pub mod top_exp_tools;
+
+pub use shape_enum::ShapeType;
+pub use topods_shape::TopoDS_Shape;
+pub use topods_location::TopoDS_Location;
+pub use topods_vertex::TopoDS_Vertex;
+pub use topods_edge::{TopoDS_Edge, Curve};
+pub use topods_wire::TopoDS_Wire;
+pub use topods_face::{TopoDS_Face, Surface};
+pub use topods_shell::TopoDS_Shell;
+pub use topods_solid::TopoDS_Solid;
+pub use topods_compound::{TopoDS_Compound, TopoDS_CompSolid};
+pub use top_exp_explorer::TopExpExplorer;
+pub use top_exp_tools::{TopExpTools, TopToolsAnalyzer};
