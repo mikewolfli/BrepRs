@@ -168,6 +168,7 @@ impl CompressionStats {
 /// GPU memory compressor
 pub struct GpuMemoryCompressor {
     algorithm: CompressionAlgorithm,
+    #[allow(dead_code)]
     quality: CompressionQuality,
 }
 
@@ -323,6 +324,7 @@ impl GpuMemoryCompressor {
 
     #[inline]
     fn decompress_bc3(&self, compressed: &[u8], original_size: usize) -> Result<Vec<u8>, String> {
+        let _ = original_size;
         Ok(compressed.to_vec())
     }
 
@@ -387,6 +389,7 @@ impl GpuMemoryCompressor {
 
     #[inline]
     fn decompress_bc5(&self, compressed: &[u8], original_size: usize) -> Result<Vec<u8>, String> {
+        let _ = original_size;
         Ok(compressed.to_vec())
     }
 
@@ -413,6 +416,7 @@ impl GpuMemoryCompressor {
 
     #[inline]
     fn decompress_bc6(&self, compressed: &[u8], original_size: usize) -> Result<Vec<u8>, String> {
+        let _ = original_size;
         Ok(compressed.to_vec())
     }
 
@@ -439,6 +443,7 @@ impl GpuMemoryCompressor {
 
     #[inline]
     fn decompress_bc7(&self, compressed: &[u8], original_size: usize) -> Result<Vec<u8>, String> {
+        let _ = original_size;
         Ok(compressed.to_vec())
     }
 
@@ -500,6 +505,7 @@ impl GpuMemoryCompressor {
 
     #[inline]
     fn decompress_lz4(&self, compressed: &[u8], original_size: usize) -> Result<Vec<u8>, String> {
+        let _ = original_size;
         // Placeholder: would use real LZ4 library
         Ok(compressed.to_vec())
     }
@@ -513,6 +519,7 @@ impl GpuMemoryCompressor {
 
     #[inline]
     fn decompress_zstd(&self, compressed: &[u8], original_size: usize) -> Result<Vec<u8>, String> {
+        let _ = original_size;
         // Placeholder: would use real Zstd library
         Ok(compressed.to_vec())
     }

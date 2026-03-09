@@ -141,6 +141,7 @@ impl<T> List<T> {
         Some(value)
     }
 
+    #[allow(dead_code)]
     fn insert_before(&self, node: &Rc<Node<T>>, value: T) {
         let new_node = Rc::new(Node {
             value,
@@ -163,6 +164,7 @@ impl<T> List<T> {
         *self.size.borrow_mut() += 1;
     }
 
+    #[allow(dead_code)]
     fn insert_after(&self, node: &Rc<Node<T>>, value: T) {
         let new_node = Rc::new(Node {
             value,

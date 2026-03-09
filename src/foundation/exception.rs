@@ -1,4 +1,3 @@
-use std::fmt;
 use thiserror::Error;
 
 /// Result type alias for operations that can fail

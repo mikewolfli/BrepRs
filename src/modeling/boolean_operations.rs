@@ -15,6 +15,7 @@ use crate::topology::{
 /// This class provides methods to perform boolean operations on topological shapes.
 /// It follows the OpenCASCADE BRepAlgoAPI pattern.
 pub struct BooleanOperations {
+    #[allow(dead_code)]
     builder: BrepBuilder,
 }
 

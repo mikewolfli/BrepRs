@@ -1,3 +1,5 @@
+[features]
+serde = []
 [package]
 name = "breprs"
 version = "0.1.0"

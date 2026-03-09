@@ -400,7 +400,7 @@ impl TopologicalHistoryTracker {
     }
 
     /// Record a modeling operation with dependencies
-    pub fn record_operation(&mut self, mut operation: ModelingOperation) {
+    pub fn record_operation(&mut self, operation: ModelingOperation) {
         // Register all input and output shapes
         for input_shape in &operation.input_shapes {
             let name = self.naming_manager.generate_name("input", input_shape.shape_type());

@@ -239,7 +239,8 @@ impl<'a> DataTransaction<'a> {
         for op in self.operations {
             match op {
                 TransactionOperation::Add(id, object) => {
-                    self.container.add_object(object);
+                        let _ = id; // Suppress unused variable warning
+                        self.container.add_object(object);
                 }
                 TransactionOperation::Remove(id) => {
                     self.container.remove_object(&id);

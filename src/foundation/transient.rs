@@ -88,6 +88,7 @@ mod tests {
 
     struct TestObject {
         base: TransientBase,
+        #[allow(dead_code)]
         value: i32,
     }
 

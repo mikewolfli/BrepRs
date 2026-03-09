@@ -2,7 +2,6 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
 
-use crate::foundation::handle::Handle;
 use crate::topology::{shape_enum::ShapeType, topods_shape::TopoDsShape};
 
 /// STEP file format error types
@@ -44,6 +43,7 @@ pub enum StepSchema {
 /// STEP reader for reading STEP files
 pub struct StepReader {
     filename: String,
+    #[allow(dead_code)]
     schema: StepSchema,
     tolerance: f64,
     read_colors: bool,

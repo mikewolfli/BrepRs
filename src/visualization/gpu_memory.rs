@@ -4,7 +4,7 @@
 //! and memory optimization for GPU-based visualization.
 //! Compatible with OpenCASCADE Open API design.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -357,7 +357,6 @@ impl Default for GpuMemoryPool {
 /// GPU memory manager for global VRAM management
 pub struct GpuMemoryManager {
     pools: Mutex<HashMap<GpuBufferType, Arc<Mutex<GpuMemoryPool>>>>,
-    global_stats: AtomicU64,
 }
 
 impl GpuMemoryManager {
@@ -375,7 +374,6 @@ impl GpuMemoryManager {
         
         Self {
             pools: Mutex::new(pools),
-            global_stats: AtomicU64::new(0),
         }
     }
 

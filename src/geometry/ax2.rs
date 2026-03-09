@@ -1,4 +1,4 @@
-use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
+use crate::foundation::types::StandardReal;
 use crate::geometry::{Point, Direction, Axis, Transform};
 
 #[derive(Debug, Clone, Copy, PartialEq)]

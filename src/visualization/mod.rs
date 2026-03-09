@@ -22,7 +22,7 @@ pub use interactive::*;
 pub use view::*;
 pub use camera::*;
 pub use light::*;
-pub use material::*;
+pub use material::{Material, MaterialType, Texture, TextureType, MaterialPresets};
 pub use gpu_memory::*;
 pub use gpu_buffer::*;
 pub use texture_stream::*;

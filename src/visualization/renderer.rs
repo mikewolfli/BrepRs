@@ -10,8 +10,8 @@ use crate::visualization::light::Light;
 use crate::visualization::material::Material;
 use crate::visualization::primitives::*;
 use crate::visualization::gpu_memory::{GpuMemoryManager, GpuMemoryStats};
-use crate::visualization::gpu_buffer::{GpuBufferManager, GpuBufferUsage};
-use crate::visualization::texture_stream::{TextureStreamingSystem, TextureDescriptor, TextureFormat};
+use crate::visualization::gpu_buffer::GpuBufferManager;
+use crate::visualization::texture_stream::TextureStreamingSystem;
 use crate::visualization::gpu_compression::{GpuMemoryCompressor, CompressionAlgorithm, CompressionQuality};
 use std::sync::Arc;
 

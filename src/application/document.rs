@@ -7,7 +7,7 @@ use std::path::Path;
 use std::fs::File;
 use std::io::{Read, Write};
 use serde::{Deserialize, Serialize};
-use crate::application::data_framework::{DataContainer, DataObject, ShapeData};
+use crate::application::data_framework::{DataContainer, ShapeData};
 use crate::topology::TopoDsShape;
 
 /// Document format
@@ -157,25 +157,25 @@ impl Document {
     /// Save as STEP format
     fn save_step(&mut self, path: &Path) -> Result<(), String> {
         // TODO: Implement STEP export
-        Err("STEP export not implemented".to_string())
+        let _ = path; Err("STEP export not implemented".to_string())
     }
 
     /// Save as IGES format
     fn save_iges(&mut self, path: &Path) -> Result<(), String> {
         // TODO: Implement IGES export
-        Err("IGES export not implemented".to_string())
+        let _ = path; Err("IGES export not implemented".to_string())
     }
 
     /// Save as STL format
     fn save_stl(&mut self, path: &Path) -> Result<(), String> {
         // TODO: Implement STL export
-        Err("STL export not implemented".to_string())
+        let _ = path; Err("STL export not implemented".to_string())
     }
 
     /// Save as GLTF format
     fn save_gltf(&mut self, path: &Path) -> Result<(), String> {
         // TODO: Implement GLTF export
-        Err("GLTF export not implemented".to_string())
+        let _ = path; Err("GLTF export not implemented".to_string())
     }
 
     /// Load a document
@@ -197,7 +197,7 @@ impl Document {
         
         let document_data: DocumentData = serde_json::from_str(&json).map_err(|e| e.to_string())?;
         
-        let mut document = Self {
+        let document = Self {
             metadata: document_data.metadata,
             data: DataContainer::new(),
             path: Some(path.to_str().unwrap().to_string()),
@@ -212,25 +212,25 @@ impl Document {
     /// Load from STEP format
     fn load_step(path: &Path) -> Result<Self, String> {
         // TODO: Implement STEP import
-        Err("STEP import not implemented".to_string())
+        let _ = path; Err("STEP import not implemented".to_string())
     }
 
     /// Load from IGES format
     fn load_iges(path: &Path) -> Result<Self, String> {
         // TODO: Implement IGES import
-        Err("IGES import not implemented".to_string())
+        let _ = path; Err("IGES import not implemented".to_string())
     }
 
     /// Load from STL format
     fn load_stl(path: &Path) -> Result<Self, String> {
         // TODO: Implement STL import
-        Err("STL import not implemented".to_string())
+        let _ = path; Err("STL import not implemented".to_string())
     }
 
     /// Load from GLTF format
     fn load_gltf(path: &Path) -> Result<Self, String> {
         // TODO: Implement GLTF import
-        Err("GLTF import not implemented".to_string())
+        let _ = path; Err("GLTF import not implemented".to_string())
     }
 
     /// Check if document is modified
@@ -271,7 +271,7 @@ mod tests {
 
     #[test]
     fn test_document_creation() {
-        let mut doc = Document::new("Test Document");
+        let doc = Document::new("Test Document");
         assert_eq!(doc.metadata().name, "Test Document");
         assert!(!doc.is_modified());
     }
@@ -288,7 +288,6 @@ mod tests {
     #[test]
     fn test_metadata_modification() {
         let mut doc = Document::new("Test Document");
-        let original_name = doc.metadata().name.clone();
         doc.metadata_mut().name = "Modified Document".to_string();
         assert_eq!(doc.metadata().name, "Modified Document");
         assert!(doc.is_modified());

@@ -271,10 +271,7 @@ mod tests {
 
     #[test]
     fn test_memory_stats() {
-        let stats = get_memory_stats();
-        assert!(stats.total_allocated >= 0);
-        assert!(stats.total_freed >= 0);
-        assert!(stats.active_objects >= 0);
+        let _ = get_memory_stats();
     }
 
     #[test]

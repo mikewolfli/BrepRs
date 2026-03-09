@@ -295,6 +295,7 @@ mod tests {
         
         let mut handles = vec![];
         for i in 0..10 {
+            let _ = i;
             let h = handle.clone();
             handles.push(thread::spawn(move || {
                 h.as_ref().unwrap().fetch_add(1, Ordering::SeqCst);

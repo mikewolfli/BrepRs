@@ -378,8 +378,11 @@ impl Texture {
 #[derive(Debug, Clone)]
 struct TextureCacheEntry {
     texture_id: u64,
+    #[allow(dead_code)]
     lod_level: u32,
+    #[allow(dead_code)]
     last_used: u64,
+    #[allow(dead_code)]
     access_count: u64,
 }
 

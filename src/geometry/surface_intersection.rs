@@ -1,5 +1,5 @@
 use crate::foundation::types::StandardReal;
-use crate::geometry::{Cylinder, Direction, Plane, Point, Sphere, Vector};
+use crate::geometry::{Cylinder, Plane, Point, Sphere, Vector};
 
 /// Represents an intersection curve or point between two surfaces
 #[derive(Debug, Clone, PartialEq)]

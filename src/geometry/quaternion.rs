@@ -464,7 +464,7 @@ mod tests {
     fn test_quaternion_to_axis_angle() {
         let axis = crate::geometry::Axis::z_axis();
         let q = Quaternion::from_axis_angle(&axis, std::f64::consts::PI / 2.0);
-        let (result_axis, angle) = q.to_axis_angle();
+        let (_result_axis, angle) = q.to_axis_angle();
         assert!((angle - std::f64::consts::PI / 2.0).abs() < 0.001);
     }
 

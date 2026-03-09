@@ -1,3 +1,4 @@
+#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals, dead_code, unused_imports, unused_variables)]
 //! Topology Explorer Compatibility Module
 //!
 //! Provides OpenCASCADE-compatible TopExp API for topology exploration.
@@ -350,7 +351,7 @@ mod tests {
         let edge = builder.make_edge(v1, v2);
         let shape = edge.shape();
         
-        let mut explorer = TopExp_Explorer::new(shape, ShapeType::Vertex);
+        let explorer = TopExp_Explorer::new(shape, ShapeType::Vertex);
         assert!(explorer.More());
     }
     

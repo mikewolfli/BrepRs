@@ -10,12 +10,7 @@ use std::path::Path;
 use crate::foundation::handle::Handle;
 use crate::geometry::Point;
 use crate::modeling::BrepBuilder;
-use crate::topology::{
-    shape_enum::ShapeType, top_exp_explorer::TopExpExplorer, topods_compound::TopoDsCompound,
-    topods_edge::TopoDsEdge, topods_face::TopoDsFace, topods_shape::TopoDsShape,
-    topods_shell::TopoDsShell, topods_solid::TopoDsSolid, topods_vertex::TopoDsVertex,
-    topods_wire::TopoDsWire,
-};
+use crate::topology::{shape_enum::ShapeType, top_exp_explorer::TopExpExplorer, topods_compound::TopoDsCompound, topods_face::TopoDsFace, topods_shape::TopoDsShape, topods_wire::TopoDsWire};
 
 /// STL file reader
 ///

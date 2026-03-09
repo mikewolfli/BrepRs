@@ -1,13 +1,15 @@
-//! Fillet and Chamfer module
-//!
-//! This module provides fillet and chamfer operations for topological shapes,
-//! including edge filleting and face chamfering.
+#[cfg(test)]
+use crate::topology::ShapeType;
+/// Fillet and Chamfer module
+///
+/// This module provides fillet and chamfer operations for topological shapes,
+/// including edge filleting and face chamfering.
 
 use crate::foundation::handle::Handle;
 use crate::geometry::Point;
 
 use crate::topology::{
-    topods_edge::TopoDsEdge, topods_face::TopoDsFace, topods_solid::TopoDsSolid, ShapeType,
+    topods_edge::TopoDsEdge, topods_face::TopoDsFace, topods_solid::TopoDsSolid,
 };
 
 /// Fillet and Chamfer operations class
@@ -426,7 +428,7 @@ mod tests {
 
     #[test]
     fn test_add_edge() {
-        let mut fc = FilletChamfer::new();
+        let fc = FilletChamfer::new();
 
         // Create a simple box to get edges
         let _box_solid = primitives::make_box(1.0, 1.0, 1.0, Some(Point::new(0.0, 0.0, 0.0)));
@@ -438,7 +440,7 @@ mod tests {
 
     #[test]
     fn test_add_face() {
-        let mut fc = FilletChamfer::new();
+        let fc = FilletChamfer::new();
 
         // Create a simple box
         let _box_solid = primitives::make_box(1.0, 1.0, 1.0, Some(Point::new(0.0, 0.0, 0.0)));
