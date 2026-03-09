@@ -1,9 +1,9 @@
-use std::fs::{File, OpenOptions}; 
-use std::io::{BufReader, BufWriter, BufRead, Write}; 
-use std::path::Path; 
+use std::fs::{File, OpenOptions};
+use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::path::Path;
 
-use crate::topology::{topods_shape::TopoDS_Shape, shape_enum::ShapeType}; 
-use crate::foundation::handle::Handle; 
+use crate::foundation::handle::Handle;
+use crate::topology::{shape_enum::ShapeType, topods_shape::TopoDsShape};
 
 /// STEP file format error types
 #[derive(Debug)]
@@ -81,26 +81,26 @@ impl StepReader {
     }
 
     /// Read a STEP file and return a shape
-    pub fn read(&self) -> Result<TopoDS_Shape, StepError> {
+    pub fn read(&self) -> Result<TopoDsShape, StepError> {
         let path = Path::new(&self.filename);
         let file = File::open(path)?;
         let mut reader = BufReader::new(file);
-        
+
         // Read and parse the STEP file
         self.parse_step_file(&mut reader)
     }
 
     /// Parse a STEP file
-    fn parse_step_file(&self, reader: &mut BufReader<File>) -> Result<TopoDS_Shape, StepError> {
+    fn parse_step_file(&self, reader: &mut BufReader<File>) -> Result<TopoDsShape, StepError> {
         // Read the header
         let header = self.read_header(reader)?;
-        
+
         // Determine the schema
         self.determine_schema(&header)?;
-        
+
         // Read the data section
         let shape = self.read_data_section(reader)?;
-        
+
         Ok(shape)
     }
 
@@ -108,7 +108,7 @@ impl StepReader {
     fn read_header(&self, reader: &mut BufReader<File>) -> Result<String, StepError> {
         let mut header = String::new();
         let mut line = String::new();
-        
+
         // Find the start of the header
         while reader.read_line(&mut line)? > 0 {
             if line.trim().starts_with("HEADER") {
@@ -117,7 +117,7 @@ impl StepReader {
             }
             line.clear();
         }
-        
+
         // Read the header content
         while reader.read_line(&mut line)? > 0 {
             header.push_str(&line);
@@ -126,7 +126,7 @@ impl StepReader {
             }
             line.clear();
         }
-        
+
         Ok(header)
     }
 
@@ -138,10 +138,10 @@ impl StepReader {
     }
 
     /// Read the data section of the STEP file
-    fn read_data_section(&self, _reader: &mut BufReader<File>) -> Result<TopoDS_Shape, StepError> {
+    fn read_data_section(&self, _reader: &mut BufReader<File>) -> Result<TopoDsShape, StepError> {
         // This is a placeholder implementation
         // In a real implementation, we would parse the data section to create shapes
-        let shape = TopoDS_Shape::new(ShapeType::Compound);
+        let shape = TopoDsShape::new(ShapeType::Compound);
         Ok(shape)
     }
 
@@ -213,7 +213,7 @@ impl StepWriter {
     }
 
     /// Write a shape to a STEP file
-    pub fn write(&self, shape: &TopoDS_Shape) -> Result<(), StepError> {
+    pub fn write(&self, shape: &TopoDsShape) -> Result<(), StepError> {
         let path = Path::new(&self.filename);
         let file = OpenOptions::new()
             .write(true)
@@ -221,13 +221,13 @@ impl StepWriter {
             .truncate(true)
             .open(path)?;
         let mut writer = BufWriter::new(file);
-        
+
         // Write the header
         self.write_header(&mut writer)?;
-        
+
         // Write the data section
         self.write_data_section(&mut writer, shape)?;
-        
+
         Ok(())
     }
 
@@ -235,30 +235,34 @@ impl StepWriter {
     fn write_header(&self, writer: &mut BufWriter<File>) -> Result<(), StepError> {
         writeln!(writer, "HEADER;")?;
         writeln!(writer, "FILE_DESCRIPTION(('BrepRs STEP Export'),'2;1');")?;
-        
+
         let schema_name = match self.schema {
             StepSchema::AP203 => "CONFIG_CONTROLLED_3D_DESIGN",
             StepSchema::AP214 => "AUTOMOTIVE_DESIGN",
             StepSchema::AP242 => "MANAGED_MODEL_BASED_3D_ENGINEERING",
             StepSchema::Unknown => "CONFIG_CONTROLLED_3D_DESIGN",
         };
-        
+
         writeln!(writer, "FILE_SCHEMA(('{}'));", schema_name)?;
         writeln!(writer, "ENDSEC;")?;
-        
+
         Ok(())
     }
 
     /// Write the data section of the STEP file
-    fn write_data_section(&self, writer: &mut BufWriter<File>, _shape: &TopoDS_Shape) -> Result<(), StepError> {
+    fn write_data_section(
+        &self,
+        writer: &mut BufWriter<File>,
+        _shape: &TopoDsShape,
+    ) -> Result<(), StepError> {
         writeln!(writer, "DATA;")?;
-        
+
         // This is a placeholder implementation
         // In a real implementation, we would write the shape data
-        
+
         writeln!(writer, "ENDSEC;")?;
         writeln!(writer, "END-ISO-10303-21;")?;
-        
+
         Ok(())
     }
 }
@@ -278,10 +282,10 @@ mod tests {
     #[test]
     fn test_step_reader_settings() {
         let mut reader = StepReader::new("test.step");
-        
+
         reader.set_tolerance(1e-4);
         assert_eq!(reader.tolerance(), 1e-4);
-        
+
         reader.set_read_colors(true);
         assert!(reader.read_colors());
     }
@@ -303,13 +307,13 @@ mod tests {
     #[test]
     fn test_step_writer_settings() {
         let mut writer = StepWriter::new("test.step");
-        
+
         writer.set_schema(StepSchema::AP242);
         assert_eq!(writer.schema(), StepSchema::AP242);
-        
+
         writer.set_precision(10);
         assert_eq!(writer.precision(), 10);
-        
+
         writer.set_write_colors(true);
         assert!(writer.write_colors());
     }
@@ -328,20 +332,20 @@ mod tests {
     fn test_step_read_write_cycle() {
         // This is a placeholder test
         // In a real implementation, we would test reading and writing a STEP file
-        let shape = TopoDS_Shape::new(ShapeType::Compound);
-        
+        let shape = TopoDsShape::new(ShapeType::Compound);
+
         let writer = StepWriter::new("test_step_cycle.step");
         let write_result = writer.write(&shape);
         assert!(write_result.is_ok());
-        
+
         let reader = StepReader::new("test_step_cycle.step");
         let read_result = reader.read();
-        
+
         // Clean up
         if Path::new("test_step_cycle.step").exists() {
             let _ = fs::remove_file("test_step_cycle.step");
         }
-        
+
         // The read operation should succeed (even with placeholder implementation)
         assert!(read_result.is_ok());
     }

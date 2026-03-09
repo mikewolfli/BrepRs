@@ -1,14 +1,14 @@
-use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Vector {
-    pub x: Standard_Real,
-    pub y: Standard_Real,
-    pub z: Standard_Real,
+    pub x: StandardReal,
+    pub y: StandardReal,
+    pub z: StandardReal,
 }
 
 impl Vector {
-    pub fn new(x: Standard_Real, y: Standard_Real, z: Standard_Real) -> Self {
+    pub fn new(x: StandardReal, y: StandardReal, z: StandardReal) -> Self {
         Self { x, y, z }
     }
 
@@ -28,53 +28,53 @@ impl Vector {
         }
     }
 
-    pub fn set_x(&mut self, x: Standard_Real) {
+    pub fn set_x(&mut self, x: StandardReal) {
         self.x = x;
     }
 
-    pub fn set_y(&mut self, y: Standard_Real) {
+    pub fn set_y(&mut self, y: StandardReal) {
         self.y = y;
     }
 
-    pub fn set_z(&mut self, z: Standard_Real) {
+    pub fn set_z(&mut self, z: StandardReal) {
         self.z = z;
     }
 
-    pub fn set_coord(&mut self, x: Standard_Real, y: Standard_Real, z: Standard_Real) {
+    pub fn set_coord(&mut self, x: StandardReal, y: StandardReal, z: StandardReal) {
         self.x = x;
         self.y = y;
         self.z = z;
     }
 
-    pub fn coord(&self) -> (Standard_Real, Standard_Real, Standard_Real) {
+    pub fn coord(&self) -> (StandardReal, StandardReal, StandardReal) {
         (self.x, self.y, self.z)
     }
 
-    pub fn x(&self) -> Standard_Real {
+    pub fn x(&self) -> StandardReal {
         self.x
     }
 
-    pub fn y(&self) -> Standard_Real {
+    pub fn y(&self) -> StandardReal {
         self.y
     }
 
-    pub fn z(&self) -> Standard_Real {
+    pub fn z(&self) -> StandardReal {
         self.z
     }
 
-    pub fn magnitude(&self) -> Standard_Real {
+    pub fn magnitude(&self) -> StandardReal {
         (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
     }
 
-    pub fn square_magnitude(&self) -> Standard_Real {
+    pub fn square_magnitude(&self) -> StandardReal {
         self.x * self.x + self.y * self.y + self.z * self.z
     }
 
-    pub fn is_zero(&self, tolerance: Standard_Real) -> bool {
+    pub fn is_zero(&self, tolerance: StandardReal) -> bool {
         self.magnitude() <= tolerance
     }
 
-    pub fn is_equal(&self, other: &Vector, tolerance: Standard_Real) -> bool {
+    pub fn is_equal(&self, other: &Vector, tolerance: StandardReal) -> bool {
         let diff = *self - *other;
         diff.magnitude() <= tolerance
     }
@@ -115,7 +115,7 @@ impl Vector {
         }
     }
 
-    pub fn dot(&self, other: &Vector) -> Standard_Real {
+    pub fn dot(&self, other: &Vector) -> StandardReal {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
 
@@ -127,15 +127,15 @@ impl Vector {
         }
     }
 
-    pub fn cross_mag(&self, other: &Vector) -> Standard_Real {
+    pub fn cross_mag(&self, other: &Vector) -> StandardReal {
         self.cross(other).magnitude()
     }
 
-    pub fn cross_square_magnitude(&self, other: &Vector) -> Standard_Real {
+    pub fn cross_square_magnitude(&self, other: &Vector) -> StandardReal {
         self.cross(other).square_magnitude()
     }
 
-    pub fn angle(&self, other: &Vector) -> Standard_Real {
+    pub fn angle(&self, other: &Vector) -> StandardReal {
         let mag1 = self.magnitude();
         let mag2 = other.magnitude();
         if mag1 < STANDARD_REAL_EPSILON || mag2 < STANDARD_REAL_EPSILON {
@@ -146,7 +146,7 @@ impl Vector {
         dot.acos()
     }
 
-    pub fn angle_with_ref(&self, other: &Vector, v_ref: &Vector) -> Standard_Real {
+    pub fn angle_with_ref(&self, other: &Vector, v_ref: &Vector) -> StandardReal {
         let angle = self.angle(other);
         let cross = self.cross(other);
         if cross.dot(v_ref) >= 0.0 {
@@ -156,23 +156,29 @@ impl Vector {
         }
     }
 
-    pub fn is_parallel(&self, other: &Vector, angular_tolerance: Standard_Real) -> bool {
+    pub fn is_parallel(&self, other: &Vector, angular_tolerance: StandardReal) -> bool {
         let angle = self.angle(other);
         angle <= angular_tolerance || (angle - std::f64::consts::PI).abs() <= angular_tolerance
     }
 
-    pub fn is_normal(&self, other: &Vector, angular_tolerance: Standard_Real) -> bool {
+    pub fn is_normal(&self, other: &Vector, angular_tolerance: StandardReal) -> bool {
         let angle = self.angle(other);
         (angle - std::f64::consts::PI / 2.0).abs() <= angular_tolerance
     }
 
-    pub fn is_opposite(&self, other: &Vector, angular_tolerance: Standard_Real) -> bool {
+    pub fn is_opposite(&self, other: &Vector, angular_tolerance: StandardReal) -> bool {
         let angle = self.angle(other);
         (angle - std::f64::consts::PI).abs() <= angular_tolerance
     }
 
-    pub fn is_co_linear(&self, other: &Vector, linear_tolerance: Standard_Real, angular_tolerance: Standard_Real) -> bool {
-        self.is_parallel(other, angular_tolerance) && self.cross(other).magnitude() <= linear_tolerance
+    pub fn is_co_linear(
+        &self,
+        other: &Vector,
+        linear_tolerance: StandardReal,
+        angular_tolerance: StandardReal,
+    ) -> bool {
+        self.is_parallel(other, angular_tolerance)
+            && self.cross(other).magnitude() <= linear_tolerance
     }
 
     pub fn mirror(&mut self, _point: &crate::geometry::Point) {
@@ -195,11 +201,7 @@ impl Vector {
     pub fn mirrored_axis(&self, axis: &crate::geometry::Axis) -> Vector {
         let direction = &axis.direction;
         let dot = self.dot(&Vector::new(direction.x, direction.y, direction.z));
-        let proj = Vector::new(
-            direction.x * dot,
-            direction.y * dot,
-            direction.z * dot,
-        );
+        let proj = Vector::new(direction.x * dot, direction.y * dot, direction.z * dot);
         Vector {
             x: 2.0 * proj.x - self.x,
             y: 2.0 * proj.y - self.y,
@@ -207,14 +209,14 @@ impl Vector {
         }
     }
 
-    pub fn rotate(&mut self, axis: &crate::geometry::Axis, angle: Standard_Real) {
+    pub fn rotate(&mut self, axis: &crate::geometry::Axis, angle: StandardReal) {
         let result = self.rotated(axis, angle);
         self.x = result.x;
         self.y = result.y;
         self.z = result.z;
     }
 
-    pub fn rotated(&self, axis: &crate::geometry::Axis, angle: Standard_Real) -> Vector {
+    pub fn rotated(&self, axis: &crate::geometry::Axis, angle: StandardReal) -> Vector {
         let direction = &axis.direction;
         let cos_a = angle.cos();
         let sin_a = angle.sin();
@@ -231,13 +233,13 @@ impl Vector {
         }
     }
 
-    pub fn scale(&mut self, factor: Standard_Real) {
+    pub fn scale(&mut self, factor: StandardReal) {
         self.x *= factor;
         self.y *= factor;
         self.z *= factor;
     }
 
-    pub fn scaled(&self, factor: Standard_Real) -> Vector {
+    pub fn scaled(&self, factor: StandardReal) -> Vector {
         Vector {
             x: self.x * factor,
             y: self.y * factor,
@@ -261,11 +263,11 @@ impl Vector {
         }
     }
 
-    pub fn multiply(&self, scalar: Standard_Real) -> Vector {
+    pub fn multiply(&self, scalar: StandardReal) -> Vector {
         self.scaled(scalar)
     }
 
-    pub fn divide(&self, scalar: Standard_Real) -> Vector {
+    pub fn divide(&self, scalar: StandardReal) -> Vector {
         if scalar.abs() > STANDARD_REAL_EPSILON {
             Vector {
                 x: self.x / scalar,
@@ -277,7 +279,7 @@ impl Vector {
         }
     }
 
-    pub fn lerp(&self, other: &Vector, alpha: Standard_Real) -> Vector {
+    pub fn lerp(&self, other: &Vector, alpha: StandardReal) -> Vector {
         Vector {
             x: self.x * (1.0 - alpha) + other.x * alpha,
             y: self.y * (1.0 - alpha) + other.y * alpha,
@@ -320,10 +322,10 @@ impl std::ops::Sub<Vector> for Vector {
     }
 }
 
-impl std::ops::Mul<Standard_Real> for Vector {
+impl std::ops::Mul<StandardReal> for Vector {
     type Output = Vector;
 
-    fn mul(self, scalar: Standard_Real) -> Self::Output {
+    fn mul(self, scalar: StandardReal) -> Self::Output {
         Vector {
             x: self.x * scalar,
             y: self.y * scalar,
@@ -332,10 +334,10 @@ impl std::ops::Mul<Standard_Real> for Vector {
     }
 }
 
-impl std::ops::Div<Standard_Real> for Vector {
+impl std::ops::Div<StandardReal> for Vector {
     type Output = Vector;
 
-    fn div(self, scalar: Standard_Real) -> Self::Output {
+    fn div(self, scalar: StandardReal) -> Self::Output {
         if scalar.abs() > STANDARD_REAL_EPSILON {
             Vector {
                 x: self.x / scalar,

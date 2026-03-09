@@ -1,17 +1,19 @@
-use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
-use crate::geometry::{Point, Vector, Direction, Axis};
+use crate::foundation::types::StandardReal;
+use crate::geometry::{Axis, Direction, Point, Vector};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Circle {
     location: Point,
     x_direction: Direction,
     y_direction: Direction,
-    radius: Standard_Real,
+    radius: StandardReal,
 }
 
 impl Circle {
-    pub fn new(location: Point, x_direction: Direction, radius: Standard_Real) -> Self {
-        let y_direction = x_direction.cross(&Direction::new(0.0, 0.0, 1.0)).normalized();
+    pub fn new(location: Point, x_direction: Direction, radius: StandardReal) -> Self {
+        let y_direction = x_direction
+            .cross(&Direction::new(0.0, 0.0, 1.0))
+            .normalized();
         Self {
             location,
             x_direction,
@@ -20,7 +22,7 @@ impl Circle {
         }
     }
 
-    pub fn from_center_radius(center: Point, radius: Standard_Real) -> Self {
+    pub fn from_center_radius(center: Point, radius: StandardReal) -> Self {
         Self {
             location: center,
             x_direction: Direction::x_axis(),
@@ -29,7 +31,7 @@ impl Circle {
         }
     }
 
-    pub fn from_center_axis_radius(center: Point, axis: &Axis, radius: Standard_Real) -> Self {
+    pub fn from_center_axis_radius(center: Point, axis: &Axis, radius: StandardReal) -> Self {
         let x_dir = axis.direction();
         let z_dir = Direction::new(0.0, 0.0, 1.0);
         let y_dir = x_dir.cross(&z_dir).normalized();
@@ -41,11 +43,14 @@ impl Circle {
         }
     }
 
-    pub fn from_axis(axis: &Axis, radius: Standard_Real) -> Self {
+    pub fn from_axis(axis: &Axis, radius: StandardReal) -> Self {
         Self {
             location: *axis.location(),
             x_direction: *axis.direction(),
-            y_direction: axis.direction().cross(&Direction::new(0.0, 0.0, 1.0)).normalized(),
+            y_direction: axis
+                .direction()
+                .cross(&Direction::new(0.0, 0.0, 1.0))
+                .normalized(),
             radius,
         }
     }
@@ -62,7 +67,7 @@ impl Circle {
         &self.y_direction
     }
 
-    pub fn radius(&self) -> Standard_Real {
+    pub fn radius(&self) -> StandardReal {
         self.radius
     }
 
@@ -75,26 +80,29 @@ impl Circle {
         self.update_y_direction();
     }
 
-    pub fn set_radius(&mut self, radius: Standard_Real) {
+    pub fn set_radius(&mut self, radius: StandardReal) {
         self.radius = radius;
     }
 
     fn update_y_direction(&mut self) {
-        self.y_direction = self.x_direction.cross(&Direction::new(0.0, 0.0, 1.0)).normalized();
+        self.y_direction = self
+            .x_direction
+            .cross(&Direction::new(0.0, 0.0, 1.0))
+            .normalized();
     }
 
-    pub fn area(&self) -> Standard_Real {
+    pub fn area(&self) -> StandardReal {
         std::f64::consts::PI * self.radius * self.radius
     }
 
-    pub fn length(&self) -> Standard_Real {
+    pub fn length(&self) -> StandardReal {
         2.0 * std::f64::consts::PI * self.radius
     }
 
-    pub fn position(&self, parameter: Standard_Real) -> Point {
+    pub fn position(&self, parameter: StandardReal) -> Point {
         let cos_a = parameter.cos();
         let sin_a = parameter.sin();
-        
+
         let x_offset = self.radius * cos_a;
         let y_offset = self.radius * sin_a;
 
@@ -108,7 +116,7 @@ impl Circle {
         )
     }
 
-    pub fn d1(&self, parameter: Standard_Real) -> Vector {
+    pub fn d1(&self, parameter: StandardReal) -> Vector {
         let sin_a = parameter.sin();
         let cos_a = parameter.cos();
 
@@ -122,7 +130,7 @@ impl Circle {
         )
     }
 
-    pub fn d2(&self, parameter: Standard_Real) -> Vector {
+    pub fn d2(&self, parameter: StandardReal) -> Vector {
         let cos_a = parameter.cos();
         let sin_a = parameter.sin();
 
@@ -136,7 +144,7 @@ impl Circle {
         )
     }
 
-    pub fn dn(&self, parameter: Standard_Real, n: i32) -> Vector {
+    pub fn dn(&self, parameter: StandardReal, n: i32) -> Vector {
         match n {
             0 => Vector::from_point(&self.location, &self.position(parameter)),
             1 => self.d1(parameter),
@@ -160,19 +168,19 @@ impl Circle {
         }
     }
 
-    pub fn contains(&self, point: &Point, tolerance: Standard_Real) -> bool {
+    pub fn contains(&self, point: &Point, tolerance: StandardReal) -> bool {
         let vec = Vector::from_point(&self.location, point);
         let distance_to_center = vec.magnitude();
         (distance_to_center - self.radius).abs() <= tolerance
     }
 
-    pub fn distance(&self, point: &Point) -> Standard_Real {
+    pub fn distance(&self, point: &Point) -> StandardReal {
         let vec = Vector::from_point(&self.location, point);
         let distance_to_center = vec.magnitude();
         (distance_to_center - self.radius).abs()
     }
 
-    pub fn square_distance(&self, point: &Point) -> Standard_Real {
+    pub fn square_distance(&self, point: &Point) -> StandardReal {
         let dist = self.distance(point);
         dist * dist
     }
@@ -207,13 +215,13 @@ impl Circle {
         }
     }
 
-    pub fn rotate(&mut self, axis: &Axis, angle: Standard_Real) {
+    pub fn rotate(&mut self, axis: &Axis, angle: StandardReal) {
         self.location.rotate(axis, angle);
         self.x_direction.rotate(axis, angle);
         self.y_direction.rotate(axis, angle);
     }
 
-    pub fn rotated(&self, axis: &Axis, angle: Standard_Real) -> Circle {
+    pub fn rotated(&self, axis: &Axis, angle: StandardReal) -> Circle {
         Circle {
             location: self.location.rotated(axis, angle),
             x_direction: self.x_direction.rotated(axis, angle),
@@ -222,12 +230,12 @@ impl Circle {
         }
     }
 
-    pub fn scale(&mut self, point: &Point, factor: Standard_Real) {
+    pub fn scale(&mut self, point: &Point, factor: StandardReal) {
         self.location.scale(point, factor);
         self.radius *= factor.abs();
     }
 
-    pub fn scaled(&self, point: &Point, factor: Standard_Real) -> Circle {
+    pub fn scaled(&self, point: &Point, factor: StandardReal) -> Circle {
         Circle {
             location: self.location.scaled(point, factor),
             x_direction: self.x_direction,

@@ -1,10 +1,10 @@
 use std::fmt;
 use thiserror::Error;
 
-pub type Standard_Result<T> = Result<T, Standard_Failure>;
+pub type Result<T> = std::result::Result<T, Failure>;
 
 #[derive(Error, Debug)]
-pub enum Standard_Failure {
+pub enum Failure {
     #[error("Domain error: {0}")]
     DomainError(String),
 
@@ -36,7 +36,7 @@ pub enum Standard_Failure {
     UnknownError(String),
 }
 
-impl Standard_Failure {
+impl Failure {
     pub fn domain_error(msg: impl Into<String>) -> Self {
         Self::DomainError(msg.into())
     }
@@ -78,16 +78,16 @@ impl Standard_Failure {
     }
 }
 
-pub trait Standard_RaiseIf {
+pub trait RaiseIf {
     fn raise_if<F>(self, error: F) -> Self
     where
-        F: FnOnce() -> Standard_Failure;
+        F: FnOnce() -> Failure;
 }
 
-impl<T> Standard_RaiseIf for Option<T> {
+impl<T> RaiseIf for Option<T> {
     fn raise_if<F>(self, error: F) -> Self
     where
-        F: FnOnce() -> Standard_Failure,
+        F: FnOnce() -> Failure,
     {
         if self.is_none() {
             panic!("{}", error().to_string());
@@ -98,7 +98,7 @@ impl<T> Standard_RaiseIf for Option<T> {
 
 pub fn raise_if<F>(condition: bool, error: F)
 where
-    F: FnOnce() -> Standard_Failure,
+    F: FnOnce() -> Failure,
 {
     if condition {
         panic!("{}", error().to_string());
@@ -106,23 +106,23 @@ where
 }
 
 pub fn raise_domain_error(msg: impl Into<String>) -> ! {
-    panic!("{}", Standard_Failure::domain_error(msg).to_string());
+    panic!("{}", Failure::domain_error(msg).to_string());
 }
 
 pub fn raise_range_error(msg: impl Into<String>) -> ! {
-    panic!("{}", Standard_Failure::range_error(msg).to_string());
+    panic!("{}", Failure::range_error(msg).to_string());
 }
 
 pub fn raise_numeric_error(msg: impl Into<String>) -> ! {
-    panic!("{}", Standard_Failure::numeric_error(msg).to_string());
+    panic!("{}", Failure::numeric_error(msg).to_string());
 }
 
 pub fn raise_divide_by_zero(msg: impl Into<String>) -> ! {
-    panic!("{}", Standard_Failure::divide_by_zero(msg).to_string());
+    panic!("{}", Failure::divide_by_zero(msg).to_string());
 }
 
 pub fn raise_construction_error(msg: impl Into<String>) -> ! {
-    panic!("{}", Standard_Failure::construction_error(msg).to_string());
+    panic!("{}", Failure::construction_error(msg).to_string());
 }
 
 #[macro_export]
@@ -150,35 +150,35 @@ mod tests {
 
     #[test]
     fn test_standard_failure_creation() {
-        let err = Standard_Failure::domain_error("test error");
-        assert!(matches!(err, Standard_Failure::DomainError(_)));
+        let err = Failure::domain_error("test error");
+        assert!(matches!(err, Failure::DomainError(_)));
     }
 
     #[test]
     fn test_standard_failure_display() {
-        let err = Standard_Failure::domain_error("test error");
+        let err = Failure::domain_error("test error");
         assert_eq!(err.to_string(), "Domain error: test error");
     }
 
     #[test]
     fn test_raise_if() {
         let result = std::panic::catch_unwind(|| {
-            raise_if(true, || Standard_Failure::domain_error("test"));
+            raise_if(true, || Failure::domain_error("test"));
         });
         assert!(result.is_err());
     }
 
     #[test]
     fn test_raise_if_no_panic() {
-        raise_if(false, || Standard_Failure::domain_error("test"));
+        raise_if(false, || Failure::domain_error("test"));
     }
 
     #[test]
     fn test_standard_result() {
-        let result: Standard_Result<i32> = Ok(42);
+        let result: Result<i32> = Ok(42);
         assert_eq!(result.unwrap(), 42);
 
-        let result: Standard_Result<i32> = Err(Standard_Failure::domain_error("test"));
+        let result: Result<i32> = Err(Failure::domain_error("test"));
         assert!(result.is_err());
     }
 }

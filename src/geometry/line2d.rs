@@ -1,5 +1,5 @@
-use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
-use crate::geometry::{Point, Vector, Direction, Axis};
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
+use crate::geometry::{Axis, Direction, Point, Vector};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Line2D {
@@ -57,25 +57,25 @@ impl Line2D {
         }
     }
 
-    pub fn angle(&self, other: &Line2D) -> Standard_Real {
+    pub fn angle(&self, other: &Line2D) -> StandardReal {
         self.direction.angle(&other.direction)
     }
 
-    pub fn contains(&self, point: &Point, tolerance: Standard_Real) -> bool {
+    pub fn contains(&self, point: &Point, tolerance: StandardReal) -> bool {
         let vec = Vector::from_point(&self.location, point);
         let cross_dir = self.direction.cross(&vec.to_dir());
         let cross_vec = Vector::new(cross_dir.x, cross_dir.y, cross_dir.z);
         cross_vec.magnitude() <= tolerance
     }
 
-    pub fn distance(&self, point: &Point) -> Standard_Real {
+    pub fn distance(&self, point: &Point) -> StandardReal {
         let vec = Vector::from_point(&self.location, point);
         let cross_dir = self.direction.cross(&vec.to_dir());
         let cross_vec = Vector::new(cross_dir.x, cross_dir.y, cross_dir.z);
         cross_vec.magnitude()
     }
 
-    pub fn square_distance(&self, point: &Point) -> Standard_Real {
+    pub fn square_distance(&self, point: &Point) -> StandardReal {
         let dist = self.distance(point);
         dist * dist
     }
@@ -110,23 +110,23 @@ impl Line2D {
         }
     }
 
-    pub fn rotate(&mut self, axis: &Axis, angle: Standard_Real) {
+    pub fn rotate(&mut self, axis: &Axis, angle: StandardReal) {
         self.location.rotate(axis, angle);
         self.direction.rotate(axis, angle);
     }
 
-    pub fn rotated(&self, axis: &Axis, angle: Standard_Real) -> Line2D {
+    pub fn rotated(&self, axis: &Axis, angle: StandardReal) -> Line2D {
         Line2D {
             location: self.location.rotated(axis, angle),
             direction: self.direction.rotated(axis, angle),
         }
     }
 
-    pub fn scale(&mut self, point: &Point, factor: Standard_Real) {
+    pub fn scale(&mut self, point: &Point, factor: StandardReal) {
         self.location.scale(point, factor);
     }
 
-    pub fn scaled(&self, point: &Point, factor: Standard_Real) -> Line2D {
+    pub fn scaled(&self, point: &Point, factor: StandardReal) -> Line2D {
         Line2D {
             location: self.location.scaled(point, factor),
             direction: self.direction,
@@ -156,19 +156,22 @@ impl Line2D {
         }
     }
 
-    pub fn is_parallel(&self, other: &Line2D, angular_tolerance: Standard_Real) -> bool {
-        self.direction.is_parallel(&other.direction, angular_tolerance)
+    pub fn is_parallel(&self, other: &Line2D, angular_tolerance: StandardReal) -> bool {
+        self.direction
+            .is_parallel(&other.direction, angular_tolerance)
     }
 
-    pub fn is_normal(&self, other: &Line2D, angular_tolerance: Standard_Real) -> bool {
-        self.direction.is_normal(&other.direction, angular_tolerance)
+    pub fn is_normal(&self, other: &Line2D, angular_tolerance: StandardReal) -> bool {
+        self.direction
+            .is_normal(&other.direction, angular_tolerance)
     }
 
-    pub fn is_opposite(&self, other: &Line2D, angular_tolerance: Standard_Real) -> bool {
-        self.direction.is_opposite(&other.direction, angular_tolerance)
+    pub fn is_opposite(&self, other: &Line2D, angular_tolerance: StandardReal) -> bool {
+        self.direction
+            .is_opposite(&other.direction, angular_tolerance)
     }
 
-    pub fn intersect(&self, other: &Line2D, tolerance: Standard_Real) -> Option<Point> {
+    pub fn intersect(&self, other: &Line2D, tolerance: StandardReal) -> Option<Point> {
         if self.is_parallel(other, tolerance) {
             return None;
         }
@@ -183,7 +186,7 @@ impl Line2D {
         let cross_p1p2_d2 = p1_p2.cross(&d2);
 
         let t = cross_p1p2_d2.magnitude() / cross_d1_d2.magnitude();
-        
+
         let sign1 = d1.cross(&p1_p2).dot(&cross_d1_d2);
         let sign2 = cross_d1_d2.dot(&cross_d1_d2);
 

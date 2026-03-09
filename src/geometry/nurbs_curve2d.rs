@@ -1,11 +1,11 @@
-use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 use crate::geometry::{Point, Vector};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NurbsCurve2D {
     poles: Vec<Point>,
-    weights: Vec<Standard_Real>,
-    knots: Vec<Standard_Real>,
+    weights: Vec<StandardReal>,
+    knots: Vec<StandardReal>,
     multiplicities: Vec<i32>,
     degree: i32,
     is_rational: bool,
@@ -16,8 +16,8 @@ impl NurbsCurve2D {
     pub fn new(
         degree: i32,
         poles: Vec<Point>,
-        weights: Vec<Standard_Real>,
-        knots: Vec<Standard_Real>,
+        weights: Vec<StandardReal>,
+        knots: Vec<StandardReal>,
         multiplicities: Vec<i32>,
     ) -> Self {
         assert!(!poles.is_empty(), "Poles cannot be empty");
@@ -55,11 +55,11 @@ impl NurbsCurve2D {
         &self.poles
     }
 
-    pub fn weights(&self) -> &[Standard_Real] {
+    pub fn weights(&self) -> &[StandardReal] {
         &self.weights
     }
 
-    pub fn knots(&self) -> &[Standard_Real] {
+    pub fn knots(&self) -> &[StandardReal] {
         &self.knots
     }
 
@@ -75,7 +75,7 @@ impl NurbsCurve2D {
         }
     }
 
-    pub fn weight(&self, index: i32) -> Option<Standard_Real> {
+    pub fn weight(&self, index: i32) -> Option<StandardReal> {
         if index >= 0 && (index as usize) < self.weights.len() {
             Some(self.weights[index as usize])
         } else {
@@ -83,7 +83,7 @@ impl NurbsCurve2D {
         }
     }
 
-    pub fn knot(&self, index: i32) -> Option<Standard_Real> {
+    pub fn knot(&self, index: i32) -> Option<StandardReal> {
         if index >= 0 && (index as usize) < self.knots.len() {
             Some(self.knots[index as usize])
         } else {
@@ -108,7 +108,7 @@ impl NurbsCurve2D {
         }
     }
 
-    pub fn set_weight(&mut self, index: i32, weight: Standard_Real) -> bool {
+    pub fn set_weight(&mut self, index: i32, weight: StandardReal) -> bool {
         if index >= 0 && (index as usize) < self.weights.len() {
             self.weights[index as usize] = weight;
             self.is_rational = self.weights.iter().any(|&w| (w - 1.0).abs() > STANDARD_REAL_EPSILON);
@@ -118,7 +118,7 @@ impl NurbsCurve2D {
         }
     }
 
-    pub fn set_knot(&mut self, index: i32, knot: Standard_Real) -> bool {
+    pub fn set_knot(&mut self, index: i32, knot: StandardReal) -> bool {
         if index >= 0 && (index as usize) < self.knots.len() {
             self.knots[index as usize] = knot;
             true
@@ -136,7 +136,7 @@ impl NurbsCurve2D {
         }
     }
 
-    pub fn insert_knot(&mut self, knot: Standard_Real, multiplicity: i32) -> bool {
+    pub fn insert_knot(&mut self, knot: StandardReal, multiplicity: i32) -> bool {
         let insert_index = self.knots.binary_search_by(|probe| {
             probe.partial_cmp(&knot).unwrap_or(std::cmp::Ordering::Equal)
         });
@@ -197,7 +197,7 @@ impl NurbsCurve2D {
         new_weights.push(self.weights[0]);
 
         for i in 1..n {
-            let alpha = i as Standard_Real / n as Standard_Real;
+            let alpha = i as StandardReal / n as StandardReal;
             let pole = Point::new(
                 (1.0 - alpha) * self.poles[i - 1].x + alpha * self.poles[i].x,
                 (1.0 - alpha) * self.poles[i - 1].y + alpha * self.poles[i].y,
@@ -216,7 +216,7 @@ impl NurbsCurve2D {
         self.weights = new_weights;
     }
 
-    pub fn position(&self, parameter: Standard_Real) -> Point {
+    pub fn position(&self, parameter: StandardReal) -> Point {
         if self.poles.is_empty() {
             return Point::origin();
         }
@@ -246,7 +246,7 @@ impl NurbsCurve2D {
         result
     }
 
-    pub fn d1(&self, parameter: Standard_Real) -> Vector {
+    pub fn d1(&self, parameter: StandardReal) -> Vector {
         if self.poles.len() < 2 {
             return Vector::zero();
         }
@@ -262,7 +262,7 @@ impl NurbsCurve2D {
         )
     }
 
-    pub fn d2(&self, parameter: Standard_Real) -> Vector {
+    pub fn d2(&self, parameter: StandardReal) -> Vector {
         let epsilon = 0.0001;
         let d1_plus = self.d1(parameter + epsilon);
         let d1_minus = self.d1(parameter - epsilon);
@@ -274,7 +274,7 @@ impl NurbsCurve2D {
         )
     }
 
-    fn basis_function(&self, i: usize, p: i32, u: Standard_Real) -> Standard_Real {
+    fn basis_function(&self, i: usize, p: i32, u: StandardReal) -> StandardReal {
         if p == 0 {
             return self.basis_function_zero_degree(i, u);
         }
@@ -311,7 +311,7 @@ impl NurbsCurve2D {
         left + right
     }
 
-    fn basis_function_zero_degree(&self, i: usize, u: Standard_Real) -> Standard_Real {
+    fn basis_function_zero_degree(&self, i: usize, u: StandardReal) -> StandardReal {
         let knot_i = self.get_knot(i);
         let knot_i_plus_1 = self.get_knot(i + 1);
 
@@ -324,7 +324,7 @@ impl NurbsCurve2D {
         }
     }
 
-    fn get_knot(&self, index: usize) -> Standard_Real {
+    fn get_knot(&self, index: usize) -> StandardReal {
         if self.knots.is_empty() {
             return 0.0;
         }
@@ -352,7 +352,7 @@ impl NurbsCurve2D {
         self.is_periodic = is_periodic;
     }
 
-    pub fn is_closed(&self, tolerance: Standard_Real) -> bool {
+    pub fn is_closed(&self, tolerance: StandardReal) -> bool {
         if self.poles.len() < 2 {
             return true;
         }
@@ -381,7 +381,7 @@ impl NurbsCurve2D {
         }
     }
 
-    pub fn first_parameter(&self) -> Standard_Real {
+    pub fn first_parameter(&self) -> StandardReal {
         if self.knots.is_empty() {
             0.0
         } else {
@@ -389,7 +389,7 @@ impl NurbsCurve2D {
         }
     }
 
-    pub fn last_parameter(&self) -> Standard_Real {
+    pub fn last_parameter(&self) -> StandardReal {
         if self.knots.is_empty() {
             1.0
         } else {

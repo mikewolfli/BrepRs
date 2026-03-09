@@ -1,5 +1,5 @@
-use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
-use crate::geometry::{Point, Vector, Direction, Axis};
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
+use crate::geometry::{Axis, Direction, Point, Vector};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Line {
@@ -57,49 +57,49 @@ impl Line {
         }
     }
 
-    pub fn angle(&self, other: &Line) -> Standard_Real {
+    pub fn angle(&self, other: &Line) -> StandardReal {
         self.direction.angle(&other.direction)
     }
 
-    pub fn angle_cos(&self, other: &Line) -> Standard_Real {
+    pub fn angle_cos(&self, other: &Line) -> StandardReal {
         self.direction.dot(&other.direction)
     }
 
-    pub fn contains(&self, point: &Point, tolerance: Standard_Real) -> bool {
+    pub fn contains(&self, point: &Point, tolerance: StandardReal) -> bool {
         let vec = Vector::from_point(&self.location, point);
         let cross_dir = self.direction.cross(&vec.to_dir());
         let cross_vec = Vector::new(cross_dir.x, cross_dir.y, cross_dir.z);
         cross_vec.magnitude() <= tolerance
     }
 
-    pub fn distance(&self, point: &Point) -> Standard_Real {
+    pub fn distance(&self, point: &Point) -> StandardReal {
         let vec = Vector::from_point(&self.location, point);
         let cross_dir = self.direction.cross(&vec.to_dir());
         let cross_vec = Vector::new(cross_dir.x, cross_dir.y, cross_dir.z);
         cross_vec.magnitude()
     }
 
-    pub fn square_distance(&self, point: &Point) -> Standard_Real {
+    pub fn square_distance(&self, point: &Point) -> StandardReal {
         let dist = self.distance(point);
         dist * dist
     }
 
-    pub fn distance_line(&self, other: &Line) -> Standard_Real {
+    pub fn distance_line(&self, other: &Line) -> StandardReal {
         if self.is_parallel(other, STANDARD_REAL_EPSILON) {
             return self.distance(&other.location);
         }
 
-        let p1 = &self.location;
+        let _p1 = &self.location;
         let d1 = Vector::new(self.direction.x, self.direction.y, self.direction.z);
-        let p2 = &other.location;
+        let _p2 = &other.location;
         let d2 = Vector::new(other.direction.x, other.direction.y, other.direction.z);
 
         let cross_d1_d2 = d1.cross(&d2);
-        
+
         cross_d1_d2.magnitude()
     }
 
-    pub fn square_distance_line(&self, other: &Line) -> Standard_Real {
+    pub fn square_distance_line(&self, other: &Line) -> StandardReal {
         let dist = self.distance_line(other);
         dist * dist
     }
@@ -128,23 +128,23 @@ impl Line {
         }
     }
 
-    pub fn rotate(&mut self, axis: &Axis, angle: Standard_Real) {
+    pub fn rotate(&mut self, axis: &Axis, angle: StandardReal) {
         self.location.rotate(axis, angle);
         self.direction.rotate(axis, angle);
     }
 
-    pub fn rotated(&self, axis: &Axis, angle: Standard_Real) -> Line {
+    pub fn rotated(&self, axis: &Axis, angle: StandardReal) -> Line {
         Line {
             location: self.location.rotated(axis, angle),
             direction: self.direction.rotated(axis, angle),
         }
     }
 
-    pub fn scale(&mut self, point: &Point, factor: Standard_Real) {
+    pub fn scale(&mut self, point: &Point, factor: StandardReal) {
         self.location.scale(point, factor);
     }
 
-    pub fn scaled(&self, point: &Point, factor: Standard_Real) -> Line {
+    pub fn scaled(&self, point: &Point, factor: StandardReal) -> Line {
         Line {
             location: self.location.scaled(point, factor),
             direction: self.direction,
@@ -174,19 +174,22 @@ impl Line {
         }
     }
 
-    pub fn is_parallel(&self, other: &Line, angular_tolerance: Standard_Real) -> bool {
-        self.direction.is_parallel(&other.direction, angular_tolerance)
+    pub fn is_parallel(&self, other: &Line, angular_tolerance: StandardReal) -> bool {
+        self.direction
+            .is_parallel(&other.direction, angular_tolerance)
     }
 
-    pub fn is_normal(&self, other: &Line, angular_tolerance: Standard_Real) -> bool {
-        self.direction.is_normal(&other.direction, angular_tolerance)
+    pub fn is_normal(&self, other: &Line, angular_tolerance: StandardReal) -> bool {
+        self.direction
+            .is_normal(&other.direction, angular_tolerance)
     }
 
-    pub fn is_opposite(&self, other: &Line, angular_tolerance: Standard_Real) -> bool {
-        self.direction.is_opposite(&other.direction, angular_tolerance)
+    pub fn is_opposite(&self, other: &Line, angular_tolerance: StandardReal) -> bool {
+        self.direction
+            .is_opposite(&other.direction, angular_tolerance)
     }
 
-    pub fn intersect(&self, other: &Line, tolerance: Standard_Real) -> Option<Point> {
+    pub fn intersect(&self, other: &Line, tolerance: StandardReal) -> Option<Point> {
         if self.is_parallel(other, tolerance) {
             return None;
         }
@@ -201,7 +204,7 @@ impl Line {
         let cross_p1p2_d2 = p1_p2.cross(&d2);
 
         let t = cross_p1p2_d2.magnitude() / cross_d1_d2.magnitude();
-        
+
         let sign1 = d1.cross(&p1_p2).dot(&cross_d1_d2);
         let sign2 = cross_d1_d2.dot(&cross_d1_d2);
 
@@ -218,7 +221,7 @@ impl Line {
         Axis::new(self.location, self.direction)
     }
 
-    pub fn position(&self, parameter: Standard_Real) -> Point {
+    pub fn position(&self, parameter: StandardReal) -> Point {
         let dir_vec = Vector::new(self.direction.x, self.direction.y, self.direction.z);
         Point::new(
             self.location.x + parameter * dir_vec.x,
@@ -227,7 +230,7 @@ impl Line {
         )
     }
 
-    pub fn location_at(&self, parameter: Standard_Real) -> Point {
+    pub fn location_at(&self, parameter: StandardReal) -> Point {
         self.position(parameter)
     }
 }

@@ -1,5 +1,5 @@
-use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
-use crate::geometry::{Point, Direction, Axis, Transform};
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
+use crate::geometry::{Axis, Direction, Point, Transform};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Cylinder {
@@ -7,11 +7,11 @@ pub struct Cylinder {
     direction: Direction,
     x_direction: Direction,
     y_direction: Direction,
-    radius: Standard_Real,
+    radius: StandardReal,
 }
 
 impl Cylinder {
-    pub fn new(location: Point, direction: Direction, radius: Standard_Real) -> Self {
+    pub fn new(location: Point, direction: Direction, radius: StandardReal) -> Self {
         let x_dir = if direction.is_parallel(&Direction::z_axis(), 0.001) {
             Direction::x_axis()
         } else {
@@ -28,7 +28,7 @@ impl Cylinder {
         }
     }
 
-    pub fn from_axis(axis: &Axis, radius: Standard_Real) -> Self {
+    pub fn from_axis(axis: &Axis, radius: StandardReal) -> Self {
         let main_dir = axis.direction();
         let x_dir = if main_dir.is_parallel(&Direction::z_axis(), 0.001) {
             Direction::x_axis()
@@ -46,7 +46,11 @@ impl Cylinder {
         }
     }
 
-    pub fn from_point_axis_radius(location: Point, direction: Direction, radius: Standard_Real) -> Self {
+    pub fn from_point_axis_radius(
+        location: Point,
+        direction: Direction,
+        radius: StandardReal,
+    ) -> Self {
         Self::new(location, direction, radius)
     }
 
@@ -66,7 +70,7 @@ impl Cylinder {
         &self.y_direction
     }
 
-    pub fn radius(&self) -> Standard_Real {
+    pub fn radius(&self) -> StandardReal {
         self.radius
     }
 
@@ -79,7 +83,7 @@ impl Cylinder {
         self.update_x_y_directions();
     }
 
-    pub fn set_radius(&mut self, radius: Standard_Real) {
+    pub fn set_radius(&mut self, radius: StandardReal) {
         self.radius = radius;
     }
 
@@ -96,16 +100,25 @@ impl Cylinder {
         Axis::new(self.location, self.direction)
     }
 
-    pub fn position(&self, u: Standard_Real, v: Standard_Real) -> Point {
+    pub fn position(&self, u: StandardReal, v: StandardReal) -> Point {
         let cos_u = u.cos();
         let sin_u = u.sin();
 
         let x_offset = self.radius * cos_u;
         let y_offset = self.radius * sin_u;
 
-        let x_vec = crate::geometry::Vector::new(self.x_direction.x, self.x_direction.y, self.x_direction.z);
-        let y_vec = crate::geometry::Vector::new(self.y_direction.x, self.y_direction.y, self.y_direction.z);
-        let dir_vec = crate::geometry::Vector::new(self.direction.x, self.direction.y, self.direction.z);
+        let x_vec = crate::geometry::Vector::new(
+            self.x_direction.x,
+            self.x_direction.y,
+            self.x_direction.z,
+        );
+        let y_vec = crate::geometry::Vector::new(
+            self.y_direction.x,
+            self.y_direction.y,
+            self.y_direction.z,
+        );
+        let dir_vec =
+            crate::geometry::Vector::new(self.direction.x, self.direction.y, self.direction.z);
 
         Point::new(
             self.location.x + x_offset * x_vec.x + y_offset * y_vec.x + v * dir_vec.x,
@@ -114,15 +127,16 @@ impl Cylinder {
         )
     }
 
-    pub fn contains(&self, point: &Point, tolerance: Standard_Real) -> bool {
+    pub fn contains(&self, point: &Point, tolerance: StandardReal) -> bool {
         let distance = self.distance(point);
         distance <= tolerance
     }
 
-    pub fn distance(&self, point: &Point) -> Standard_Real {
+    pub fn distance(&self, point: &Point) -> StandardReal {
         let vec = crate::geometry::Vector::from_point(&self.location, point);
-        let dir_vec = crate::geometry::Vector::new(self.direction.x, self.direction.y, self.direction.z);
-        
+        let dir_vec =
+            crate::geometry::Vector::new(self.direction.x, self.direction.y, self.direction.z);
+
         let projection = vec.dot(&dir_vec);
         let projected_point = Point::new(
             self.location.x + projection * dir_vec.x,
@@ -130,20 +144,21 @@ impl Cylinder {
             self.location.z + projection * dir_vec.z,
         );
 
-        let distance_to_axis = crate::geometry::Vector::from_point(&projected_point, point).magnitude();
+        let distance_to_axis =
+            crate::geometry::Vector::from_point(&projected_point, point).magnitude();
         (distance_to_axis - self.radius).abs()
     }
 
-    pub fn square_distance(&self, point: &Point) -> Standard_Real {
+    pub fn square_distance(&self, point: &Point) -> StandardReal {
         let dist = self.distance(point);
         dist * dist
     }
 
-    pub fn area(&self, height: Standard_Real) -> Standard_Real {
+    pub fn area(&self, height: StandardReal) -> StandardReal {
         2.0 * std::f64::consts::PI * self.radius * height
     }
 
-    pub fn volume(&self, height: Standard_Real) -> Standard_Real {
+    pub fn volume(&self, height: StandardReal) -> StandardReal {
         std::f64::consts::PI * self.radius * self.radius * height
     }
 
@@ -181,14 +196,14 @@ impl Cylinder {
         }
     }
 
-    pub fn rotate(&mut self, axis: &Axis, angle: Standard_Real) {
+    pub fn rotate(&mut self, axis: &Axis, angle: StandardReal) {
         self.location.rotate(axis, angle);
         self.direction.rotate(axis, angle);
         self.x_direction.rotate(axis, angle);
         self.y_direction.rotate(axis, angle);
     }
 
-    pub fn rotated(&self, axis: &Axis, angle: Standard_Real) -> Cylinder {
+    pub fn rotated(&self, axis: &Axis, angle: StandardReal) -> Cylinder {
         Cylinder {
             location: self.location.rotated(axis, angle),
             direction: self.direction.rotated(axis, angle),
@@ -198,12 +213,12 @@ impl Cylinder {
         }
     }
 
-    pub fn scale(&mut self, point: &Point, factor: Standard_Real) {
+    pub fn scale(&mut self, point: &Point, factor: StandardReal) {
         self.location.scale(point, factor);
         self.radius *= factor.abs();
     }
 
-    pub fn scaled(&self, point: &Point, factor: Standard_Real) -> Cylinder {
+    pub fn scaled(&self, point: &Point, factor: StandardReal) -> Cylinder {
         Cylinder {
             location: self.location.scaled(point, factor),
             direction: self.direction,
@@ -245,7 +260,7 @@ impl Cylinder {
         }
     }
 
-    pub fn is_closed(&self, tolerance: Standard_Real) -> bool {
+    pub fn is_closed(&self, tolerance: StandardReal) -> bool {
         self.radius <= tolerance
     }
 
@@ -275,15 +290,26 @@ impl crate::topology::topods_face::Surface for Cylinder {
         let cos_u = u.cos();
         let sin_u = u.sin();
 
-        let x_vec = crate::geometry::Vector::new(self.x_direction.x, self.x_direction.y, self.x_direction.z);
-        let y_vec = crate::geometry::Vector::new(self.y_direction.x, self.y_direction.y, self.y_direction.z);
+        let x_vec = crate::geometry::Vector::new(
+            self.x_direction.x,
+            self.x_direction.y,
+            self.x_direction.z,
+        );
+        let y_vec = crate::geometry::Vector::new(
+            self.y_direction.x,
+            self.y_direction.y,
+            self.y_direction.z,
+        );
 
         let normal = x_vec * cos_u + y_vec * sin_u;
         normal.normalized()
     }
 
     fn parameter_range(&self) -> ((f64, f64), (f64, f64)) {
-        ((0.0, 2.0 * std::f64::consts::PI), (-f64::INFINITY, f64::INFINITY))
+        (
+            (0.0, 2.0 * std::f64::consts::PI),
+            (-f64::INFINITY, f64::INFINITY),
+        )
     }
 }
 
@@ -295,7 +321,7 @@ mod tests {
     fn test_cylinder_creation() {
         let location = Point::origin();
         let direction = Direction::z_axis();
-        let radius =5.0;
+        let radius = 5.0;
         let cylinder = Cylinder::new(location, direction, radius);
         assert_eq!(cylinder.location(), &location);
         assert_eq!(cylinder.radius(), radius);
@@ -304,7 +330,7 @@ mod tests {
     #[test]
     fn test_cylinder_from_axis() {
         let axis = Axis::z_axis();
-        let radius =5.0;
+        let radius = 5.0;
         let cylinder = Cylinder::from_axis(&axis, radius);
         assert_eq!(cylinder.location(), &Point::origin());
         assert_eq!(cylinder.radius(), radius);
@@ -312,7 +338,7 @@ mod tests {
 
     #[test]
     fn test_cylinder_position() {
-        let cylinder = Cylinder::new(Point::origin(), Direction::z_axis(),5.0);
+        let cylinder = Cylinder::new(Point::origin(), Direction::z_axis(), 5.0);
         let point = cylinder.position(0.0, 0.0);
         assert_eq!(point.x, 5.0);
         assert_eq!(point.y, 0.0);
@@ -321,7 +347,7 @@ mod tests {
 
     #[test]
     fn test_cylinder_distance() {
-        let cylinder = Cylinder::new(Point::origin(), Direction::z_axis(),5.0);
+        let cylinder = Cylinder::new(Point::origin(), Direction::z_axis(), 5.0);
         let point = Point::new(5.0, 0.0, 0.0);
         let distance = cylinder.distance(&point);
         assert!((distance - 0.0).abs() < 0.001);
@@ -329,21 +355,21 @@ mod tests {
 
     #[test]
     fn test_cylinder_area() {
-        let cylinder = Cylinder::new(Point::origin(), Direction::z_axis(),5.0);
+        let cylinder = Cylinder::new(Point::origin(), Direction::z_axis(), 5.0);
         let area = cylinder.area(10.0);
         assert!((area - 100.0 * std::f64::consts::PI).abs() < 0.001);
     }
 
     #[test]
     fn test_cylinder_volume() {
-        let cylinder = Cylinder::new(Point::origin(), Direction::z_axis(),5.0);
+        let cylinder = Cylinder::new(Point::origin(), Direction::z_axis(), 5.0);
         let volume = cylinder.volume(10.0);
         assert!((volume - 250.0 * std::f64::consts::PI).abs() < 0.001);
     }
 
     #[test]
     fn test_cylinder_translate() {
-        let mut cylinder = Cylinder::new(Point::origin(), Direction::z_axis(),5.0);
+        let mut cylinder = Cylinder::new(Point::origin(), Direction::z_axis(), 5.0);
         let vec = crate::geometry::Vector::new(1.0, 2.0, 3.0);
         cylinder.translate(&vec);
         assert_eq!(cylinder.location(), &Point::new(1.0, 2.0, 3.0));
@@ -351,7 +377,7 @@ mod tests {
 
     #[test]
     fn test_cylinder_scale() {
-        let mut cylinder = Cylinder::new(Point::origin(), Direction::z_axis(),5.0);
+        let mut cylinder = Cylinder::new(Point::origin(), Direction::z_axis(), 5.0);
         let point = Point::origin();
         cylinder.scale(&point, 2.0);
         assert_eq!(cylinder.radius(), 10.0);
@@ -359,7 +385,7 @@ mod tests {
 
     #[test]
     fn test_cylinder_rotate() {
-        let mut cylinder = Cylinder::new(Point::origin(), Direction::z_axis(),5.0);
+        let mut cylinder = Cylinder::new(Point::origin(), Direction::z_axis(), 5.0);
         let axis = Axis::z_axis();
         cylinder.rotate(&axis, std::f64::consts::PI / 2.0);
         assert!(cylinder.direction.is_equal(&Direction::z_axis(), 0.001));
@@ -367,7 +393,7 @@ mod tests {
 
     #[test]
     fn test_cylinder_axis() {
-        let cylinder = Cylinder::new(Point::origin(), Direction::z_axis(),5.0);
+        let cylinder = Cylinder::new(Point::origin(), Direction::z_axis(), 5.0);
         let axis = cylinder.axis();
         assert_eq!(axis.location(), &Point::origin());
         assert_eq!(axis.direction(), &Direction::z_axis());

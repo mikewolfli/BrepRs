@@ -1,28 +1,28 @@
-use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 use crate::geometry::{Point, Direction, Axis, Transform};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Sphere {
     location: Point,
-    radius: Standard_Real,
+    radius: StandardReal,
 }
 
 impl Sphere {
-    pub fn new(location: Point, radius: Standard_Real) -> Self {
+    pub fn new(location: Point, radius: StandardReal) -> Self {
         Self {
             location,
             radius,
         }
     }
 
-    pub fn from_center_radius(center: Point, radius: Standard_Real) -> Self {
+    pub fn from_center_radius(center: Point, radius: StandardReal) -> Self {
         Self {
             location: center,
             radius,
         }
     }
 
-    pub fn from_axis(axis: &Axis, radius: Standard_Real) -> Self {
+    pub fn from_axis(axis: &Axis, radius: StandardReal) -> Self {
         Self {
             location: *axis.location(),
             radius,
@@ -33,7 +33,7 @@ impl Sphere {
         &self.location
     }
 
-    pub fn radius(&self) -> Standard_Real {
+    pub fn radius(&self) -> StandardReal {
         self.radius
     }
 
@@ -41,7 +41,7 @@ impl Sphere {
         self.location = location;
     }
 
-    pub fn set_radius(&mut self, radius: Standard_Real) {
+    pub fn set_radius(&mut self, radius: StandardReal) {
         self.radius = radius;
     }
 
@@ -49,7 +49,7 @@ impl Sphere {
         Axis::new(self.location, Direction::z_axis())
     }
 
-    pub fn position(&self, u: Standard_Real, v: Standard_Real) -> Point {
+    pub fn position(&self, u: StandardReal, v: StandardReal) -> Point {
         let sin_u = u.sin();
         let cos_u = u.cos();
         let sin_v = v.sin();
@@ -66,29 +66,29 @@ impl Sphere {
         )
     }
 
-    pub fn contains(&self, point: &Point, tolerance: Standard_Real) -> bool {
+    pub fn contains(&self, point: &Point, tolerance: StandardReal) -> bool {
         let distance = self.distance(point);
         distance <= tolerance
     }
 
-    pub fn distance(&self, point: &Point) -> Standard_Real {
+    pub fn distance(&self, point: &Point) -> StandardReal {
         let vec = crate::geometry::Vector::from_point(&self.location, point);
         let distance_to_center = vec.magnitude();
         (distance_to_center - self.radius).abs()
     }
 
-    pub fn square_distance(&self, point: &Point) -> Standard_Real {
+    pub fn square_distance(&self, point: &Point) -> StandardReal {
         let vec = crate::geometry::Vector::from_point(&self.location, point);
         let distance_to_center = vec.magnitude();
         let diff = distance_to_center - self.radius;
         diff * diff
     }
 
-    pub fn area(&self) -> Standard_Real {
+    pub fn area(&self) -> StandardReal {
         4.0 * std::f64::consts::PI * self.radius * self.radius
     }
 
-    pub fn volume(&self) -> Standard_Real {
+    pub fn volume(&self) -> StandardReal {
         (4.0 / 3.0) * std::f64::consts::PI * self.radius * self.radius * self.radius
     }
 
@@ -114,23 +114,23 @@ impl Sphere {
         }
     }
 
-    pub fn rotate(&mut self, axis: &Axis, angle: Standard_Real) {
+    pub fn rotate(&mut self, axis: &Axis, angle: StandardReal) {
         self.location.rotate(axis, angle);
     }
 
-    pub fn rotated(&self, axis: &Axis, angle: Standard_Real) -> Sphere {
+    pub fn rotated(&self, axis: &Axis, angle: StandardReal) -> Sphere {
         Sphere {
             location: self.location.rotated(axis, angle),
             radius: self.radius,
         }
     }
 
-    pub fn scale(&mut self, point: &Point, factor: Standard_Real) {
+    pub fn scale(&mut self, point: &Point, factor: StandardReal) {
         self.location.scale(point, factor);
         self.radius *= factor.abs();
     }
 
-    pub fn scaled(&self, point: &Point, factor: Standard_Real) -> Sphere {
+    pub fn scaled(&self, point: &Point, factor: StandardReal) -> Sphere {
         Sphere {
             location: self.location.scaled(point, factor),
             radius: self.radius * factor.abs(),
@@ -160,7 +160,7 @@ impl Sphere {
         }
     }
 
-    pub fn is_closed(&self, tolerance: Standard_Real) -> bool {
+    pub fn is_closed(&self, tolerance: StandardReal) -> bool {
         self.radius <= tolerance
     }
 
@@ -176,11 +176,11 @@ impl Sphere {
         true
     }
 
-    pub fn uper(&self) -> Standard_Real {
+    pub fn uper(&self) -> StandardReal {
         2.0 * std::f64::consts::PI
     }
 
-    pub fn vper(&self) -> Standard_Real {
+    pub fn vper(&self) -> StandardReal {
         std::f64::consts::PI
     }
 }

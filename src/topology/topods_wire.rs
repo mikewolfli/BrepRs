@@ -1,6 +1,9 @@
 use crate::foundation::handle::Handle;
-use crate::topology::{topods_shape::TopoDS_Shape, topods_edge::TopoDS_Edge, topods_vertex::TopoDS_Vertex, topods_location::TopoDS_Location};
 use crate::geometry::Point;
+use crate::topology::{
+    topods_edge::TopoDsEdge, topods_location::TopoDsLocation, topods_shape::TopoDsShape,
+    topods_vertex::TopoDsVertex,
+};
 use std::collections::HashSet;
 
 /// Represents a wire in topological structure
@@ -8,19 +11,19 @@ use std::collections::HashSet;
 /// A wire is an ordered set of edges connected by vertices.
 /// Wires can be open or closed (forming a loop).
 #[derive(Debug)]
-pub struct TopoDS_Wire {
-    shape: TopoDS_Shape,
-    edges: Vec<Handle<TopoDS_Edge>>,
-    vertices: Vec<Handle<TopoDS_Vertex>>,
+pub struct TopoDsWire {
+    shape: TopoDsShape,
+    edges: Vec<Handle<TopoDsEdge>>,
+    vertices: Vec<Handle<TopoDsVertex>>,
     closed: bool,
     tolerance: f64,
 }
 
-impl TopoDS_Wire {
+impl TopoDsWire {
     /// Create a new empty wire
     pub fn new() -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Wire),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Wire),
             edges: Vec::new(),
             vertices: Vec::new(),
             closed: false,
@@ -29,7 +32,7 @@ impl TopoDS_Wire {
     }
 
     /// Create a new wire with specified edges
-    pub fn with_edges(edges: Vec<Handle<TopoDS_Edge>>) -> Self {
+    pub fn with_edges(edges: Vec<Handle<TopoDsEdge>>) -> Self {
         let mut wire = Self::new();
         for edge in edges {
             wire.add_edge(edge);
@@ -41,7 +44,7 @@ impl TopoDS_Wire {
     /// Create a new wire with specified tolerance
     pub fn with_tolerance(tolerance: f64) -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Wire),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Wire),
             edges: Vec::new(),
             vertices: Vec::new(),
             closed: false,
@@ -50,23 +53,23 @@ impl TopoDS_Wire {
     }
 
     /// Add an edge to the wire
-    pub fn add_edge(&mut self, edge: Handle<TopoDS_Edge>) {
+    pub fn add_edge(&mut self, edge: Handle<TopoDsEdge>) {
         if self.edges.is_empty() {
             self.vertices.push(edge.vertex1().clone());
         }
-        
+
         self.edges.push(edge.clone());
         self.vertices.push(edge.vertex2().clone());
         self.update_closed();
     }
 
     /// Get the edges of the wire
-    pub fn edges(&self) -> &[Handle<TopoDS_Edge>] {
+    pub fn edges(&self) -> &[Handle<TopoDsEdge>] {
         &self.edges
     }
 
     /// Get the vertices of the wire
-    pub fn vertices(&self) -> &[Handle<TopoDS_Vertex>] {
+    pub fn vertices(&self) -> &[Handle<TopoDsVertex>] {
         &self.vertices
     }
 
@@ -114,22 +117,22 @@ impl TopoDS_Wire {
     }
 
     /// Get the shape base
-    pub fn shape(&self) -> &TopoDS_Shape {
+    pub fn shape(&self) -> &TopoDsShape {
         &self.shape
     }
 
     /// Get mutable reference to shape base
-    pub fn shape_mut(&mut self) -> &mut TopoDS_Shape {
+    pub fn shape_mut(&mut self) -> &mut TopoDsShape {
         &mut self.shape
     }
 
     /// Get the location of the wire
-    pub fn location(&self) -> Option<&TopoDS_Location> {
+    pub fn location(&self) -> Option<&TopoDsLocation> {
         self.shape.location()
     }
 
     /// Set the location of the wire
-    pub fn set_location(&mut self, location: TopoDS_Location) {
+    pub fn set_location(&mut self, location: TopoDsLocation) {
         self.shape.set_location(location);
     }
 
@@ -151,22 +154,22 @@ impl TopoDS_Wire {
     }
 
     /// Get the first edge of the wire
-    pub fn first_edge(&self) -> Option<&Handle<TopoDS_Edge>> {
+    pub fn first_edge(&self) -> Option<&Handle<TopoDsEdge>> {
         self.edges.first()
     }
 
     /// Get the last edge of the wire
-    pub fn last_edge(&self) -> Option<&Handle<TopoDS_Edge>> {
+    pub fn last_edge(&self) -> Option<&Handle<TopoDsEdge>> {
         self.edges.last()
     }
 
     /// Get the first vertex of the wire
-    pub fn first_vertex(&self) -> Option<&Handle<TopoDS_Vertex>> {
+    pub fn first_vertex(&self) -> Option<&Handle<TopoDsVertex>> {
         self.vertices.first()
     }
 
     /// Get the last vertex of the wire
-    pub fn last_vertex(&self) -> Option<&Handle<TopoDS_Vertex>> {
+    pub fn last_vertex(&self) -> Option<&Handle<TopoDsVertex>> {
         self.vertices.last()
     }
 
@@ -191,12 +194,12 @@ impl TopoDS_Wire {
     }
 
     /// Check if the wire contains a specific edge
-    pub fn contains_edge(&self, edge: &Handle<TopoDS_Edge>) -> bool {
+    pub fn contains_edge(&self, edge: &Handle<TopoDsEdge>) -> bool {
         self.edges.contains(edge)
     }
 
     /// Remove an edge from the wire
-    pub fn remove_edge(&mut self, edge: &Handle<TopoDS_Edge>) {
+    pub fn remove_edge(&mut self, edge: &Handle<TopoDsEdge>) {
         if let Some(pos) = self.edges.iter().position(|e| e == edge) {
             self.edges.remove(pos);
             // Rebuild vertices
@@ -212,21 +215,21 @@ impl TopoDS_Wire {
     }
 
     /// Check if the wire contains a specific vertex
-    pub fn contains_vertex(&self, vertex: &Handle<TopoDS_Vertex>) -> bool {
+    pub fn contains_vertex(&self, vertex: &Handle<TopoDsVertex>) -> bool {
         self.vertices.contains(vertex)
     }
 
     /// Get all unique vertices in the wire
-    pub fn unique_vertices(&self) -> Vec<Handle<TopoDS_Vertex>> {
+    pub fn unique_vertices(&self) -> Vec<Handle<TopoDsVertex>> {
         let mut seen = HashSet::new();
         let mut unique = Vec::new();
-        
+
         for vertex in &self.vertices {
             if seen.insert(vertex.shape_id()) {
                 unique.push(vertex.clone());
             }
         }
-        
+
         unique
     }
 
@@ -312,13 +315,13 @@ impl TopoDS_Wire {
     }
 }
 
-impl Default for TopoDS_Wire {
+impl Default for TopoDsWire {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Clone for TopoDS_Wire {
+impl Clone for TopoDsWire {
     fn clone(&self) -> Self {
         Self {
             shape: self.shape.clone(),
@@ -330,7 +333,7 @@ impl Clone for TopoDS_Wire {
     }
 }
 
-impl PartialEq for TopoDS_Wire {
+impl PartialEq for TopoDsWire {
     fn eq(&self, other: &Self) -> bool {
         self.shape_id() == other.shape_id()
     }
@@ -342,18 +345,22 @@ mod tests {
 
     #[test]
     fn test_wire_creation() {
-        let wire = TopoDS_Wire::new();
+        let wire = TopoDsWire::new();
         assert!(wire.is_empty());
         assert_eq!(wire.num_edges(), 0);
     }
 
     #[test]
     fn test_wire_add_edge() {
-        let mut wire = TopoDS_Wire::new();
-        let v1 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(0.0, 0.0, 0.0))));
-        let v2 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(1.0, 0.0, 0.0))));
-        let edge = Handle::new(std::sync::Arc::new(TopoDS_Edge::new(v1.clone(), v2.clone())));
-        
+        let mut wire = TopoDsWire::new();
+        let v1 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            0.0, 0.0, 0.0,
+        ))));
+        let v2 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            1.0, 0.0, 0.0,
+        ))));
+        let edge = Handle::new(std::sync::Arc::new(TopoDsEdge::new(v1.clone(), v2.clone())));
+
         wire.add_edge(edge);
         assert_eq!(wire.num_edges(), 1);
         assert!(!wire.is_closed());
@@ -361,62 +368,84 @@ mod tests {
 
     #[test]
     fn test_wire_closed() {
-        let v1 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(0.0, 0.0, 0.0))));
-        let v2 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(1.0, 0.0, 0.0))));
-        let edge1 = Handle::new(std::sync::Arc::new(TopoDS_Edge::new(v1.clone(), v2.clone())));
-        let edge2 = Handle::new(std::sync::Arc::new(TopoDS_Edge::new(v2.clone(), v1.clone())));
-        
-        let wire = TopoDS_Wire::with_edges(vec![edge1, edge2]);
+        let v1 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            0.0, 0.0, 0.0,
+        ))));
+        let v2 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            1.0, 0.0, 0.0,
+        ))));
+        let edge1 = Handle::new(std::sync::Arc::new(TopoDsEdge::new(v1.clone(), v2.clone())));
+        let edge2 = Handle::new(std::sync::Arc::new(TopoDsEdge::new(v2.clone(), v1.clone())));
+
+        let wire = TopoDsWire::with_edges(vec![edge1, edge2]);
         assert!(wire.is_closed());
     }
 
     #[test]
     fn test_wire_length() {
-        let v1 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(0.0, 0.0, 0.0))));
-        let v2 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(1.0, 0.0, 0.0))));
-        let v3 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(2.0, 0.0, 0.0))));
-        let edge1 = Handle::new(std::sync::Arc::new(TopoDS_Edge::new(v1.clone(), v2.clone())));
-        let edge2 = Handle::new(std::sync::Arc::new(TopoDS_Edge::new(v2.clone(), v3.clone())));
-        
-        let wire = TopoDS_Wire::with_edges(vec![edge1, edge2]);
+        let v1 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            0.0, 0.0, 0.0,
+        ))));
+        let v2 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            1.0, 0.0, 0.0,
+        ))));
+        let v3 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            2.0, 0.0, 0.0,
+        ))));
+        let edge1 = Handle::new(std::sync::Arc::new(TopoDsEdge::new(v1.clone(), v2.clone())));
+        let edge2 = Handle::new(std::sync::Arc::new(TopoDsEdge::new(v2.clone(), v3.clone())));
+
+        let wire = TopoDsWire::with_edges(vec![edge1, edge2]);
         let length = wire.length();
         assert!((length - 2.0).abs() < 0.001);
     }
 
     #[test]
     fn test_wire_clear() {
-        let v1 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(0.0, 0.0, 0.0))));
-        let v2 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(1.0, 0.0, 0.0))));
-        let edge = Handle::new(std::sync::Arc::new(TopoDS_Edge::new(v1.clone(), v2.clone())));
-        
-        let mut wire = TopoDS_Wire::with_edges(vec![edge]);
+        let v1 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            0.0, 0.0, 0.0,
+        ))));
+        let v2 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            1.0, 0.0, 0.0,
+        ))));
+        let edge = Handle::new(std::sync::Arc::new(TopoDsEdge::new(v1.clone(), v2.clone())));
+
+        let mut wire = TopoDsWire::with_edges(vec![edge]);
         assert!(!wire.is_empty());
-        
+
         wire.clear();
         assert!(wire.is_empty());
     }
 
     #[test]
     fn test_wire_unique_vertices() {
-        let v1 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(0.0, 0.0, 0.0))));
-        let v2 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(1.0, 0.0, 0.0))));
-        let edge1 = Handle::new(std::sync::Arc::new(TopoDS_Edge::new(v1.clone(), v2.clone())));
-        let edge2 = Handle::new(std::sync::Arc::new(TopoDS_Edge::new(v2.clone(), v1.clone())));
-        
-        let wire = TopoDS_Wire::with_edges(vec![edge1, edge2]);
+        let v1 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            0.0, 0.0, 0.0,
+        ))));
+        let v2 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            1.0, 0.0, 0.0,
+        ))));
+        let edge1 = Handle::new(std::sync::Arc::new(TopoDsEdge::new(v1.clone(), v2.clone())));
+        let edge2 = Handle::new(std::sync::Arc::new(TopoDsEdge::new(v2.clone(), v1.clone())));
+
+        let wire = TopoDsWire::with_edges(vec![edge1, edge2]);
         let unique = wire.unique_vertices();
         assert_eq!(unique.len(), 2);
     }
 
     #[test]
     fn test_wire_bounding_box() {
-        let v1 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(0.0, 0.0, 0.0))));
-        let v2 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(1.0, 1.0, 0.0))));
-        let edge = Handle::new(std::sync::Arc::new(TopoDS_Edge::new(v1.clone(), v2.clone())));
-        
-        let wire = TopoDS_Wire::with_edges(vec![edge]);
+        let v1 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            0.0, 0.0, 0.0,
+        ))));
+        let v2 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            1.0, 1.0, 0.0,
+        ))));
+        let edge = Handle::new(std::sync::Arc::new(TopoDsEdge::new(v1.clone(), v2.clone())));
+
+        let wire = TopoDsWire::with_edges(vec![edge]);
         let bbox = wire.bounding_box();
-        
+
         assert!(bbox.is_some());
         let (min, max) = bbox.unwrap();
         assert_eq!(min, Point::new(0.0, 0.0, 0.0));
@@ -425,18 +454,24 @@ mod tests {
 
     #[test]
     fn test_wire_reverse() {
-        let v1 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(0.0, 0.0, 0.0))));
-        let v2 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(1.0, 0.0, 0.0))));
-        let v3 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(2.0, 0.0, 0.0))));
-        let edge1 = Handle::new(std::sync::Arc::new(TopoDS_Edge::new(v1.clone(), v2.clone())));
-        let edge2 = Handle::new(std::sync::Arc::new(TopoDS_Edge::new(v2.clone(), v3.clone())));
-        
-        let mut wire = TopoDS_Wire::with_edges(vec![edge1.clone(), edge2.clone()]);
+        let v1 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            0.0, 0.0, 0.0,
+        ))));
+        let v2 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            1.0, 0.0, 0.0,
+        ))));
+        let v3 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            2.0, 0.0, 0.0,
+        ))));
+        let edge1 = Handle::new(std::sync::Arc::new(TopoDsEdge::new(v1.clone(), v2.clone())));
+        let edge2 = Handle::new(std::sync::Arc::new(TopoDsEdge::new(v2.clone(), v3.clone())));
+
+        let mut wire = TopoDsWire::with_edges(vec![edge1.clone(), edge2.clone()]);
         let first_edge_id = wire.first_edge().unwrap().shape_id();
         let second_edge_id = wire.last_edge().unwrap().shape_id();
-        
+
         wire.reverse();
-        
+
         // 反转后，原来的最后一个边应该变成第一个边
         assert_eq!(wire.first_edge().unwrap().shape_id(), second_edge_id);
         // 原来的第一个边应该变成最后一个边

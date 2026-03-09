@@ -1,45 +1,49 @@
 use std::ffi::c_char;
 
-pub type Standard_Integer = i32;
-pub type Standard_Real = f64;
-pub type Standard_Boolean = bool;
-pub type Standard_Character = char;
-pub type Standard_ExtCharacter = u32;
-pub type Standard_CString = *const c_char;
-pub type Standard_Size = usize;
+pub type StandardInteger = i32;
+pub type StandardReal = f64;
+pub type StandardBoolean = bool;
+pub type StandardCharacter = char;
+pub type StandardExtCharacter = u32;
+pub type StandardCString = *const c_char;
+pub type StandardSize = usize;
 
-pub const STANDARD_TRUE: Standard_Boolean = true;
-pub const STANDARD_FALSE: Standard_Boolean = false;
+pub const STANDARD_TRUE: StandardBoolean = true;
+pub const STANDARD_FALSE: StandardBoolean = false;
 
-pub const STANDARD_INTEGER_MAX: Standard_Integer = i32::MAX;
-pub const STANDARD_INTEGER_MIN: Standard_Integer = i32::MIN;
+pub const STANDARD_INTEGER_MAX: StandardInteger = i32::MAX;
+pub const STANDARD_INTEGER_MIN: StandardInteger = i32::MIN;
 
-pub const STANDARD_REAL_MAX: Standard_Real = f64::MAX;
-pub const STANDARD_REAL_MIN: Standard_Real = f64::MIN;
-pub const STANDARD_REAL_EPSILON: Standard_Real = f64::EPSILON;
+pub const STANDARD_REAL_MAX: StandardReal = f64::MAX;
+pub const STANDARD_REAL_MIN: StandardReal = f64::MIN;
+pub const STANDARD_REAL_EPSILON: StandardReal = f64::EPSILON;
 
 #[inline]
-pub fn standard_is_nan(value: Standard_Real) -> Standard_Boolean {
+pub fn standard_is_nan(value: StandardReal) -> StandardBoolean {
     value.is_nan()
 }
 
 #[inline]
-pub fn standard_is_infinite(value: Standard_Real) -> Standard_Boolean {
+pub fn standard_is_infinite(value: StandardReal) -> StandardBoolean {
     value.is_infinite()
 }
 
 #[inline]
-pub fn standard_is_finite(value: Standard_Real) -> Standard_Boolean {
+pub fn standard_is_finite(value: StandardReal) -> StandardBoolean {
     value.is_finite()
 }
 
 #[inline]
-pub fn standard_approximate(value1: Standard_Real, value2: Standard_Real, tolerance: Standard_Real) -> Standard_Boolean {
+pub fn standard_approximate(
+    value1: StandardReal,
+    value2: StandardReal,
+    tolerance: StandardReal,
+) -> StandardBoolean {
     (value1 - value2).abs() <= tolerance
 }
 
 #[inline]
-pub fn standard_real_hash(value: Standard_Real) -> usize {
+pub fn standard_real_hash(value: StandardReal) -> usize {
     value.to_bits() as usize
 }
 
@@ -49,13 +53,13 @@ mod tests {
 
     #[test]
     fn test_standard_types() {
-        let int_val: Standard_Integer = 42;
+        let int_val: StandardInteger = 42;
         assert_eq!(int_val, 42);
 
-        let real_val: Standard_Real = 3.14159;
+        let real_val: StandardReal = 3.14159;
         assert!((real_val - 3.14159).abs() < 1e-10);
 
-        let bool_val: Standard_Boolean = true;
+        let bool_val: StandardBoolean = true;
         assert_eq!(bool_val, STANDARD_TRUE);
     }
 

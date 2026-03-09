@@ -1,9 +1,9 @@
-use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
-use crate::geometry::{Point, Vector, Direction, Axis, Matrix, Quaternion};
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
+use crate::geometry::{Axis, Direction, Matrix, Point, Quaternion, Vector};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Transform {
-    pub scale: Standard_Real,
+    pub scale: StandardReal,
     pub translation: Vector,
     pub rotation: Matrix,
     pub shape: TrsfForm,
@@ -36,7 +36,7 @@ impl Transform {
         Self::new()
     }
 
-    pub fn from_scale(scale: Standard_Real) -> Self {
+    pub fn from_scale(scale: StandardReal) -> Self {
         Self {
             scale,
             translation: Vector::zero(),
@@ -54,7 +54,7 @@ impl Transform {
         }
     }
 
-    pub fn from_rotation(axis: &Axis, angle: Standard_Real) -> Self {
+    pub fn from_rotation(axis: &Axis, angle: StandardReal) -> Self {
         let quaternion = Quaternion::from_axis_angle(axis, angle);
         Self {
             scale: 1.0,
@@ -122,18 +122,18 @@ impl Transform {
     }
 
     pub fn from_axis(axis: &Axis) -> Self {
-        let dir = axis.direction();
+        let _dir = axis.direction();
         let loc = axis.location();
         let mut trsf = Self::from_rotation(axis, 0.0);
         trsf.translation = Vector::new(loc.x, loc.y, loc.z);
         trsf
     }
 
-    pub fn from_direction(direction: &Direction) -> Self {
+    pub fn from_direction(_direction: &Direction) -> Self {
         Self::new()
     }
 
-    pub fn scale(&self) -> Standard_Real {
+    pub fn scale(&self) -> StandardReal {
         self.scale
     }
 
@@ -149,7 +149,7 @@ impl Transform {
         self.shape
     }
 
-    pub fn set_scale(&mut self, scale: Standard_Real) {
+    pub fn set_scale(&mut self, scale: StandardReal) {
         self.scale = scale;
         self.shape = TrsfForm::Scale;
     }
@@ -177,7 +177,9 @@ impl Transform {
         let mut inv_rotation = self.rotation;
         inv_rotation.transpose();
 
-        let inv_translation = inv_rotation.multiply_vec(&self.translation).scaled(-inv_scale);
+        let inv_translation = inv_rotation
+            .multiply_vec(&self.translation)
+            .scaled(-inv_scale);
 
         self.scale = inv_scale;
         self.rotation = inv_rotation;
@@ -193,7 +195,11 @@ impl Transform {
     pub fn multiply(&self, other: &Transform) -> Transform {
         Transform {
             scale: self.scale * other.scale,
-            translation: self.rotation.multiply_vec(&other.translation).scaled(self.scale) + self.translation,
+            translation: self
+                .rotation
+                .multiply_vec(&other.translation)
+                .scaled(self.scale)
+                + self.translation,
             rotation: self.rotation.multiply(&other.rotation),
             shape: TrsfForm::Compound,
         }
@@ -220,7 +226,9 @@ impl Transform {
     }
 
     pub fn transforms(&self, point: &Point) -> Point {
-        let rotated = self.rotation.multiply_vec(&Vector::new(point.x, point.y, point.z));
+        let rotated = self
+            .rotation
+            .multiply_vec(&Vector::new(point.x, point.y, point.z));
         let scaled = rotated.scaled(self.scale);
         Point::new(
             scaled.x + self.translation.x,
@@ -235,7 +243,9 @@ impl Transform {
     }
 
     pub fn transforms_dir(&self, dir: &Direction) -> Direction {
-        let vec = self.rotation.multiply_vec(&Vector::new(dir.x, dir.y, dir.z));
+        let vec = self
+            .rotation
+            .multiply_vec(&Vector::new(dir.x, dir.y, dir.z));
         Direction::new(vec.x, vec.y, vec.z)
     }
 
@@ -263,7 +273,7 @@ impl Transform {
         self.translation
     }
 
-    pub fn scale_factor(&self) -> Standard_Real {
+    pub fn scale_factor(&self) -> StandardReal {
         self.scale
     }
 
@@ -281,22 +291,29 @@ impl Transform {
         result
     }
 
-    pub fn set_values(&mut self, scale: Standard_Real, translation: &Vector, rotation: &Matrix) {
+    pub fn set_values(&mut self, scale: StandardReal, translation: &Vector, rotation: &Matrix) {
         self.scale = scale;
         self.translation = *translation;
         self.rotation = *rotation;
         self.shape = TrsfForm::Other;
     }
 
-    pub fn set_values_3d(&mut self, a11: Standard_Real, a12: Standard_Real, a13: Standard_Real,
-                          a21: Standard_Real, a22: Standard_Real, a23: Standard_Real,
-                          a31: Standard_Real, a32: Standard_Real, a33: Standard_Real,
-                          tx: Standard_Real, ty: Standard_Real, tz: Standard_Real) {
-        self.rotation = Matrix::from_array([
-            [a11, a12, a13],
-            [a21, a22, a23],
-            [a31, a32, a33],
-        ]);
+    pub fn set_values_3d(
+        &mut self,
+        a11: StandardReal,
+        a12: StandardReal,
+        a13: StandardReal,
+        a21: StandardReal,
+        a22: StandardReal,
+        a23: StandardReal,
+        a31: StandardReal,
+        a32: StandardReal,
+        a33: StandardReal,
+        tx: StandardReal,
+        ty: StandardReal,
+        tz: StandardReal,
+    ) {
+        self.rotation = Matrix::from_array([[a11, a12, a13], [a21, a22, a23], [a31, a32, a33]]);
         self.translation = Vector::new(tx, ty, tz);
         self.scale = 1.0;
         self.shape = TrsfForm::Other;
@@ -310,11 +327,11 @@ impl Transform {
         self.translation = *vec;
     }
 
-    pub fn set_scale_factor(&mut self, scale: Standard_Real) {
+    pub fn set_scale_factor(&mut self, scale: StandardReal) {
         self.scale = scale;
     }
 
-    pub fn to_matrix(&self) -> [[Standard_Real; 4]; 4] {
+    pub fn to_matrix(&self) -> [[StandardReal; 4]; 4] {
         let mut result = [[0.0; 4]; 4];
         for i in 0..3 {
             for j in 0..3 {

@@ -1,4 +1,4 @@
-use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 use crate::geometry::{Point, Direction, Axis, Transform};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -144,24 +144,24 @@ impl Ax2 {
         }
     }
 
-    pub fn angle(&self, other: &Ax2) -> Standard_Real {
+    pub fn angle(&self, other: &Ax2) -> StandardReal {
         self.direction.angle(&other.direction)
     }
 
-    pub fn is_coaxial(&self, other: &Ax2, angular_tolerance: Standard_Real, linear_tolerance: Standard_Real) -> bool {
+    pub fn is_coaxial(&self, other: &Ax2, angular_tolerance: StandardReal, linear_tolerance: StandardReal) -> bool {
         self.direction.is_co_linear(&other.direction, angular_tolerance) &&
         self.location.distance(&other.location) <= linear_tolerance
     }
 
-    pub fn is_opposite(&self, other: &Ax2, angular_tolerance: Standard_Real) -> bool {
+    pub fn is_opposite(&self, other: &Ax2, angular_tolerance: StandardReal) -> bool {
         self.direction.is_opposite(&other.direction, angular_tolerance)
     }
 
-    pub fn is_parallel(&self, other: &Ax2, angular_tolerance: Standard_Real) -> bool {
+    pub fn is_parallel(&self, other: &Ax2, angular_tolerance: StandardReal) -> bool {
         self.direction.is_parallel(&other.direction, angular_tolerance)
     }
 
-    pub fn is_normal(&self, other: &Ax2, angular_tolerance: Standard_Real) -> bool {
+    pub fn is_normal(&self, other: &Ax2, angular_tolerance: StandardReal) -> bool {
         self.direction.is_normal(&other.direction, angular_tolerance)
     }
 
@@ -213,14 +213,14 @@ impl Ax2 {
         }
     }
 
-    pub fn rotate(&mut self, axis: &Axis, angle: Standard_Real) {
+    pub fn rotate(&mut self, axis: &Axis, angle: StandardReal) {
         self.location.rotate(axis, angle);
         self.direction.rotate(axis, angle);
         self.x_direction.rotate(axis, angle);
         self.y_direction.rotate(axis, angle);
     }
 
-    pub fn rotated(&self, axis: &Axis, angle: Standard_Real) -> Ax2 {
+    pub fn rotated(&self, axis: &Axis, angle: StandardReal) -> Ax2 {
         Ax2 {
             location: self.location.rotated(axis, angle),
             direction: self.direction.rotated(axis, angle),
@@ -229,11 +229,11 @@ impl Ax2 {
         }
     }
 
-    pub fn scale(&mut self, point: &Point, factor: Standard_Real) {
+    pub fn scale(&mut self, point: &Point, factor: StandardReal) {
         self.location.scale(point, factor);
     }
 
-    pub fn scaled(&self, point: &Point, factor: Standard_Real) -> Ax2 {
+    pub fn scaled(&self, point: &Point, factor: StandardReal) -> Ax2 {
         Ax2 {
             location: self.location.scaled(point, factor),
             direction: self.direction,

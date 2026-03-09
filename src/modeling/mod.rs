@@ -9,7 +9,7 @@ pub mod fillet_chamfer;
 pub mod offset_operations;
 
 pub use primitives::*;
-pub use brep_builder::BRep_Builder;
+pub use brep_builder::BrepBuilder;
 pub use boolean_operations::BooleanOperations;
 pub use fillet_chamfer::FilletChamfer;
 pub use offset_operations::OffsetOperations;

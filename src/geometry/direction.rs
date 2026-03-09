@@ -1,14 +1,14 @@
-use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Direction {
-    pub x: Standard_Real,
-    pub y: Standard_Real,
-    pub z: Standard_Real,
+    pub x: StandardReal,
+    pub y: StandardReal,
+    pub z: StandardReal,
 }
 
 impl Direction {
-    pub fn new(x: Standard_Real, y: Standard_Real, z: Standard_Real) -> Self {
+    pub fn new(x: StandardReal, y: StandardReal, z: StandardReal) -> Self {
         let mut dir = Self { x, y, z };
         dir.normalize();
         dir
@@ -47,38 +47,38 @@ impl Direction {
         }
     }
 
-    pub fn x(&self) -> Standard_Real {
+    pub fn x(&self) -> StandardReal {
         self.x
     }
 
-    pub fn y(&self) -> Standard_Real {
+    pub fn y(&self) -> StandardReal {
         self.y
     }
 
-    pub fn z(&self) -> Standard_Real {
+    pub fn z(&self) -> StandardReal {
         self.z
     }
 
-    pub fn coord(&self) -> (Standard_Real, Standard_Real, Standard_Real) {
+    pub fn coord(&self) -> (StandardReal, StandardReal, StandardReal) {
         (self.x, self.y, self.z)
     }
 
-    pub fn set_x(&mut self, x: Standard_Real) {
+    pub fn set_x(&mut self, x: StandardReal) {
         self.x = x;
         self.normalize();
     }
 
-    pub fn set_y(&mut self, y: Standard_Real) {
+    pub fn set_y(&mut self, y: StandardReal) {
         self.y = y;
         self.normalize();
     }
 
-    pub fn set_z(&mut self, z: Standard_Real) {
+    pub fn set_z(&mut self, z: StandardReal) {
         self.z = z;
         self.normalize();
     }
 
-    pub fn set_coord(&mut self, x: Standard_Real, y: Standard_Real, z: Standard_Real) {
+    pub fn set_coord(&mut self, x: StandardReal, y: StandardReal, z: StandardReal) {
         self.x = x;
         self.y = y;
         self.z = z;
@@ -121,7 +121,7 @@ impl Direction {
         }
     }
 
-    pub fn dot(&self, other: &Direction) -> Standard_Real {
+    pub fn dot(&self, other: &Direction) -> StandardReal {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
 
@@ -134,23 +134,23 @@ impl Direction {
         .normalized()
     }
 
-    pub fn cross_mag(&self, other: &Direction) -> Standard_Real {
+    pub fn cross_mag(&self, other: &Direction) -> StandardReal {
         let cross = self.cross(other);
         (cross.x * cross.x + cross.y * cross.y + cross.z * cross.z).sqrt()
     }
 
-    pub fn cross_square_magnitude(&self, other: &Direction) -> Standard_Real {
+    pub fn cross_square_magnitude(&self, other: &Direction) -> StandardReal {
         let cross = self.cross(other);
         cross.x * cross.x + cross.y * cross.y + cross.z * cross.z
     }
 
-    pub fn angle(&self, other: &Direction) -> Standard_Real {
+    pub fn angle(&self, other: &Direction) -> StandardReal {
         let dot = self.dot(other);
         let dot = dot.max(-1.0).min(1.0);
         dot.acos()
     }
 
-    pub fn angle_with_ref(&self, other: &Direction, v_ref: &Direction) -> Standard_Real {
+    pub fn angle_with_ref(&self, other: &Direction, v_ref: &Direction) -> StandardReal {
         let angle = self.angle(other);
         let cross = self.cross(other);
         if cross.dot(v_ref) >= 0.0 {
@@ -160,24 +160,24 @@ impl Direction {
         }
     }
 
-    pub fn is_equal(&self, other: &Direction, angular_tolerance: Standard_Real) -> bool {
+    pub fn is_equal(&self, other: &Direction, angular_tolerance: StandardReal) -> bool {
         self.angle(other) <= angular_tolerance
     }
 
-    pub fn is_opposite(&self, other: &Direction, angular_tolerance: Standard_Real) -> bool {
+    pub fn is_opposite(&self, other: &Direction, angular_tolerance: StandardReal) -> bool {
         (self.angle(other) - std::f64::consts::PI).abs() <= angular_tolerance
     }
 
-    pub fn is_parallel(&self, other: &Direction, angular_tolerance: Standard_Real) -> bool {
+    pub fn is_parallel(&self, other: &Direction, angular_tolerance: StandardReal) -> bool {
         self.is_equal(other, angular_tolerance) || self.is_opposite(other, angular_tolerance)
     }
 
-    pub fn is_normal(&self, other: &Direction, angular_tolerance: Standard_Real) -> bool {
+    pub fn is_normal(&self, other: &Direction, angular_tolerance: StandardReal) -> bool {
         let angle = self.angle(other);
         (angle - std::f64::consts::PI / 2.0).abs() <= angular_tolerance
     }
 
-    pub fn is_co_linear(&self, other: &Direction, angular_tolerance: Standard_Real) -> bool {
+    pub fn is_co_linear(&self, other: &Direction, angular_tolerance: StandardReal) -> bool {
         self.is_parallel(other, angular_tolerance)
     }
 
@@ -212,14 +212,14 @@ impl Direction {
         .normalized()
     }
 
-    pub fn rotate(&mut self, axis: &crate::geometry::Axis, angle: Standard_Real) {
+    pub fn rotate(&mut self, axis: &crate::geometry::Axis, angle: StandardReal) {
         let result = self.rotated(axis, angle);
         self.x = result.x;
         self.y = result.y;
         self.z = result.z;
     }
 
-    pub fn rotated(&self, axis: &crate::geometry::Axis, angle: Standard_Real) -> Direction {
+    pub fn rotated(&self, axis: &crate::geometry::Axis, angle: StandardReal) -> Direction {
         let direction = &axis.direction;
         let cos_a = angle.cos();
         let sin_a = angle.sin();

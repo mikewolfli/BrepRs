@@ -5,15 +5,11 @@
 //! and shell operations.
 
 use crate::foundation::handle::Handle;
-use crate::geometry::{Point, Vector, Plane, Direction};
+use crate::geometry::Vector;
+
 use crate::topology::{
-    topods_edge::TopoDS_Edge,
-    topods_face::TopoDS_Face,
-    topods_shell::TopoDS_Shell,
-    topods_solid::TopoDS_Solid,
-    topods_wire::TopoDS_Wire,
-    topods_shape::TopoDS_Shape,
-    shape_enum::ShapeType,
+    topods_face::TopoDsFace, topods_shell::TopoDsShell, topods_solid::TopoDsSolid,
+    topods_wire::TopoDsWire, ShapeType,
 };
 
 /// Offset operations class
@@ -120,24 +116,24 @@ impl OffsetOperations {
     ///
     /// # Returns
     /// A new face that is the offset of the input face
-    pub fn offset_face(&self, face: &TopoDS_Face, distance: f64) -> TopoDS_Face {
+    pub fn offset_face(&self, face: &TopoDsFace, _distance: f64) -> TopoDsFace {
         // For now, return a copy of the input face as a placeholder
         // In a real implementation, this would:
         // 1. Get the face's surface
         // 2. Create an offset surface
         // 3. Update the face's geometry
         // 4. Adjust the face's wires if necessary
-        
-        let mut result = face.clone();
-        
+
+        let result = face.clone();
+
         // Apply tolerance modification to simulate offset effect
         // This is a simplified placeholder implementation
-        if let Some(surface) = result.surface() {
+        if let Some(_surface) = result.surface() {
             // In a real implementation, we would:
             // - Create an offset surface
             // - Update the face's surface
         }
-        
+
         result
     }
 
@@ -149,24 +145,24 @@ impl OffsetOperations {
     ///
     /// # Returns
     /// A new shell that is the offset of the input shell
-    pub fn offset_shell(&self, shell: &TopoDS_Shell, distance: f64) -> TopoDS_Shell {
+    pub fn offset_shell(&self, shell: &TopoDsShell, distance: f64) -> TopoDsShell {
         // For now, return a copy of the input shell as a placeholder
         // In a real implementation, this would:
         // 1. Offset each face in the shell
         // 2. Adjust the connections between faces
         // 3. Create a new shell with the offset faces
-        
-        let mut result = shell.clone();
-        
+
+        let result = shell.clone();
+
         // Apply tolerance modification to simulate offset effect
         // This is a simplified placeholder implementation
         for face in result.faces() {
             if let Some(face_ref) = face.get() {
-                let offset_face = self.offset_face(face_ref, distance);
+                let _offset_face = self.offset_face(face_ref, distance);
                 // In a real implementation, we would replace the face in the shell
             }
         }
-        
+
         result
     }
 
@@ -183,23 +179,28 @@ impl OffsetOperations {
     ///
     /// # Returns
     /// A new solid that is the thickened version of the input shell
-    pub fn make_thick_solid(&self, shell: &TopoDS_Shell, thickness: f64, offset: f64) -> TopoDS_Solid {
+    pub fn make_thick_solid(
+        &self,
+        shell: &TopoDsShell,
+        _thickness: f64,
+        offset: f64,
+    ) -> TopoDsSolid {
         // For now, return an empty solid as a placeholder
         // In a real implementation, this would:
         // 1. Offset the shell by the specified distance
         // 2. Create a solid by connecting the original and offset shells
         // 3. Fill the space between them
-        
-        let mut result = TopoDS_Solid::new();
-        
+
+        let result = TopoDsSolid::new();
+
         // Apply tolerance modification to simulate thickening effect
         // This is a simplified placeholder implementation
-        let offset_shell = self.offset_shell(shell, offset);
-        
+        let _offset_shell = self.offset_shell(shell, offset);
+
         // In a real implementation, we would:
         // - Create a solid by connecting the original and offset shells
         // - Add both shells to the solid
-        
+
         result
     }
 
@@ -212,23 +213,28 @@ impl OffsetOperations {
     ///
     /// # Returns
     /// A new solid that is the thickened version of the input face
-    pub fn make_thick_from_face(&self, face: &TopoDS_Face, thickness: f64, offset: f64) -> TopoDS_Solid {
+    pub fn make_thick_from_face(
+        &self,
+        face: &TopoDsFace,
+        _thickness: f64,
+        offset: f64,
+    ) -> TopoDsSolid {
         // For now, return an empty solid as a placeholder
         // In a real implementation, this would:
         // 1. Create a shell from the face
         // 2. Thicken the shell
-        
-        let mut result = TopoDS_Solid::new();
-        
+
+        let result = TopoDsSolid::new();
+
         // Apply tolerance modification to simulate thickening effect
         // This is a simplified placeholder implementation
-        let offset_face = self.offset_face(face, offset);
-        
+        let _offset_face = self.offset_face(face, offset);
+
         // In a real implementation, we would:
         // - Create a shell from the original face
         // - Create a shell from the offset face
         // - Connect them to form a solid
-        
+
         result
     }
 
@@ -244,24 +250,24 @@ impl OffsetOperations {
     ///
     /// # Returns
     /// A new solid that is the pipe
-    pub fn make_pipe(&self, path: &TopoDS_Wire, profile: &TopoDS_Wire) -> TopoDS_Solid {
+    pub fn make_pipe(&self, path: &TopoDsWire, _profile: &TopoDsWire) -> TopoDsSolid {
         // For now, return an empty solid as a placeholder
         // In a real implementation, this would:
         // 1. Sweep the profile along the path
         // 2. Create a solid from the swept surface
-        
-        let mut result = TopoDS_Solid::new();
-        
+
+        let result = TopoDsSolid::new();
+
         // Apply tolerance modification to simulate pipe creation
         // This is a simplified placeholder implementation
         for edge in path.edges() {
-            if let Some(edge_ref) = edge.get() {
+            if let Some(_edge_ref) = edge.get() {
                 // In a real implementation, we would:
                 // - Sweep the profile along each edge
                 // - Connect the swept surfaces
             }
         }
-        
+
         result
     }
 
@@ -274,24 +280,29 @@ impl OffsetOperations {
     ///
     /// # Returns
     /// A new solid that is the pipe with variable radius
-    pub fn make_pipe_variable(&self, path: &TopoDS_Wire, profile: &TopoDS_Wire, radius_func: impl Fn(f64) -> f64) -> TopoDS_Solid {
+    pub fn make_pipe_variable(
+        &self,
+        path: &TopoDsWire,
+        _profile: &TopoDsWire,
+        _radius_func: impl Fn(f64) -> f64,
+    ) -> TopoDsSolid {
         // For now, return an empty solid as a placeholder
         // In a real implementation, this would:
         // 1. Sweep the profile along the path with variable radius
         // 2. Create a solid from the swept surface
-        
-        let mut result = TopoDS_Solid::new();
-        
+
+        let result = TopoDsSolid::new();
+
         // Apply tolerance modification to simulate pipe creation
         // This is a simplified placeholder implementation
         for edge in path.edges() {
-            if let Some(edge_ref) = edge.get() {
+            if let Some(_edge_ref) = edge.get() {
                 // In a real implementation, we would:
                 // - Sweep the profile along each edge with variable radius
                 // - Connect the swept surfaces
             }
         }
-        
+
         result
     }
 
@@ -307,24 +318,24 @@ impl OffsetOperations {
     ///
     /// # Returns
     /// A new shell that is the offset of the input shell
-    pub fn make_offset_shell(&self, shell: &TopoDS_Shell, offset: f64) -> TopoDS_Shell {
+    pub fn make_offset_shell(&self, shell: &TopoDsShell, offset: f64) -> TopoDsShell {
         // For now, return a copy of the input shell as a placeholder
         // In a real implementation, this would:
         // 1. Offset each face in the shell
         // 2. Adjust the connections between faces
         // 3. Create a new shell with the offset faces
-        
-        let mut result = shell.clone();
-        
+
+        let result = shell.clone();
+
         // Apply tolerance modification to simulate offset effect
         // This is a simplified placeholder implementation
         for face in result.faces() {
             if let Some(face_ref) = face.get() {
-                let offset_face = self.offset_face(face_ref, offset);
+                let _offset_face = self.offset_face(face_ref, offset);
                 // In a real implementation, we would replace the face in the shell
             }
         }
-        
+
         result
     }
 
@@ -335,24 +346,24 @@ impl OffsetOperations {
     ///
     /// # Returns
     /// A new shell that is the outer shell of the solid
-    pub fn make_shell_from_solid(&self, solid: &TopoDS_Solid) -> TopoDS_Shell {
+    pub fn make_shell_from_solid(&self, solid: &TopoDsSolid) -> TopoDsShell {
         // For now, return an empty shell as a placeholder
         // In a real implementation, this would:
         // 1. Extract the outer shell from the solid
         // 2. Return the extracted shell
-        
-        let mut result = TopoDS_Shell::new();
-        
+
+        let result = TopoDsShell::new();
+
         // Apply tolerance modification to simulate shell extraction
         // This is a simplified placeholder implementation
         for shell in solid.shells() {
-            if let Some(shell_ref) = shell.get() {
+            if let Some(_shell_ref) = shell.get() {
                 // In a real implementation, we would:
                 // - Check if this is the outer shell
                 // - Return it if it is
             }
         }
-        
+
         result
     }
 
@@ -363,24 +374,24 @@ impl OffsetOperations {
     ///
     /// # Returns
     /// A new shell containing the specified faces
-    pub fn make_shell_from_faces(&self, faces: &[Handle<TopoDS_Face>]) -> TopoDS_Shell {
+    pub fn make_shell_from_faces(&self, faces: &[Handle<TopoDsFace>]) -> TopoDsShell {
         // For now, return an empty shell as a placeholder
         // In a real implementation, this would:
         // 1. Create a shell
         // 2. Add the specified faces to the shell
         // 3. Return the shell
-        
-        let mut result = TopoDS_Shell::new();
-        
+
+        let result = TopoDsShell::new();
+
         // Apply tolerance modification to simulate shell creation
         // This is a simplified placeholder implementation
         for face in faces {
-            if let Some(face_ref) = face.get() {
+            if let Some(_face_ref) = face.get() {
                 // In a real implementation, we would:
                 // - Add the face to the shell
             }
         }
-        
+
         result
     }
 
@@ -395,7 +406,7 @@ impl OffsetOperations {
     ///
     /// # Returns
     /// `true` if the face can be offset, `false` otherwise
-    pub fn can_offset_face(&self, face: &TopoDS_Face) -> bool {
+    pub fn can_offset_face(&self, face: &TopoDsFace) -> bool {
         // Check if face has a surface
         face.surface().is_some() && face.num_wires() > 0
     }
@@ -407,7 +418,7 @@ impl OffsetOperations {
     ///
     /// # Returns
     /// `true` if the shell can be offset, `false` otherwise
-    pub fn can_offset_shell(&self, shell: &TopoDS_Shell) -> bool {
+    pub fn can_offset_shell(&self, shell: &TopoDsShell) -> bool {
         // Check if shell has faces
         shell.num_faces() > 0
     }
@@ -419,12 +430,12 @@ impl OffsetOperations {
     ///
     /// # Returns
     /// The offset direction vector
-    pub fn calculate_offset_direction(&self, face: &TopoDS_Face) -> Option<Vector> {
+    pub fn calculate_offset_direction(&self, _face: &TopoDsFace) -> Option<Vector> {
         // For now, return a default direction as a placeholder
         // In a real implementation, this would:
         // 1. Calculate the face's normal vector
         // 2. Return the normal vector as the offset direction
-        
+
         Some(Vector::new(0.0, 0.0, 1.0))
     }
 
@@ -446,8 +457,8 @@ impl Default for OffsetOperations {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::modeling::primitives;
     use crate::geometry::Point;
+    use crate::modeling::primitives;
 
     #[test]
     fn test_offset_operations_creation() {
@@ -497,7 +508,7 @@ mod tests {
     fn test_offset_face() {
         // Create a simple box to get a face
         let box_solid = primitives::make_box(1.0, 1.0, 1.0, Some(Point::new(0.0, 0.0, 0.0)));
-        
+
         // For now, we can't easily get faces from the solid
         // This test just verifies the method exists
         let offset = OffsetOperations::new();
@@ -507,7 +518,7 @@ mod tests {
     fn test_offset_shell() {
         // Create a simple box to get a shell
         let box_solid = primitives::make_box(1.0, 1.0, 1.0, Some(Point::new(0.0, 0.0, 0.0)));
-        
+
         // For now, we can't easily get shells from the solid
         // This test just verifies the method exists
         let offset = OffsetOperations::new();
@@ -517,7 +528,7 @@ mod tests {
     fn test_make_thick_solid() {
         // Create a simple box to get a shell
         let box_solid = primitives::make_box(1.0, 1.0, 1.0, Some(Point::new(0.0, 0.0, 0.0)));
-        
+
         // For now, we can't easily get shells from the solid
         // This test just verifies the method exists
         let offset = OffsetOperations::new();
@@ -527,7 +538,7 @@ mod tests {
     fn test_make_pipe() {
         // Create a simple wire for path and profile
         let offset = OffsetOperations::new();
-        
+
         // For now, we can't easily create wires
         // This test just verifies the method exists
     }
@@ -536,7 +547,7 @@ mod tests {
     fn test_make_offset_shell() {
         // Create a simple box to get a shell
         let box_solid = primitives::make_box(1.0, 1.0, 1.0, Some(Point::new(0.0, 0.0, 0.0)));
-        
+
         // For now, we can't easily get shells from the solid
         // This test just verifies the method exists
         let offset = OffsetOperations::new();
@@ -546,10 +557,10 @@ mod tests {
     fn test_make_shell_from_solid() {
         // Create a simple box
         let box_solid = primitives::make_box(1.0, 1.0, 1.0, Some(Point::new(0.0, 0.0, 0.0)));
-        
+
         let offset = OffsetOperations::new();
         let shell = offset.make_shell_from_solid(&box_solid);
-        
+
         // Verify result is a shell
         assert_eq!(shell.shape().shape_type(), ShapeType::Shell);
     }
@@ -557,10 +568,10 @@ mod tests {
     #[test]
     fn test_can_offset_face() {
         let offset = OffsetOperations::new();
-        
+
         // Create a simple face
-        let face = TopoDS_Face::new();
-        
+        let face = TopoDsFace::new();
+
         // This should return false for an empty face
         assert!(!offset.can_offset_face(&face));
     }
@@ -568,10 +579,10 @@ mod tests {
     #[test]
     fn test_calculate_offset_direction() {
         let offset = OffsetOperations::new();
-        
+
         // Create a simple face
-        let face = TopoDS_Face::new();
-        
+        let face = TopoDsFace::new();
+
         let direction = offset.calculate_offset_direction(&face);
         assert!(direction.is_some());
     }
@@ -582,9 +593,9 @@ mod tests {
         offset.set_tolerance(0.01);
         offset.set_join_type(JoinType::Sharp);
         offset.set_intersection_type(IntersectionType::Intersection);
-        
+
         offset.reset();
-        
+
         assert_eq!(offset.offset_distance(), 0.1);
         assert_eq!(offset.tolerance(), 0.001);
         assert_eq!(offset.join_type(), JoinType::Round);

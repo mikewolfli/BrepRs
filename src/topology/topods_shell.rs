@@ -1,6 +1,8 @@
 use crate::foundation::handle::Handle;
-use crate::topology::{topods_shape::TopoDS_Shape, topods_face::TopoDS_Face, topods_location::TopoDS_Location};
 use crate::geometry::Point;
+use crate::topology::{
+    topods_face::TopoDsFace, topods_location::TopoDsLocation, topods_shape::TopoDsShape,
+};
 
 /// Represents a shell in topological structure
 ///
@@ -8,18 +10,18 @@ use crate::geometry::Point;
 /// open or closed. A closed shell can represent the boundary
 /// of a solid.
 #[derive(Debug)]
-pub struct TopoDS_Shell {
-    shape: TopoDS_Shape,
-    faces: Vec<Handle<TopoDS_Face>>,
+pub struct TopoDsShell {
+    shape: TopoDsShape,
+    faces: Vec<Handle<TopoDsFace>>,
     closed: bool,
     tolerance: f64,
 }
 
-impl TopoDS_Shell {
+impl TopoDsShell {
     /// Create a new empty shell
     pub fn new() -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Shell),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Shell),
             faces: Vec::new(),
             closed: false,
             tolerance: 0.001,
@@ -27,7 +29,7 @@ impl TopoDS_Shell {
     }
 
     /// Create a new shell with specified faces
-    pub fn with_faces(faces: Vec<Handle<TopoDS_Face>>) -> Self {
+    pub fn with_faces(faces: Vec<Handle<TopoDsFace>>) -> Self {
         let mut shell = Self::new();
         for face in faces {
             shell.add_face(face);
@@ -39,7 +41,7 @@ impl TopoDS_Shell {
     /// Create a new shell with specified tolerance
     pub fn with_tolerance(tolerance: f64) -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Shell),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Shell),
             faces: Vec::new(),
             closed: false,
             tolerance,
@@ -47,13 +49,13 @@ impl TopoDS_Shell {
     }
 
     /// Add a face to the shell
-    pub fn add_face(&mut self, face: Handle<TopoDS_Face>) {
+    pub fn add_face(&mut self, face: Handle<TopoDsFace>) {
         self.faces.push(face);
         self.update_closed();
     }
 
     /// Get the faces of the shell
-    pub fn faces(&self) -> &[Handle<TopoDS_Face>] {
+    pub fn faces(&self) -> &[Handle<TopoDsFace>] {
         &self.faces
     }
 
@@ -106,22 +108,22 @@ impl TopoDS_Shell {
     }
 
     /// Get the shape base
-    pub fn shape(&self) -> &TopoDS_Shape {
+    pub fn shape(&self) -> &TopoDsShape {
         &self.shape
     }
 
     /// Get mutable reference to shape base
-    pub fn shape_mut(&mut self) -> &mut TopoDS_Shape {
+    pub fn shape_mut(&mut self) -> &mut TopoDsShape {
         &mut self.shape
     }
 
     /// Get the location of the shell
-    pub fn location(&self) -> Option<&TopoDS_Location> {
+    pub fn location(&self) -> Option<&TopoDsLocation> {
         self.shape.location()
     }
 
     /// Set the location of the shell
-    pub fn set_location(&mut self, location: TopoDS_Location) {
+    pub fn set_location(&mut self, location: TopoDsLocation) {
         self.shape.set_location(location);
     }
 
@@ -142,12 +144,12 @@ impl TopoDS_Shell {
     }
 
     /// Get the first face of the shell
-    pub fn first_face(&self) -> Option<&Handle<TopoDS_Face>> {
+    pub fn first_face(&self) -> Option<&Handle<TopoDsFace>> {
         self.faces.first()
     }
 
     /// Get the last face of the shell
-    pub fn last_face(&self) -> Option<&Handle<TopoDS_Face>> {
+    pub fn last_face(&self) -> Option<&Handle<TopoDsFace>> {
         self.faces.last()
     }
 
@@ -172,12 +174,12 @@ impl TopoDS_Shell {
     }
 
     /// Check if the shell contains a specific face
-    pub fn contains_face(&self, face: &Handle<TopoDS_Face>) -> bool {
+    pub fn contains_face(&self, face: &Handle<TopoDsFace>) -> bool {
         self.faces.contains(face)
     }
 
     /// Remove a face from the shell
-    pub fn remove_face(&mut self, face: &Handle<TopoDS_Face>) {
+    pub fn remove_face(&mut self, face: &Handle<TopoDsFace>) {
         self.faces.retain(|f| f != face);
         self.update_closed();
     }
@@ -213,7 +215,7 @@ impl TopoDS_Shell {
     }
 
     /// Get all edges in the shell
-    pub fn edges(&self) -> Vec<Handle<crate::topology::topods_edge::TopoDS_Edge>> {
+    pub fn edges(&self) -> Vec<Handle<crate::topology::topods_edge::TopoDsEdge>> {
         use std::collections::HashSet;
 
         let mut edge_set = HashSet::new();
@@ -233,7 +235,7 @@ impl TopoDS_Shell {
     }
 
     /// Get all vertices in the shell
-    pub fn vertices(&self) -> Vec<Handle<crate::topology::topods_vertex::TopoDS_Vertex>> {
+    pub fn vertices(&self) -> Vec<Handle<crate::topology::topods_vertex::TopoDsVertex>> {
         use std::collections::HashSet;
 
         let mut vertex_set = HashSet::new();
@@ -281,13 +283,13 @@ impl TopoDS_Shell {
     }
 }
 
-impl Default for TopoDS_Shell {
+impl Default for TopoDsShell {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Clone for TopoDS_Shell {
+impl Clone for TopoDsShell {
     fn clone(&self) -> Self {
         Self {
             shape: self.shape.clone(),
@@ -298,7 +300,7 @@ impl Clone for TopoDS_Shell {
     }
 }
 
-impl PartialEq for TopoDS_Shell {
+impl PartialEq for TopoDsShell {
     fn eq(&self, other: &Self) -> bool {
         self.shape_id() == other.shape_id()
     }
@@ -310,55 +312,55 @@ mod tests {
 
     #[test]
     fn test_shell_creation() {
-        let shell = TopoDS_Shell::new();
+        let shell = TopoDsShell::new();
         assert!(shell.is_empty());
         assert_eq!(shell.num_faces(), 0);
     }
 
     #[test]
     fn test_shell_add_face() {
-        let mut shell = TopoDS_Shell::new();
-        let face = Handle::new(std::sync::Arc::new(TopoDS_Face::new()));
-        
+        let mut shell = TopoDsShell::new();
+        let face = Handle::new(std::sync::Arc::new(TopoDsFace::new()));
+
         shell.add_face(face);
         assert_eq!(shell.num_faces(), 1);
     }
 
     #[test]
     fn test_shell_clear() {
-        let face = Handle::new(std::sync::Arc::new(TopoDS_Face::new()));
-        let mut shell = TopoDS_Shell::with_faces(vec![face]);
+        let face = Handle::new(std::sync::Arc::new(TopoDsFace::new()));
+        let mut shell = TopoDsShell::with_faces(vec![face]);
         assert!(!shell.is_empty());
-        
+
         shell.clear();
         assert!(shell.is_empty());
     }
 
     #[test]
     fn test_shell_shape_id() {
-        let mut shell = TopoDS_Shell::new();
+        let mut shell = TopoDsShell::new();
         // shape_id is now auto-generated, so it should not be 0
         let initial_id = shell.shape_id();
         assert!(initial_id > 0);
-        
+
         shell.set_shape_id(42);
         assert_eq!(shell.shape_id(), 42);
     }
 
     #[test]
     fn test_shell_mutable() {
-        let mut shell = TopoDS_Shell::new();
+        let mut shell = TopoDsShell::new();
         assert!(!shell.is_mutable());
-        
+
         shell.set_mutable(true);
         assert!(shell.is_mutable());
     }
 
     #[test]
     fn test_shell_clone() {
-        let mut shell1 = TopoDS_Shell::new();
+        let mut shell1 = TopoDsShell::new();
         shell1.set_shape_id(10);
-        
+
         let shell2 = shell1.clone();
         assert_eq!(shell2.shape_id(), 10);
         assert_eq!(shell1, shell2);
@@ -366,7 +368,7 @@ mod tests {
 
     #[test]
     fn test_shell_tolerance() {
-        let shell = TopoDS_Shell::with_tolerance(0.01);
+        let shell = TopoDsShell::with_tolerance(0.01);
         assert_eq!(shell.tolerance(), 0.01);
     }
 }

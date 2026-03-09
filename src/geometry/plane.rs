@@ -1,4 +1,4 @@
-use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 use crate::geometry::{Point, Direction, Axis, CoordinateSystem, Transform};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -187,7 +187,7 @@ impl Plane {
         }
     }
 
-    pub fn angle(&self, other: &Plane) -> Standard_Real {
+    pub fn angle(&self, other: &Plane) -> StandardReal {
         self.direction.angle(&other.direction)
     }
 
@@ -195,35 +195,35 @@ impl Plane {
         self.direction
     }
 
-    pub fn is_coaxial(&self, other: &Plane, angular_tolerance: Standard_Real, linear_tolerance: Standard_Real) -> bool {
+    pub fn is_coaxial(&self, other: &Plane, angular_tolerance: StandardReal, linear_tolerance: StandardReal) -> bool {
         self.direction.is_co_linear(&other.direction, angular_tolerance) &&
         self.location.distance(&other.location) <= linear_tolerance
     }
 
-    pub fn is_opposite(&self, other: &Plane, angular_tolerance: Standard_Real) -> bool {
+    pub fn is_opposite(&self, other: &Plane, angular_tolerance: StandardReal) -> bool {
         self.direction.is_opposite(&other.direction, angular_tolerance)
     }
 
-    pub fn is_parallel(&self, other: &Plane, angular_tolerance: Standard_Real) -> bool {
+    pub fn is_parallel(&self, other: &Plane, angular_tolerance: StandardReal) -> bool {
         self.direction.is_parallel(&other.direction, angular_tolerance)
     }
 
-    pub fn is_normal(&self, other: &Plane, angular_tolerance: Standard_Real) -> bool {
+    pub fn is_normal(&self, other: &Plane, angular_tolerance: StandardReal) -> bool {
         self.direction.is_normal(&other.direction, angular_tolerance)
     }
 
-    pub fn distance(&self, point: &Point) -> Standard_Real {
+    pub fn distance(&self, point: &Point) -> StandardReal {
         let vec = crate::geometry::Vector::from_point(&self.location, point);
         let normal = crate::geometry::Vector::new(self.direction.x, self.direction.y, self.direction.z);
         normal.dot(&vec).abs()
     }
 
-    pub fn square_distance(&self, point: &Point) -> Standard_Real {
+    pub fn square_distance(&self, point: &Point) -> StandardReal {
         let dist = self.distance(point);
         dist * dist
     }
 
-    pub fn contains(&self, point: &Point, tolerance: Standard_Real) -> bool {
+    pub fn contains(&self, point: &Point, tolerance: StandardReal) -> bool {
         self.distance(point) <= tolerance
     }
 
@@ -275,14 +275,14 @@ impl Plane {
         }
     }
 
-    pub fn rotate(&mut self, axis: &Axis, angle: Standard_Real) {
+    pub fn rotate(&mut self, axis: &Axis, angle: StandardReal) {
         self.location.rotate(axis, angle);
         self.direction.rotate(axis, angle);
         self.x_direction.rotate(axis, angle);
         self.y_direction.rotate(axis, angle);
     }
 
-    pub fn rotated(&self, axis: &Axis, angle: Standard_Real) -> Plane {
+    pub fn rotated(&self, axis: &Axis, angle: StandardReal) -> Plane {
         Plane {
             location: self.location.rotated(axis, angle),
             direction: self.direction.rotated(axis, angle),
@@ -291,11 +291,11 @@ impl Plane {
         }
     }
 
-    pub fn scale(&mut self, point: &Point, factor: Standard_Real) {
+    pub fn scale(&mut self, point: &Point, factor: StandardReal) {
         self.location.scale(point, factor);
     }
 
-    pub fn scaled(&self, point: &Point, factor: Standard_Real) -> Plane {
+    pub fn scaled(&self, point: &Point, factor: StandardReal) -> Plane {
         Plane {
             location: self.location.scaled(point, factor),
             direction: self.direction,

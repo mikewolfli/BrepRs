@@ -1,15 +1,15 @@
-use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Quaternion {
-    pub x: Standard_Real,
-    pub y: Standard_Real,
-    pub z: Standard_Real,
-    pub w: Standard_Real,
+    pub x: StandardReal,
+    pub y: StandardReal,
+    pub z: StandardReal,
+    pub w: StandardReal,
 }
 
 impl Quaternion {
-    pub fn new(x: Standard_Real, y: Standard_Real, z: Standard_Real, w: Standard_Real) -> Self {
+    pub fn new(x: StandardReal, y: StandardReal, z: StandardReal, w: StandardReal) -> Self {
         Self { x, y, z, w }
     }
 
@@ -31,7 +31,7 @@ impl Quaternion {
         }
     }
 
-    pub fn from_axis_angle(axis: &crate::geometry::Axis, angle: Standard_Real) -> Self {
+    pub fn from_axis_angle(axis: &crate::geometry::Axis, angle: StandardReal) -> Self {
         let half_angle = angle / 2.0;
         let sin_half = half_angle.sin();
         let cos_half = half_angle.cos();
@@ -44,7 +44,7 @@ impl Quaternion {
         }
     }
 
-    pub fn from_euler_angles(roll: Standard_Real, pitch: Standard_Real, yaw: Standard_Real) -> Self {
+    pub fn from_euler_angles(roll: StandardReal, pitch: StandardReal, yaw: StandardReal) -> Self {
         let cy = (yaw / 2.0).cos();
         let sy = (yaw / 2.0).sin();
         let cp = (pitch / 2.0).cos();
@@ -102,50 +102,50 @@ impl Quaternion {
         }
     }
 
-    pub fn x(&self) -> Standard_Real {
+    pub fn x(&self) -> StandardReal {
         self.x
     }
 
-    pub fn y(&self) -> Standard_Real {
+    pub fn y(&self) -> StandardReal {
         self.y
     }
 
-    pub fn z(&self) -> Standard_Real {
+    pub fn z(&self) -> StandardReal {
         self.z
     }
 
-    pub fn w(&self) -> Standard_Real {
+    pub fn w(&self) -> StandardReal {
         self.w
     }
 
-    pub fn set_x(&mut self, x: Standard_Real) {
+    pub fn set_x(&mut self, x: StandardReal) {
         self.x = x;
     }
 
-    pub fn set_y(&mut self, y: Standard_Real) {
+    pub fn set_y(&mut self, y: StandardReal) {
         self.y = y;
     }
 
-    pub fn set_z(&mut self, z: Standard_Real) {
+    pub fn set_z(&mut self, z: StandardReal) {
         self.z = z;
     }
 
-    pub fn set_w(&mut self, w: Standard_Real) {
+    pub fn set_w(&mut self, w: StandardReal) {
         self.w = w;
     }
 
-    pub fn set_coord(&mut self, x: Standard_Real, y: Standard_Real, z: Standard_Real, w: Standard_Real) {
+    pub fn set_coord(&mut self, x: StandardReal, y: StandardReal, z: StandardReal, w: StandardReal) {
         self.x = x;
         self.y = y;
         self.z = z;
         self.w = w;
     }
 
-    pub fn magnitude(&self) -> Standard_Real {
+    pub fn magnitude(&self) -> StandardReal {
         (self.x * self.x + self.y * self.y + self.z * self.z + self.w * self.w).sqrt()
     }
 
-    pub fn square_magnitude(&self) -> Standard_Real {
+    pub fn square_magnitude(&self) -> StandardReal {
         self.x * self.x + self.y * self.y + self.z * self.z + self.w * self.w
     }
 
@@ -216,7 +216,7 @@ impl Quaternion {
         }
     }
 
-    pub fn dot(&self, other: &Quaternion) -> Standard_Real {
+    pub fn dot(&self, other: &Quaternion) -> StandardReal {
         self.x * other.x + self.y * other.y + self.z * other.z + self.w * other.w
     }
 
@@ -237,7 +237,7 @@ impl Quaternion {
         crate::geometry::Vector::new(result.x, result.y, result.z)
     }
 
-    pub fn slerp(&self, other: &Quaternion, t: Standard_Real) -> Quaternion {
+    pub fn slerp(&self, other: &Quaternion, t: StandardReal) -> Quaternion {
         let dot = self.dot(other);
 
         let mut other = *other;
@@ -296,7 +296,7 @@ impl Quaternion {
         ])
     }
 
-    pub fn to_axis_angle(&self) -> (crate::geometry::Axis, Standard_Real) {
+    pub fn to_axis_angle(&self) -> (crate::geometry::Axis, StandardReal) {
         let half_angle = self.w.acos();
         let angle = 2.0 * half_angle;
         let sin_half = half_angle.sin();
@@ -314,7 +314,7 @@ impl Quaternion {
         }
     }
 
-    pub fn is_identity(&self, tolerance: Standard_Real) -> bool {
+    pub fn is_identity(&self, tolerance: StandardReal) -> bool {
         let identity = Quaternion::identity();
         (self.x - identity.x).abs() <= tolerance &&
         (self.y - identity.y).abs() <= tolerance &&
@@ -322,7 +322,7 @@ impl Quaternion {
         (self.w - identity.w).abs() <= tolerance
     }
 
-    pub fn is_equal(&self, other: &Quaternion, tolerance: Standard_Real) -> bool {
+    pub fn is_equal(&self, other: &Quaternion, tolerance: StandardReal) -> bool {
         (self.x - other.x).abs() <= tolerance &&
         (self.y - other.y).abs() <= tolerance &&
         (self.z - other.z).abs() <= tolerance &&

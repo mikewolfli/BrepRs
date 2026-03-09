@@ -1,6 +1,8 @@
 use crate::foundation::handle::Handle;
-use crate::topology::{topods_shape::TopoDS_Shape, topods_wire::TopoDS_Wire, topods_location::TopoDS_Location};
 use crate::geometry::Point;
+use crate::topology::{
+    topods_location::TopoDsLocation, topods_shape::TopoDsShape, topods_wire::TopoDsWire,
+};
 use std::sync::Arc;
 
 /// Represents a face in topological structure
@@ -8,19 +10,19 @@ use std::sync::Arc;
 /// A face is a bounded portion of a surface, bounded by one or more wires.
 /// The first wire is the outer boundary, and subsequent wires are holes.
 #[derive(Debug)]
-pub struct TopoDS_Face {
-    shape: TopoDS_Shape,
+pub struct TopoDsFace {
+    shape: TopoDsShape,
     surface: Option<Handle<dyn Surface>>,
-    wires: Vec<Handle<TopoDS_Wire>>,
+    wires: Vec<Handle<TopoDsWire>>,
     tolerance: f64,
     orientation: i32,
 }
 
-impl TopoDS_Face {
+impl TopoDsFace {
     /// Create a new empty face
     pub fn new() -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Face),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Face),
             surface: None,
             wires: Vec::new(),
             tolerance: 0.001,
@@ -31,7 +33,7 @@ impl TopoDS_Face {
     /// Create a new face with specified surface
     pub fn with_surface(surface: Handle<dyn Surface>) -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Face),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Face),
             surface: Some(surface),
             wires: Vec::new(),
             tolerance: 0.001,
@@ -40,9 +42,9 @@ impl TopoDS_Face {
     }
 
     /// Create a new face with specified wires
-    pub fn with_wires(wires: Vec<Handle<TopoDS_Wire>>) -> Self {
+    pub fn with_wires(wires: Vec<Handle<TopoDsWire>>) -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Face),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Face),
             surface: None,
             wires,
             tolerance: 0.001,
@@ -53,10 +55,10 @@ impl TopoDS_Face {
     /// Create a new face with surface and wires
     pub fn with_surface_and_wires(
         surface: Handle<dyn Surface>,
-        wires: Vec<Handle<TopoDS_Wire>>,
+        wires: Vec<Handle<TopoDsWire>>,
     ) -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Face),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Face),
             surface: Some(surface),
             wires,
             tolerance: 0.001,
@@ -65,9 +67,9 @@ impl TopoDS_Face {
     }
 
     /// Create a new face with outer wire
-    pub fn with_outer_wire(wire: TopoDS_Wire) -> Self {
+    pub fn with_outer_wire(wire: TopoDsWire) -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Face),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Face),
             surface: None,
             wires: vec![Handle::new(Arc::new(wire))],
             tolerance: 0.001,
@@ -78,7 +80,7 @@ impl TopoDS_Face {
     /// Create a new face with specified tolerance
     pub fn with_tolerance(tolerance: f64) -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Face),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Face),
             surface: None,
             wires: Vec::new(),
             tolerance,
@@ -87,12 +89,12 @@ impl TopoDS_Face {
     }
 
     /// Add a wire to the face
-    pub fn add_wire(&mut self, wire: Handle<TopoDS_Wire>) {
+    pub fn add_wire(&mut self, wire: Handle<TopoDsWire>) {
         self.wires.push(wire);
     }
 
     /// Get the wires of the face
-    pub fn wires(&self) -> &[Handle<TopoDS_Wire>] {
+    pub fn wires(&self) -> &[Handle<TopoDsWire>] {
         &self.wires
     }
 
@@ -102,12 +104,12 @@ impl TopoDS_Face {
     }
 
     /// Get the outer boundary wire (first wire)
-    pub fn outer_wire(&self) -> Option<&Handle<TopoDS_Wire>> {
+    pub fn outer_wire(&self) -> Option<&Handle<TopoDsWire>> {
         self.wires.first()
     }
 
     /// Set the outer boundary wire (first wire)
-    pub fn set_outer_wire(&mut self, wire: Handle<TopoDS_Wire>) {
+    pub fn set_outer_wire(&mut self, wire: Handle<TopoDsWire>) {
         if self.wires.is_empty() {
             self.wires.push(wire);
         } else {
@@ -116,7 +118,7 @@ impl TopoDS_Face {
     }
 
     /// Get the hole wires (all wires except the first)
-    pub fn hole_wires(&self) -> &[Handle<TopoDS_Wire>] {
+    pub fn hole_wires(&self) -> &[Handle<TopoDsWire>] {
         if self.wires.len() <= 1 {
             return &[];
         }
@@ -154,22 +156,22 @@ impl TopoDS_Face {
     }
 
     /// Get the shape base
-    pub fn shape(&self) -> &TopoDS_Shape {
+    pub fn shape(&self) -> &TopoDsShape {
         &self.shape
     }
 
     /// Get mutable reference to shape base
-    pub fn shape_mut(&mut self) -> &mut TopoDS_Shape {
+    pub fn shape_mut(&mut self) -> &mut TopoDsShape {
         &mut self.shape
     }
 
     /// Get the location of the face
-    pub fn location(&self) -> Option<&TopoDS_Location> {
+    pub fn location(&self) -> Option<&TopoDsLocation> {
         self.shape.location()
     }
 
     /// Set the location of the face
-    pub fn set_location(&mut self, location: TopoDS_Location) {
+    pub fn set_location(&mut self, location: TopoDsLocation) {
         self.shape.set_location(location);
     }
 
@@ -203,7 +205,7 @@ impl TopoDS_Face {
     }
 
     /// Calculate the area bounded by a wire
-    fn wire_area(&self, wire: &Handle<TopoDS_Wire>) -> f64 {
+    fn wire_area(&self, wire: &Handle<TopoDsWire>) -> f64 {
         let vertices = wire.vertices();
         if vertices.len() < 3 {
             return 0.0;
@@ -232,7 +234,7 @@ impl TopoDS_Face {
     }
 
     /// Calculate the centroid of a wire
-    fn wire_centroid(&self, wire: &Handle<TopoDS_Wire>) -> Option<Point> {
+    fn wire_centroid(&self, wire: &Handle<TopoDsWire>) -> Option<Point> {
         let vertices = wire.vertices();
         if vertices.is_empty() {
             return None;
@@ -277,7 +279,7 @@ impl TopoDS_Face {
     }
 
     /// Check if the face contains a specific wire
-    pub fn contains_wire(&self, wire: &Handle<TopoDS_Wire>) -> bool {
+    pub fn contains_wire(&self, wire: &Handle<TopoDsWire>) -> bool {
         self.wires.contains(wire)
     }
 
@@ -321,7 +323,7 @@ impl TopoDS_Face {
     }
 
     /// Check if a point is inside a wire (using ray casting)
-    fn point_in_wire(&self, point: &Point, wire: &Handle<TopoDS_Wire>) -> bool {
+    fn point_in_wire(&self, point: &Point, wire: &Handle<TopoDsWire>) -> bool {
         let vertices = wire.vertices();
         if vertices.len() < 3 {
             return false;
@@ -351,13 +353,13 @@ impl TopoDS_Face {
     }
 }
 
-impl Default for TopoDS_Face {
+impl Default for TopoDsFace {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Clone for TopoDS_Face {
+impl Clone for TopoDsFace {
     fn clone(&self) -> Self {
         Self {
             shape: self.shape.clone(),
@@ -369,7 +371,7 @@ impl Clone for TopoDS_Face {
     }
 }
 
-impl PartialEq for TopoDS_Face {
+impl PartialEq for TopoDsFace {
     fn eq(&self, other: &Self) -> bool {
         self.shape_id() == other.shape_id()
     }
@@ -379,10 +381,10 @@ impl PartialEq for TopoDS_Face {
 pub trait Surface: std::fmt::Debug {
     /// Get the point on the surface at (u, v) parameters
     fn value(&self, u: f64, v: f64) -> Point;
-    
+
     /// Get the normal at (u, v) parameters
     fn normal(&self, u: f64, v: f64) -> crate::geometry::Vector;
-    
+
     /// Get the parameter range of the surface
     fn parameter_range(&self) -> ((f64, f64), (f64, f64));
 }
@@ -393,16 +395,16 @@ mod tests {
 
     #[test]
     fn test_face_creation() {
-        let face = TopoDS_Face::new();
+        let face = TopoDsFace::new();
         assert!(face.is_empty());
         assert_eq!(face.num_wires(), 0);
     }
 
     #[test]
     fn test_face_add_wire() {
-        let mut face = TopoDS_Face::new();
-        let wire = Handle::new(std::sync::Arc::new(TopoDS_Wire::new()));
-        
+        let mut face = TopoDsFace::new();
+        let wire = Handle::new(std::sync::Arc::new(TopoDsWire::new()));
+
         face.add_wire(wire);
         assert_eq!(face.num_wires(), 1);
         assert!(!face.has_holes());
@@ -410,29 +412,29 @@ mod tests {
 
     #[test]
     fn test_face_has_holes() {
-        let wire1 = Handle::new(std::sync::Arc::new(TopoDS_Wire::new()));
-        let wire2 = Handle::new(std::sync::Arc::new(TopoDS_Wire::new()));
-        let face = TopoDS_Face::with_wires(vec![wire1, wire2]);
-        
+        let wire1 = Handle::new(std::sync::Arc::new(TopoDsWire::new()));
+        let wire2 = Handle::new(std::sync::Arc::new(TopoDsWire::new()));
+        let face = TopoDsFace::with_wires(vec![wire1, wire2]);
+
         assert!(face.has_holes());
     }
 
     #[test]
     fn test_face_outer_wire() {
-        let wire1 = Handle::new(std::sync::Arc::new(TopoDS_Wire::new()));
-        let wire2 = Handle::new(std::sync::Arc::new(TopoDS_Wire::new()));
-        let face = TopoDS_Face::with_wires(vec![wire1.clone(), wire2]);
-        
+        let wire1 = Handle::new(std::sync::Arc::new(TopoDsWire::new()));
+        let wire2 = Handle::new(std::sync::Arc::new(TopoDsWire::new()));
+        let face = TopoDsFace::with_wires(vec![wire1.clone(), wire2]);
+
         assert_eq!(face.outer_wire().unwrap().shape_id(), wire1.shape_id());
     }
 
     #[test]
     fn test_face_hole_wires() {
-        let wire1 = Handle::new(std::sync::Arc::new(TopoDS_Wire::new()));
-        let wire2 = Handle::new(std::sync::Arc::new(TopoDS_Wire::new()));
-        let wire3 = Handle::new(std::sync::Arc::new(TopoDS_Wire::new()));
-        let face = TopoDS_Face::with_wires(vec![wire1, wire2.clone(), wire3.clone()]);
-        
+        let wire1 = Handle::new(std::sync::Arc::new(TopoDsWire::new()));
+        let wire2 = Handle::new(std::sync::Arc::new(TopoDsWire::new()));
+        let wire3 = Handle::new(std::sync::Arc::new(TopoDsWire::new()));
+        let face = TopoDsFace::with_wires(vec![wire1, wire2.clone(), wire3.clone()]);
+
         let holes = face.hole_wires();
         assert_eq!(holes.len(), 2);
         assert_eq!(holes[0].shape_id(), wire2.shape_id());
@@ -441,48 +443,48 @@ mod tests {
 
     #[test]
     fn test_face_clear() {
-        let wire = Handle::new(std::sync::Arc::new(TopoDS_Wire::new()));
-        let mut face = TopoDS_Face::with_wires(vec![wire]);
+        let wire = Handle::new(std::sync::Arc::new(TopoDsWire::new()));
+        let mut face = TopoDsFace::with_wires(vec![wire]);
         assert!(!face.is_empty());
-        
+
         face.clear();
         assert!(face.is_empty());
     }
 
     #[test]
     fn test_face_shape_id() {
-        let mut face = TopoDS_Face::new();
+        let mut face = TopoDsFace::new();
         // shape_id is now auto-generated, so it should not be 0
         let initial_id = face.shape_id();
         assert!(initial_id > 0);
-        
+
         face.set_shape_id(42);
         assert_eq!(face.shape_id(), 42);
     }
 
     #[test]
     fn test_face_mutable() {
-        let mut face = TopoDS_Face::new();
+        let mut face = TopoDsFace::new();
         assert!(!face.is_mutable());
-        
+
         face.set_mutable(true);
         assert!(face.is_mutable());
     }
 
     #[test]
     fn test_face_orientation() {
-        let mut face = TopoDS_Face::new();
+        let mut face = TopoDsFace::new();
         assert_eq!(face.orientation(), 1);
-        
+
         face.set_orientation(-1);
         assert_eq!(face.orientation(), -1);
     }
 
     #[test]
     fn test_face_clone() {
-        let mut face1 = TopoDS_Face::new();
+        let mut face1 = TopoDsFace::new();
         face1.set_shape_id(10);
-        
+
         let face2 = face1.clone();
         assert_eq!(face2.shape_id(), 10);
         assert_eq!(face1, face2);

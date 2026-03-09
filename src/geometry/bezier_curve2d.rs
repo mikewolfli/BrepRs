@@ -1,10 +1,10 @@
-use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 use crate::geometry::{Point, Vector};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BezierCurve2D {
     poles: Vec<Point>,
-    weights: Vec<Standard_Real>,
+    weights: Vec<StandardReal>,
 }
 
 impl BezierCurve2D {
@@ -13,7 +13,7 @@ impl BezierCurve2D {
         Self { poles, weights }
     }
 
-    pub fn with_weights(poles: Vec<Point>, weights: Vec<Standard_Real>) -> Self {
+    pub fn with_weights(poles: Vec<Point>, weights: Vec<StandardReal>) -> Self {
         assert_eq!(poles.len(), weights.len(), "Poles and weights must have the same length");
         Self { poles, weights }
     }
@@ -34,7 +34,7 @@ impl BezierCurve2D {
         &self.poles
     }
 
-    pub fn weights(&self) -> &[Standard_Real] {
+    pub fn weights(&self) -> &[StandardReal] {
         &self.weights
     }
 
@@ -46,7 +46,7 @@ impl BezierCurve2D {
         }
     }
 
-    pub fn weight(&self, index: i32) -> Option<Standard_Real> {
+    pub fn weight(&self, index: i32) -> Option<StandardReal> {
         if index >= 0 && (index as usize) < self.weights.len() {
             Some(self.weights[index as usize])
         } else {
@@ -63,7 +63,7 @@ impl BezierCurve2D {
         }
     }
 
-    pub fn set_weight(&mut self, index: i32, weight: Standard_Real) -> bool {
+    pub fn set_weight(&mut self, index: i32, weight: StandardReal) -> bool {
         if index >= 0 && (index as usize) < self.weights.len() {
             self.weights[index as usize] = weight;
             true
@@ -72,7 +72,7 @@ impl BezierCurve2D {
         }
     }
 
-    pub fn insert_pole_after(&mut self, index: i32, pole: Point, weight: Standard_Real) -> bool {
+    pub fn insert_pole_after(&mut self, index: i32, pole: Point, weight: StandardReal) -> bool {
         if index >= 0 && (index as usize) < self.poles.len() {
             let insert_index = (index + 1) as usize;
             self.poles.insert(insert_index, pole);
@@ -117,7 +117,7 @@ impl BezierCurve2D {
         new_poles.push(self.poles[0].clone());
         new_weights.push(self.weights[0]);
         for i in 1..n {
-            let alpha = i as Standard_Real / n as Standard_Real;
+            let alpha = i as StandardReal / n as StandardReal;
             let pole = Point::new(
                 (1.0 - alpha) * self.poles[i - 1].x + alpha * self.poles[i].x,
                 (1.0 - alpha) * self.poles[i - 1].y + alpha * self.poles[i].y,
@@ -133,7 +133,7 @@ impl BezierCurve2D {
         self.weights = new_weights;
     }
 
-    pub fn position(&self, parameter: Standard_Real) -> Point {
+    pub fn position(&self, parameter: StandardReal) -> Point {
         if self.poles.is_empty() {
             return Point::origin();
         }
@@ -164,7 +164,7 @@ impl BezierCurve2D {
         result
     }
 
-    pub fn d1(&self, parameter: Standard_Real) -> Vector {
+    pub fn d1(&self, parameter: StandardReal) -> Vector {
         if self.poles.len() < 2 {
             return Vector::zero();
         }
@@ -182,8 +182,8 @@ impl BezierCurve2D {
             let weighted_basis = basis * self.weights[i];
 
             let basis_derivative = binomial * (
-                if i > 0 { i as Standard_Real * parameter.powi(i as i32 - 1) * one_minus_t_pow } else { 0.0 } +
-                if i < n { -((n - i) as Standard_Real) * t_pow_i * (1.0 - parameter).powi((n - i - 1) as i32) } else { 0.0 }
+                if i > 0 { i as StandardReal * parameter.powi(i as i32 - 1) * one_minus_t_pow } else { 0.0 } +
+                if i < n { -((n - i) as StandardReal) * t_pow_i * (1.0 - parameter).powi((n - i - 1) as i32) } else { 0.0 }
             );
 
             let weighted_basis_derivative = basis_derivative * self.weights[i];
@@ -209,7 +209,7 @@ impl BezierCurve2D {
         }
     }
 
-    pub fn d2(&self, parameter: Standard_Real) -> Vector {
+    pub fn d2(&self, parameter: StandardReal) -> Vector {
         let epsilon = 0.0001;
         let d1_plus = self.d1(parameter + epsilon);
         let d1_minus = self.d1(parameter - epsilon);
@@ -220,7 +220,7 @@ impl BezierCurve2D {
         )
     }
 
-    fn binomial_coefficient(&self, n: usize, k: usize) -> Standard_Real {
+    fn binomial_coefficient(&self, n: usize, k: usize) -> StandardReal {
         if k > n {
             return 0.0;
         }
@@ -230,7 +230,7 @@ impl BezierCurve2D {
         
         let mut result = 1.0;
         for i in 0..k.min(n - k) {
-            result = result * (n - i) as Standard_Real / (i + 1) as Standard_Real;
+            result = result * (n - i) as StandardReal / (i + 1) as StandardReal;
         }
         result
     }
@@ -243,7 +243,7 @@ impl BezierCurve2D {
         false
     }
 
-    pub fn is_closed(&self, tolerance: Standard_Real) -> bool {
+    pub fn is_closed(&self, tolerance: StandardReal) -> bool {
         if self.poles.len() < 2 {
             return true;
         }

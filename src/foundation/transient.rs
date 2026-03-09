@@ -1,7 +1,7 @@
 use std::any::{Any, TypeId};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-pub trait Standard_Transient: Any + Send + Sync {
+pub trait Transient: Any + Send + Sync {
     fn type_id(&self) -> TypeId {
         Any::type_id(self)
     }
@@ -19,8 +19,8 @@ pub trait Standard_Transient: Any + Send + Sync {
     fn ref_count(&self) -> usize;
 }
 
-pub trait Standard_TransientBuilder {
-    fn build(self) -> Box<dyn Standard_Transient>;
+pub trait TransientBuilder {
+    fn build(self) -> Box<dyn Transient>;
 }
 
 pub struct TransientBase {
@@ -56,7 +56,7 @@ impl Default for TransientBase {
 #[macro_export]
 macro_rules! impl_standard_transient {
     ($type:ty) => {
-        impl Standard_Transient for $type {
+        impl Transient for $type {
             fn increment_ref_count(&self) {
                 self.base.increment_ref_count();
             }

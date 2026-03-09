@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
-pub struct NCollection_List<T> {
+pub struct List<T> {
     head: RefCell<Option<Rc<Node<T>>>>,
     tail: RefCell<Option<Weak<Node<T>>>>,
     size: RefCell<usize>,
@@ -13,7 +13,7 @@ struct Node<T> {
     prev: RefCell<Option<Weak<Node<T>>>>,
 }
 
-impl<T> NCollection_List<T> {
+impl<T> List<T> {
     pub fn new() -> Self {
         Self {
             head: RefCell::new(None),
@@ -141,7 +141,7 @@ impl<T> NCollection_List<T> {
         Some(value)
     }
 
-    pub fn insert_before(&self, node: &Rc<Node<T>>, value: T) {
+    fn insert_before(&self, node: &Rc<Node<T>>, value: T) {
         let new_node = Rc::new(Node {
             value,
             next: RefCell::new(Some(node.clone())),
@@ -163,7 +163,7 @@ impl<T> NCollection_List<T> {
         *self.size.borrow_mut() += 1;
     }
 
-    pub fn insert_after(&self, node: &Rc<Node<T>>, value: T) {
+    fn insert_after(&self, node: &Rc<Node<T>>, value: T) {
         let new_node = Rc::new(Node {
             value,
             next: RefCell::new(node.next.borrow().clone()),
@@ -183,7 +183,7 @@ impl<T> NCollection_List<T> {
         *self.size.borrow_mut() += 1;
     }
 
-    pub fn extend(&self, other: &NCollection_List<T>)
+    pub fn extend(&self, other: &List<T>)
     where
         T: Clone,
     {
@@ -222,13 +222,13 @@ impl<T> NCollection_List<T> {
     }
 }
 
-impl<T> Default for NCollection_List<T> {
+impl<T> Default for List<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T> Clone for NCollection_List<T>
+impl<T> Clone for List<T>
 where
     T: Clone,
 {
@@ -264,14 +264,14 @@ mod tests {
 
     #[test]
     fn test_list_creation() {
-        let list: NCollection_List<i32> = NCollection_List::new();
+        let list: List<i32> = List::new();
         assert!(list.is_empty());
         assert_eq!(list.size(), 0);
     }
 
     #[test]
     fn test_list_append() {
-        let list = NCollection_List::new();
+        let list = List::new();
         list.append(1);
         list.append(2);
         list.append(3);
@@ -282,7 +282,7 @@ mod tests {
 
     #[test]
     fn test_list_prepend() {
-        let list = NCollection_List::new();
+        let list = List::new();
         list.prepend(3);
         list.prepend(2);
         list.prepend(1);
@@ -293,7 +293,7 @@ mod tests {
 
     #[test]
     fn test_list_remove_first() {
-        let list = NCollection_List::new();
+        let list = List::new();
         list.append(1);
         list.append(2);
         list.append(3);
@@ -304,7 +304,7 @@ mod tests {
 
     #[test]
     fn test_list_remove_last() {
-        let list = NCollection_List::new();
+        let list = List::new();
         list.append(1);
         list.append(2);
         list.append(3);
@@ -315,7 +315,7 @@ mod tests {
 
     #[test]
     fn test_list_clear() {
-        let list = NCollection_List::new();
+        let list = List::new();
         list.append(1);
         list.append(2);
         list.append(3);
@@ -326,7 +326,7 @@ mod tests {
 
     #[test]
     fn test_list_iter() {
-        let list = NCollection_List::new();
+        let list = List::new();
         list.append(1);
         list.append(2);
         list.append(3);
@@ -336,7 +336,7 @@ mod tests {
 
     #[test]
     fn test_list_to_vec() {
-        let list = NCollection_List::new();
+        let list = List::new();
         list.append(1);
         list.append(2);
         list.append(3);
@@ -347,18 +347,18 @@ mod tests {
     #[test]
     fn test_list_from_vec() {
         let vec = vec![1, 2, 3];
-        let list = NCollection_List::from_vec(vec);
+        let list = List::from_vec(vec);
         assert_eq!(list.size(), 3);
         assert_eq!(list.to_vec(), vec![1, 2, 3]);
     }
 
     #[test]
     fn test_list_extend() {
-        let list1 = NCollection_List::new();
+        let list1 = List::new();
         list1.append(1);
         list1.append(2);
 
-        let list2 = NCollection_List::new();
+        let list2 = List::new();
         list2.append(3);
         list2.append(4);
 
@@ -369,7 +369,7 @@ mod tests {
 
     #[test]
     fn test_list_clone() {
-        let list1 = NCollection_List::new();
+        let list1 = List::new();
         list1.append(1);
         list1.append(2);
         list1.append(3);

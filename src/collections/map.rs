@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 use std::hash::Hash;
 
-pub struct NCollection_Map<T> {
+pub struct Map<T> {
     data: HashSet<T>,
 }
 
-impl<T: Hash + Eq> NCollection_Map<T> {
+impl<T: Hash + Eq> Map<T> {
     pub fn new() -> Self {
         Self {
             data: HashSet::new(),
@@ -77,7 +77,7 @@ impl<T: Hash + Eq> NCollection_Map<T> {
         self.data.retain(f);
     }
 
-    pub fn iter(&self) -> std::collections::hash_set::Iter<T> {
+    pub fn iter(&self) -> std::collections::hash_set::Iter<'_, T> {
         self.data.iter()
     }
 
@@ -123,13 +123,13 @@ impl<T: Hash + Eq> NCollection_Map<T> {
     }
 }
 
-impl<T: Hash + Eq> Default for NCollection_Map<T> {
+impl<T: Hash + Eq> Default for Map<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: Hash + Eq + Clone> Clone for NCollection_Map<T> {
+impl<T: Hash + Eq + Clone> Clone for Map<T> {
     fn clone(&self) -> Self {
         Self {
             data: self.data.clone(),
@@ -137,7 +137,7 @@ impl<T: Hash + Eq + Clone> Clone for NCollection_Map<T> {
     }
 }
 
-impl<T: Hash + Eq + std::fmt::Debug> std::fmt::Debug for NCollection_Map<T> {
+impl<T: Hash + Eq + std::fmt::Debug> std::fmt::Debug for Map<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_set().entries(self.data.iter()).finish()
     }
@@ -193,7 +193,10 @@ impl<'a, T: Hash + Eq> Iterator for Intersection<'a, T> {
 }
 
 pub struct SymmetricDifference<'a, T> {
-    iter: std::iter::Chain<std::collections::hash_set::Iter<'a, T>, std::collections::hash_set::Iter<'a, T>>,
+    iter: std::iter::Chain<
+        std::collections::hash_set::Iter<'a, T>,
+        std::collections::hash_set::Iter<'a, T>,
+    >,
     set1: &'a HashSet<T>,
     set2: &'a HashSet<T>,
 }
@@ -219,14 +222,14 @@ mod tests {
 
     #[test]
     fn test_map_creation() {
-        let map: NCollection_Map<i32> = NCollection_Map::new();
+        let map: Map<i32> = Map::new();
         assert!(map.is_empty());
         assert_eq!(map.size(), 0);
     }
 
     #[test]
     fn test_map_insert() {
-        let mut map = NCollection_Map::new();
+        let mut map = Map::new();
         assert!(map.insert(1));
         assert!(map.insert(2));
         assert!(!map.insert(1));
@@ -235,7 +238,7 @@ mod tests {
 
     #[test]
     fn test_map_contains() {
-        let mut map = NCollection_Map::new();
+        let mut map = Map::new();
         map.insert(1);
         map.insert(2);
         assert!(map.contains(&1));
@@ -245,7 +248,7 @@ mod tests {
 
     #[test]
     fn test_map_remove() {
-        let mut map = NCollection_Map::new();
+        let mut map = Map::new();
         map.insert(1);
         map.insert(2);
         assert!(map.remove(&1));
@@ -255,7 +258,7 @@ mod tests {
 
     #[test]
     fn test_map_clear() {
-        let mut map = NCollection_Map::new();
+        let mut map = Map::new();
         map.insert(1);
         map.insert(2);
         map.insert(3);
@@ -265,7 +268,7 @@ mod tests {
 
     #[test]
     fn test_map_iter() {
-        let mut map = NCollection_Map::new();
+        let mut map = Map::new();
         map.insert(1);
         map.insert(2);
         map.insert(3);
@@ -275,7 +278,7 @@ mod tests {
 
     #[test]
     fn test_map_clone() {
-        let mut map1 = NCollection_Map::new();
+        let mut map1 = Map::new();
         map1.insert(1);
         map1.insert(2);
         map1.insert(3);
@@ -288,11 +291,11 @@ mod tests {
 
     #[test]
     fn test_map_is_subset() {
-        let mut map1 = NCollection_Map::new();
+        let mut map1 = Map::new();
         map1.insert(1);
         map1.insert(2);
 
-        let mut map2 = NCollection_Map::new();
+        let mut map2 = Map::new();
         map2.insert(1);
         map2.insert(2);
         map2.insert(3);
@@ -303,11 +306,11 @@ mod tests {
 
     #[test]
     fn test_map_is_superset() {
-        let mut map1 = NCollection_Map::new();
+        let mut map1 = Map::new();
         map1.insert(1);
         map1.insert(2);
 
-        let mut map2 = NCollection_Map::new();
+        let mut map2 = Map::new();
         map2.insert(1);
         map2.insert(2);
         map2.insert(3);
@@ -318,11 +321,11 @@ mod tests {
 
     #[test]
     fn test_map_is_disjoint() {
-        let mut map1 = NCollection_Map::new();
+        let mut map1 = Map::new();
         map1.insert(1);
         map1.insert(2);
 
-        let mut map2 = NCollection_Map::new();
+        let mut map2 = Map::new();
         map2.insert(3);
         map2.insert(4);
 

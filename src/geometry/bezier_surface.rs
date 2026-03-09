@@ -1,10 +1,10 @@
-use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 use crate::geometry::{Point, Vector};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BezierSurface {
     poles: Vec<Vec<Point>>,
-    weights: Vec<Vec<Standard_Real>>,
+    weights: Vec<Vec<StandardReal>>,
 }
 
 impl BezierSurface {
@@ -16,7 +16,7 @@ impl BezierSurface {
         Self { poles, weights }
     }
 
-    pub fn with_weights(poles: Vec<Vec<Point>>, weights: Vec<Vec<Standard_Real>>) -> Self {
+    pub fn with_weights(poles: Vec<Vec<Point>>, weights: Vec<Vec<StandardReal>>) -> Self {
         assert_eq!(poles.len(), weights.len(), "Poles and weights must have same number of U rows");
         if !poles.is_empty() {
             assert_eq!(poles[0].len(), weights[0].len(), "Poles and weights must have same number of V columns");
@@ -56,7 +56,7 @@ impl BezierSurface {
         &self.poles
     }
 
-    pub fn weights(&self) -> &[Vec<Standard_Real>] {
+    pub fn weights(&self) -> &[Vec<StandardReal>] {
         &self.weights
     }
 
@@ -73,7 +73,7 @@ impl BezierSurface {
         }
     }
 
-    pub fn weight(&self, u_index: i32, v_index: i32) -> Option<Standard_Real> {
+    pub fn weight(&self, u_index: i32, v_index: i32) -> Option<StandardReal> {
         if u_index >= 0 && (u_index as usize) < self.weights.len() {
             let u_row = &self.weights[u_index as usize];
             if v_index >= 0 && (v_index as usize) < u_row.len() {
@@ -100,7 +100,7 @@ impl BezierSurface {
         }
     }
 
-    pub fn set_weight(&mut self, u_index: i32, v_index: i32, weight: Standard_Real) -> bool {
+    pub fn set_weight(&mut self, u_index: i32, v_index: i32, weight: StandardReal) -> bool {
         if u_index >= 0 && (u_index as usize) < self.weights.len() {
             let u_row = &mut self.weights[u_index as usize];
             if v_index >= 0 && (v_index as usize) < u_row.len() {
@@ -114,7 +114,7 @@ impl BezierSurface {
         }
     }
 
-    pub fn position(&self, u_parameter: Standard_Real, v_parameter: Standard_Real) -> Point {
+    pub fn position(&self, u_parameter: StandardReal, v_parameter: StandardReal) -> Point {
         if self.poles.is_empty() || self.poles[0].is_empty() {
             return Point::origin();
         }
@@ -148,7 +148,7 @@ impl BezierSurface {
         result
     }
 
-    pub fn d1(&self, u_parameter: Standard_Real, v_parameter: Standard_Real, u_direction: bool) -> Vector {
+    pub fn d1(&self, u_parameter: StandardReal, v_parameter: StandardReal, u_direction: bool) -> Vector {
         let epsilon = 0.0001;
         if u_direction {
             let pos_plus = self.position(u_parameter + epsilon, v_parameter);
@@ -169,7 +169,7 @@ impl BezierSurface {
         }
     }
 
-    pub fn d2(&self, u_parameter: Standard_Real, v_parameter: Standard_Real) -> Vector {
+    pub fn d2(&self, u_parameter: StandardReal, v_parameter: StandardReal) -> Vector {
         let epsilon = 0.0001;
         let d1_plus = self.d1(u_parameter + epsilon, v_parameter, true);
         let d1_minus = self.d1(u_parameter - epsilon, v_parameter, true);
@@ -180,14 +180,14 @@ impl BezierSurface {
         )
     }
 
-    fn basis_function(&self, i: i32, n: i32, t: Standard_Real) -> Standard_Real {
+    fn basis_function(&self, i: i32, n: i32, t: StandardReal) -> StandardReal {
         let binomial = self.binomial_coefficient(n, i);
         let t_pow_i = t.powi(i);
         let one_minus_t_pow = (1.0 - t).powi(n - i);
         binomial * t_pow_i * one_minus_t_pow
     }
 
-    fn binomial_coefficient(&self, n: i32, k: i32) -> Standard_Real {
+    fn binomial_coefficient(&self, n: i32, k: i32) -> StandardReal {
         if k < 0 || k > n {
             return 0.0;
         }
@@ -197,7 +197,7 @@ impl BezierSurface {
         
         let mut result = 1.0;
         for i in 0..k.min(n - k) {
-            result = result * (n - i) as Standard_Real / (i + 1) as Standard_Real;
+            result = result * (n - i) as StandardReal / (i + 1) as StandardReal;
         }
         result
     }
@@ -210,7 +210,7 @@ impl BezierSurface {
         false
     }
 
-    pub fn is_u_closed(&self, tolerance: Standard_Real) -> bool {
+    pub fn is_u_closed(&self, tolerance: StandardReal) -> bool {
         if self.poles.is_empty() || self.poles[0].is_empty() {
             return true;
         }
@@ -225,7 +225,7 @@ impl BezierSurface {
         true
     }
 
-    pub fn is_v_closed(&self, tolerance: Standard_Real) -> bool {
+    pub fn is_v_closed(&self, tolerance: StandardReal) -> bool {
         if self.poles.is_empty() || self.poles[0].is_empty() {
             return true;
         }

@@ -1,12 +1,12 @@
-use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 use crate::geometry::{Point, Vector};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NurbsSurface {
     poles: Vec<Vec<Point>>,
-    weights: Vec<Vec<Standard_Real>>,
-    u_knots: Vec<Standard_Real>,
-    v_knots: Vec<Standard_Real>,
+    weights: Vec<Vec<StandardReal>>,
+    u_knots: Vec<StandardReal>,
+    v_knots: Vec<StandardReal>,
     u_multiplicities: Vec<i32>,
     v_multiplicities: Vec<i32>,
     u_degree: i32,
@@ -21,9 +21,9 @@ impl NurbsSurface {
         u_degree: i32,
         v_degree: i32,
         poles: Vec<Vec<Point>>,
-        weights: Vec<Vec<Standard_Real>>,
-        u_knots: Vec<Standard_Real>,
-        v_knots: Vec<Standard_Real>,
+        weights: Vec<Vec<StandardReal>>,
+        u_knots: Vec<StandardReal>,
+        v_knots: Vec<StandardReal>,
         u_multiplicities: Vec<i32>,
         v_multiplicities: Vec<i32>,
     ) -> Self {
@@ -88,15 +88,15 @@ impl NurbsSurface {
         &self.poles
     }
 
-    pub fn weights(&self) -> &[Vec<Standard_Real>] {
+    pub fn weights(&self) -> &[Vec<StandardReal>] {
         &self.weights
     }
 
-    pub fn u_knots(&self) -> &[Standard_Real] {
+    pub fn u_knots(&self) -> &[StandardReal] {
         &self.u_knots
     }
 
-    pub fn v_knots(&self) -> &[Standard_Real] {
+    pub fn v_knots(&self) -> &[StandardReal] {
         &self.v_knots
     }
 
@@ -121,7 +121,7 @@ impl NurbsSurface {
         }
     }
 
-    pub fn weight(&self, u_index: i32, v_index: i32) -> Option<Standard_Real> {
+    pub fn weight(&self, u_index: i32, v_index: i32) -> Option<StandardReal> {
         if u_index >= 0 && (u_index as usize) < self.weights.len() {
             let u_row = &self.weights[u_index as usize];
             if v_index >= 0 && (v_index as usize) < u_row.len() {
@@ -134,7 +134,7 @@ impl NurbsSurface {
         }
     }
 
-    pub fn u_knot(&self, index: i32) -> Option<Standard_Real> {
+    pub fn u_knot(&self, index: i32) -> Option<StandardReal> {
         if index >= 0 && (index as usize) < self.u_knots.len() {
             Some(self.u_knots[index as usize])
         } else {
@@ -142,7 +142,7 @@ impl NurbsSurface {
         }
     }
 
-    pub fn v_knot(&self, index: i32) -> Option<Standard_Real> {
+    pub fn v_knot(&self, index: i32) -> Option<StandardReal> {
         if index >= 0 && (index as usize) < self.v_knots.len() {
             Some(self.v_knots[index as usize])
         } else {
@@ -180,7 +180,7 @@ impl NurbsSurface {
         }
     }
 
-    pub fn set_weight(&mut self, u_index: i32, v_index: i32, weight: Standard_Real) -> bool {
+    pub fn set_weight(&mut self, u_index: i32, v_index: i32, weight: StandardReal) -> bool {
         if u_index >= 0 && (u_index as usize) < self.weights.len() {
             let u_row = &mut self.weights[u_index as usize];
             if v_index >= 0 && (v_index as usize) < u_row.len() {
@@ -195,7 +195,7 @@ impl NurbsSurface {
         }
     }
 
-    pub fn set_u_knot(&mut self, index: i32, knot: Standard_Real) -> bool {
+    pub fn set_u_knot(&mut self, index: i32, knot: StandardReal) -> bool {
         if index >= 0 && (index as usize) < self.u_knots.len() {
             self.u_knots[index as usize] = knot;
             true
@@ -204,7 +204,7 @@ impl NurbsSurface {
         }
     }
 
-    pub fn set_v_knot(&mut self, index: i32, knot: Standard_Real) -> bool {
+    pub fn set_v_knot(&mut self, index: i32, knot: StandardReal) -> bool {
         if index >= 0 && (index as usize) < self.v_knots.len() {
             self.v_knots[index as usize] = knot;
             true
@@ -231,7 +231,7 @@ impl NurbsSurface {
         }
     }
 
-    pub fn insert_u_knot(&mut self, knot: Standard_Real, multiplicity: i32) -> bool {
+    pub fn insert_u_knot(&mut self, knot: StandardReal, multiplicity: i32) -> bool {
         let insert_index = self.u_knots.binary_search_by(|probe| {
             probe.partial_cmp(&knot).unwrap_or(std::cmp::Ordering::Equal)
         });
@@ -249,7 +249,7 @@ impl NurbsSurface {
         true
     }
 
-    pub fn insert_v_knot(&mut self, knot: Standard_Real, multiplicity: i32) -> bool {
+    pub fn insert_v_knot(&mut self, knot: StandardReal, multiplicity: i32) -> bool {
         let insert_index = self.v_knots.binary_search_by(|probe| {
             probe.partial_cmp(&knot).unwrap_or(std::cmp::Ordering::Equal)
         });
@@ -267,7 +267,7 @@ impl NurbsSurface {
         true
     }
 
-    pub fn position(&self, u_parameter: Standard_Real, v_parameter: Standard_Real) -> Point {
+    pub fn position(&self, u_parameter: StandardReal, v_parameter: StandardReal) -> Point {
         if self.poles.is_empty() || self.poles[0].is_empty() {
             return Point::origin();
         }
@@ -301,7 +301,7 @@ impl NurbsSurface {
         result
     }
 
-    pub fn d1(&self, u_parameter: Standard_Real, v_parameter: Standard_Real, u_direction: bool) -> Vector {
+    pub fn d1(&self, u_parameter: StandardReal, v_parameter: StandardReal, u_direction: bool) -> Vector {
         let epsilon = 0.0001;
         if u_direction {
             let pos_plus = self.position(u_parameter + epsilon, v_parameter);
@@ -322,7 +322,7 @@ impl NurbsSurface {
         }
     }
 
-    pub fn d2(&self, u_parameter: Standard_Real, v_parameter: Standard_Real) -> Vector {
+    pub fn d2(&self, u_parameter: StandardReal, v_parameter: StandardReal) -> Vector {
         let epsilon = 0.0001;
         let d1_plus = self.d1(u_parameter + epsilon, v_parameter, true);
         let d1_minus = self.d1(u_parameter - epsilon, v_parameter, true);
@@ -334,7 +334,7 @@ impl NurbsSurface {
         )
     }
 
-    fn basis_function(&self, i: i32, p: i32, u: Standard_Real, is_u: bool) -> Standard_Real {
+    fn basis_function(&self, i: i32, p: i32, u: StandardReal, is_u: bool) -> StandardReal {
         if p == 0 {
             return self.basis_function_zero_degree(i, u, is_u);
         }
@@ -372,7 +372,7 @@ impl NurbsSurface {
         left + right
     }
 
-    fn basis_function_zero_degree(&self, i: i32, u: Standard_Real, is_u: bool) -> Standard_Real {
+    fn basis_function_zero_degree(&self, i: i32, u: StandardReal, is_u: bool) -> StandardReal {
         let i_usize = i as usize;
         let knot_i = self.get_knot(i_usize, is_u);
         let knot_i_plus_1 = self.get_knot(i_usize + 1, is_u);
@@ -386,7 +386,7 @@ impl NurbsSurface {
         }
     }
 
-    fn get_knot(&self, index: usize, is_u: bool) -> Standard_Real {
+    fn get_knot(&self, index: usize, is_u: bool) -> StandardReal {
         if is_u {
             if self.u_knots.is_empty() {
                 return 0.0;
@@ -438,7 +438,7 @@ impl NurbsSurface {
         self.is_v_periodic = is_periodic;
     }
 
-    pub fn is_u_closed(&self, tolerance: Standard_Real) -> bool {
+    pub fn is_u_closed(&self, tolerance: StandardReal) -> bool {
         if self.poles.is_empty() || self.poles[0].is_empty() {
             return true;
         }
@@ -453,7 +453,7 @@ impl NurbsSurface {
         true
     }
 
-    pub fn is_v_closed(&self, tolerance: Standard_Real) -> bool {
+    pub fn is_v_closed(&self, tolerance: StandardReal) -> bool {
         if self.poles.is_empty() || self.poles[0].is_empty() {
             return true;
         }
@@ -468,7 +468,7 @@ impl NurbsSurface {
         true
     }
 
-    pub fn first_u_parameter(&self) -> Standard_Real {
+    pub fn first_u_parameter(&self) -> StandardReal {
         if self.u_knots.is_empty() {
             0.0
         } else {
@@ -476,7 +476,7 @@ impl NurbsSurface {
         }
     }
 
-    pub fn last_u_parameter(&self) -> Standard_Real {
+    pub fn last_u_parameter(&self) -> StandardReal {
         if self.u_knots.is_empty() {
             1.0
         } else {
@@ -484,7 +484,7 @@ impl NurbsSurface {
         }
     }
 
-    pub fn first_v_parameter(&self) -> Standard_Real {
+    pub fn first_v_parameter(&self) -> StandardReal {
         if self.v_knots.is_empty() {
             0.0
         } else {
@@ -492,7 +492,7 @@ impl NurbsSurface {
         }
     }
 
-    pub fn last_v_parameter(&self) -> Standard_Real {
+    pub fn last_v_parameter(&self) -> StandardReal {
         if self.v_knots.is_empty() {
             1.0
         } else {

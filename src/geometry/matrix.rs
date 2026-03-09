@@ -1,8 +1,8 @@
-use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Matrix {
-    pub data: [[Standard_Real; 3]; 3],
+    pub data: [[StandardReal; 3]; 3],
 }
 
 impl Matrix {
@@ -16,17 +16,17 @@ impl Matrix {
         }
     }
 
-    pub fn from_array(data: [[Standard_Real; 3]; 3]) -> Self {
+    pub fn from_array(data: [[StandardReal; 3]; 3]) -> Self {
         Self { data }
     }
 
-    pub fn from_row_major(row1: [Standard_Real; 3], row2: [Standard_Real; 3], row3: [Standard_Real; 3]) -> Self {
+    pub fn from_row_major(row1: [StandardReal; 3], row2: [StandardReal; 3], row3: [StandardReal; 3]) -> Self {
         Self {
             data: [row1, row2, row3],
         }
     }
 
-    pub fn from_column_major(col1: [Standard_Real; 3], col2: [Standard_Real; 3], col3: [Standard_Real; 3]) -> Self {
+    pub fn from_column_major(col1: [StandardReal; 3], col2: [StandardReal; 3], col3: [StandardReal; 3]) -> Self {
         Self {
             data: [
                 [col1[0], col2[0], col3[0]],
@@ -46,11 +46,11 @@ impl Matrix {
         }
     }
 
-    pub fn row(&self, row: usize) -> [Standard_Real; 3] {
+    pub fn row(&self, row: usize) -> [StandardReal; 3] {
         self.data[row]
     }
 
-    pub fn col(&self, col: usize) -> [Standard_Real; 3] {
+    pub fn col(&self, col: usize) -> [StandardReal; 3] {
         [
             self.data[0][col],
             self.data[1][col],
@@ -58,25 +58,25 @@ impl Matrix {
         ]
     }
 
-    pub fn value(&self, row: usize, col: usize) -> Standard_Real {
+    pub fn value(&self, row: usize, col: usize) -> StandardReal {
         self.data[row][col]
     }
 
-    pub fn set_value(&mut self, row: usize, col: usize, value: Standard_Real) {
+    pub fn set_value(&mut self, row: usize, col: usize, value: StandardReal) {
         self.data[row][col] = value;
     }
 
-    pub fn set_row(&mut self, row: usize, values: [Standard_Real; 3]) {
+    pub fn set_row(&mut self, row: usize, values: [StandardReal; 3]) {
         self.data[row] = values;
     }
 
-    pub fn set_col(&mut self, col: usize, values: [Standard_Real; 3]) {
+    pub fn set_col(&mut self, col: usize, values: [StandardReal; 3]) {
         self.data[0][col] = values[0];
         self.data[1][col] = values[1];
         self.data[2][col] = values[2];
     }
 
-    pub fn determinant(&self) -> Standard_Real {
+    pub fn determinant(&self) -> StandardReal {
         let a = self.data[0][0];
         let b = self.data[0][1];
         let c = self.data[0][2];
@@ -164,7 +164,7 @@ impl Matrix {
         )
     }
 
-    pub fn multiply_xyz(&self, x: Standard_Real, y: Standard_Real, z: Standard_Real) -> (Standard_Real, Standard_Real, Standard_Real) {
+    pub fn multiply_xyz(&self, x: StandardReal, y: StandardReal, z: StandardReal) -> (StandardReal, StandardReal, StandardReal) {
         let new_x = self.data[0][0] * x + self.data[0][1] * y + self.data[0][2] * z;
         let new_y = self.data[1][0] * x + self.data[1][1] * y + self.data[1][2] * z;
         let new_z = self.data[2][0] * x + self.data[2][1] * y + self.data[2][2] * z;
@@ -191,7 +191,7 @@ impl Matrix {
         result
     }
 
-    pub fn scale(&mut self, factor: Standard_Real) {
+    pub fn scale(&mut self, factor: StandardReal) {
         for i in 0..3 {
             for j in 0..3 {
                 self.data[i][j] *= factor;
@@ -199,7 +199,7 @@ impl Matrix {
         }
     }
 
-    pub fn scaled(&self, factor: Standard_Real) -> Matrix {
+    pub fn scaled(&self, factor: StandardReal) -> Matrix {
         let mut result = *self;
         result.scale(factor);
         result
@@ -229,7 +229,7 @@ impl Matrix {
         self.determinant().abs() < STANDARD_REAL_EPSILON
     }
 
-    pub fn is_identity(&self, tolerance: Standard_Real) -> bool {
+    pub fn is_identity(&self, tolerance: StandardReal) -> bool {
         let identity = Matrix::identity();
         for i in 0..3 {
             for j in 0..3 {
@@ -241,7 +241,7 @@ impl Matrix {
         true
     }
 
-    pub fn is_negative(&self, tolerance: Standard_Real) -> bool {
+    pub fn is_negative(&self, tolerance: StandardReal) -> bool {
         for i in 0..3 {
             for j in 0..3 {
                 if self.data[i][j] > tolerance {
@@ -252,7 +252,7 @@ impl Matrix {
         true
     }
 
-    pub fn set_diagonal(&mut self, value: Standard_Real) {
+    pub fn set_diagonal(&mut self, value: StandardReal) {
         for i in 0..3 {
             for j in 0..3 {
                 if i == j {
@@ -264,7 +264,7 @@ impl Matrix {
         }
     }
 
-    pub fn set_scale(&mut self, scale: Standard_Real) {
+    pub fn set_scale(&mut self, scale: StandardReal) {
         self.set_diagonal(scale);
     }
 }

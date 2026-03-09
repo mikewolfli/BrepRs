@@ -1,15 +1,18 @@
-use crate::foundation::exception::{Standard_Failure, Standard_Result};
+use crate::foundation::exception::{Failure, Result};
 
-pub struct NCollection_Array1<T> {
+pub struct Array1<T> {
     data: Vec<T>,
     lower: usize,
     upper: usize,
 }
 
-impl<T> NCollection_Array1<T> {
+impl<T> Array1<T> {
     pub fn new(lower: usize, upper: usize) -> Self {
         if lower > upper {
-            panic!("{}", Standard_Failure::range_error("Lower bound must be <= upper bound"));
+            panic!(
+                "{}",
+                Failure::range_error("Lower bound must be <= upper bound")
+            );
         }
         let length = upper - lower + 1;
         Self {
@@ -21,7 +24,10 @@ impl<T> NCollection_Array1<T> {
 
     pub fn with_capacity(lower: usize, upper: usize, capacity: usize) -> Self {
         if lower > upper {
-            panic!("{}", Standard_Failure::range_error("Lower bound must be <= upper bound"));
+            panic!(
+                "{}",
+                Failure::range_error("Lower bound must be <= upper bound")
+            );
         }
         Self {
             data: Vec::with_capacity(capacity),
@@ -68,12 +74,21 @@ impl<T> NCollection_Array1<T> {
         T: Clone,
     {
         if lower > upper {
-            panic!("{}", Standard_Failure::range_error("Lower bound must be <= upper bound"));
+            panic!(
+                "{}",
+                Failure::range_error("Lower bound must be <= upper bound")
+            );
         }
         self.lower = lower;
         self.upper = upper;
         let new_length = upper - lower + 1;
-        self.data.resize(new_length, self.data.first().cloned().unwrap_or_else(|| panic!("Cannot resize empty array")));
+        self.data.resize(
+            new_length,
+            self.data
+                .first()
+                .cloned()
+                .unwrap_or_else(|| panic!("Cannot resize empty array")),
+        );
     }
 
     pub fn clear(&mut self) {
@@ -104,9 +119,9 @@ impl<T> NCollection_Array1<T> {
         }
     }
 
-    pub fn set(&mut self, index: usize, value: T) -> Standard_Result<()> {
+    pub fn set(&mut self, index: usize, value: T) -> Result<()> {
         if index < self.lower || index > self.upper {
-            Err(Standard_Failure::range_error("Index out of bounds"))
+            Err(Failure::range_error("Index out of bounds"))
         } else {
             self.data[index - self.lower] = value;
             Ok(())
@@ -127,9 +142,9 @@ impl<T> NCollection_Array1<T> {
         }
     }
 
-    pub fn insert(&mut self, index: usize, value: T) -> Standard_Result<()> {
+    pub fn insert(&mut self, index: usize, value: T) -> Result<()> {
         if index < self.lower || index > self.upper + 1 {
-            Err(Standard_Failure::range_error("Index out of bounds"))
+            Err(Failure::range_error("Index out of bounds"))
         } else {
             self.data.insert(index - self.lower, value);
             self.upper += 1;
@@ -137,29 +152,30 @@ impl<T> NCollection_Array1<T> {
         }
     }
 
-    pub fn remove(&mut self, index: usize) -> Standard_Result<T> {
+    pub fn remove(&mut self, index: usize) -> Result<T> {
         if index < self.lower || index > self.upper {
-            Err(Standard_Failure::range_error("Index out of bounds"))
+            Err(Failure::range_error("Index out of bounds"))
         } else {
             self.upper -= 1;
             Ok(self.data.remove(index - self.lower))
         }
     }
 
-    pub fn swap(&mut self, index1: usize, index2: usize) -> Standard_Result<()> {
-        if index1 < self.lower || index1 > self.upper || index2 < self.lower || index2 > self.upper {
-            Err(Standard_Failure::range_error("Index out of bounds"))
+    pub fn swap(&mut self, index1: usize, index2: usize) -> Result<()> {
+        if index1 < self.lower || index1 > self.upper || index2 < self.lower || index2 > self.upper
+        {
+            Err(Failure::range_error("Index out of bounds"))
         } else {
             self.data.swap(index1 - self.lower, index2 - self.lower);
             Ok(())
         }
     }
 
-    pub fn iter(&self) -> std::slice::Iter<T> {
+    pub fn iter(&self) -> std::slice::Iter<'_, T> {
         self.data.iter()
     }
 
-    pub fn iter_mut(&mut self) -> std::slice::IterMut<T> {
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, T> {
         self.data.iter_mut()
     }
 
@@ -183,13 +199,13 @@ impl<T> NCollection_Array1<T> {
     }
 }
 
-impl<T> Default for NCollection_Array1<T> {
+impl<T> Default for Array1<T> {
     fn default() -> Self {
         Self::new(1, 0)
     }
 }
 
-impl<T> Clone for NCollection_Array1<T>
+impl<T> Clone for Array1<T>
 where
     T: Clone,
 {
@@ -202,25 +218,25 @@ where
     }
 }
 
-impl<T> std::ops::Index<usize> for NCollection_Array1<T> {
+impl<T> std::ops::Index<usize> for Array1<T> {
     type Output = T;
 
     fn index(&self, index: usize) -> &Self::Output {
         self.get(index)
-            .unwrap_or_else(|| panic!("{}", Standard_Failure::range_error("Index out of bounds")))
+            .unwrap_or_else(|| panic!("{}", Failure::range_error("Index out of bounds")))
     }
 }
 
-impl<T> std::ops::IndexMut<usize> for NCollection_Array1<T> {
+impl<T> std::ops::IndexMut<usize> for Array1<T> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         self.get_mut(index)
-            .unwrap_or_else(|| panic!("{}", Standard_Failure::range_error("Index out of bounds")))
+            .unwrap_or_else(|| panic!("{}", Failure::range_error("Index out of bounds")))
     }
 }
 
-impl<T: std::fmt::Debug> std::fmt::Debug for NCollection_Array1<T> {
+impl<T: std::fmt::Debug> std::fmt::Debug for Array1<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("NCollection_Array1")
+        f.debug_struct("Array1")
             .field("lower", &self.lower)
             .field("upper", &self.upper)
             .field("data", &self.data)
@@ -228,7 +244,7 @@ impl<T: std::fmt::Debug> std::fmt::Debug for NCollection_Array1<T> {
     }
 }
 
-impl<'a, T> IntoIterator for &'a NCollection_Array1<T> {
+impl<'a, T> IntoIterator for &'a Array1<T> {
     type Item = &'a T;
     type IntoIter = std::slice::Iter<'a, T>;
 
@@ -237,7 +253,7 @@ impl<'a, T> IntoIterator for &'a NCollection_Array1<T> {
     }
 }
 
-impl<T> IntoIterator for NCollection_Array1<T> {
+impl<T> IntoIterator for Array1<T> {
     type Item = T;
     type IntoIter = std::vec::IntoIter<T>;
 
@@ -252,7 +268,7 @@ mod tests {
 
     #[test]
     fn test_array_creation() {
-        let array: NCollection_Array1<i32> = NCollection_Array1::new(1, 5);
+        let array: Array1<i32> = Array1::new(1, 5);
         assert_eq!(array.lower(), 1);
         assert_eq!(array.upper(), 5);
         assert_eq!(array.length(), 0);
@@ -261,7 +277,7 @@ mod tests {
 
     #[test]
     fn test_array_push() {
-        let mut array = NCollection_Array1::new(1, 5);
+        let mut array = Array1::new(1, 5);
         array.push(10);
         array.push(20);
         array.push(30);
@@ -273,7 +289,7 @@ mod tests {
 
     #[test]
     fn test_array_pop() {
-        let mut array = NCollection_Array1::new(1, 5);
+        let mut array = Array1::new(1, 5);
         array.push(10);
         array.push(20);
         array.push(30);
@@ -283,7 +299,7 @@ mod tests {
 
     #[test]
     fn test_array_get() {
-        let mut array = NCollection_Array1::new(1, 5);
+        let mut array = Array1::new(1, 5);
         array.push(10);
         array.push(20);
         assert_eq!(array.get(1), Some(&10));
@@ -293,7 +309,7 @@ mod tests {
 
     #[test]
     fn test_array_set() {
-        let mut array = NCollection_Array1::new(1, 5);
+        let mut array = Array1::new(1, 5);
         array.push(10);
         array.push(20);
         assert!(array.set(1, 100).is_ok());
@@ -302,7 +318,7 @@ mod tests {
 
     #[test]
     fn test_array_insert() {
-        let mut array = NCollection_Array1::new(1, 5);
+        let mut array = Array1::new(1, 5);
         array.push(10);
         array.push(30);
         assert!(array.insert(2, 20).is_ok());
@@ -313,7 +329,7 @@ mod tests {
 
     #[test]
     fn test_array_remove() {
-        let mut array = NCollection_Array1::new(1, 5);
+        let mut array = Array1::new(1, 5);
         array.push(10);
         array.push(20);
         array.push(30);
@@ -325,7 +341,7 @@ mod tests {
 
     #[test]
     fn test_array_swap() {
-        let mut array = NCollection_Array1::new(1, 5);
+        let mut array = Array1::new(1, 5);
         array.push(10);
         array.push(20);
         assert!(array.swap(1, 2).is_ok());
@@ -335,7 +351,7 @@ mod tests {
 
     #[test]
     fn test_array_clear() {
-        let mut array = NCollection_Array1::new(1, 5);
+        let mut array = Array1::new(1, 5);
         array.push(10);
         array.push(20);
         array.clear();
@@ -345,7 +361,7 @@ mod tests {
     #[test]
     fn test_array_from_vec() {
         let vec = vec![10, 20, 30];
-        let array = NCollection_Array1::from_vec(1, vec);
+        let array = Array1::from_vec(1, vec);
         assert_eq!(array.lower(), 1);
         assert_eq!(array.upper(), 3);
         assert_eq!(array.length(), 3);
@@ -356,7 +372,7 @@ mod tests {
 
     #[test]
     fn test_array_to_vec() {
-        let mut array = NCollection_Array1::new(1, 5);
+        let mut array = Array1::new(1, 5);
         array.push(10);
         array.push(20);
         array.push(30);
@@ -366,7 +382,7 @@ mod tests {
 
     #[test]
     fn test_array_clone() {
-        let mut array1 = NCollection_Array1::new(1, 5);
+        let mut array1 = Array1::new(1, 5);
         array1.push(10);
         array1.push(20);
         array1.push(30);
@@ -378,7 +394,7 @@ mod tests {
 
     #[test]
     fn test_array_into_iter() {
-        let mut array = NCollection_Array1::new(1, 5);
+        let mut array = Array1::new(1, 5);
         array.push(10);
         array.push(20);
         array.push(30);
@@ -388,7 +404,7 @@ mod tests {
 
     #[test]
     fn test_array_bounds() {
-        let array: NCollection_Array1<i32> = NCollection_Array1::new(1, 5);
+        let array: Array1<i32> = Array1::new(1, 5);
         assert_eq!(array.lower(), 1);
         assert_eq!(array.upper(), 5);
     }

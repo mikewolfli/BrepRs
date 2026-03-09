@@ -1,6 +1,6 @@
 use crate::foundation::handle::Handle;
-use crate::topology::{topods_shape::TopoDS_Shape, topods_location::TopoDS_Location};
 use crate::geometry::Point;
+use crate::topology::{topods_location::TopoDsLocation, topods_shape::TopoDsShape};
 
 /// Represents a compound in topological structure
 ///
@@ -8,35 +8,35 @@ use crate::geometry::Point;
 /// It's used to group shapes together without imposing any topological
 /// constraints.
 #[derive(Debug)]
-pub struct TopoDS_Compound {
-    shape: TopoDS_Shape,
-    components: Vec<Handle<TopoDS_Shape>>,
+pub struct TopoDsCompound {
+    shape: TopoDsShape,
+    components: Vec<Handle<TopoDsShape>>,
 }
 
-impl TopoDS_Compound {
+impl TopoDsCompound {
     /// Create a new empty compound
     pub fn new() -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Compound),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Compound),
             components: Vec::new(),
         }
     }
 
     /// Create a new compound with specified components
-    pub fn with_components(components: Vec<Handle<TopoDS_Shape>>) -> Self {
+    pub fn with_components(components: Vec<Handle<TopoDsShape>>) -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Compound),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Compound),
             components,
         }
     }
 
     /// Add a component to the compound
-    pub fn add_component(&mut self, component: Handle<TopoDS_Shape>) {
+    pub fn add_component(&mut self, component: Handle<TopoDsShape>) {
         self.components.push(component);
     }
 
     /// Get the components of the compound
-    pub fn components(&self) -> &[Handle<TopoDS_Shape>] {
+    pub fn components(&self) -> &[Handle<TopoDsShape>] {
         &self.components
     }
 
@@ -46,22 +46,22 @@ impl TopoDS_Compound {
     }
 
     /// Get the shape base
-    pub fn shape(&self) -> &TopoDS_Shape {
+    pub fn shape(&self) -> &TopoDsShape {
         &self.shape
     }
 
     /// Get mutable reference to shape base
-    pub fn shape_mut(&mut self) -> &mut TopoDS_Shape {
+    pub fn shape_mut(&mut self) -> &mut TopoDsShape {
         &mut self.shape
     }
 
     /// Get the location of the compound
-    pub fn location(&self) -> Option<&TopoDS_Location> {
+    pub fn location(&self) -> Option<&TopoDsLocation> {
         self.shape.location()
     }
 
     /// Set the location of the compound
-    pub fn set_location(&mut self, location: TopoDS_Location) {
+    pub fn set_location(&mut self, location: TopoDsLocation) {
         self.shape.set_location(location);
     }
 
@@ -96,12 +96,12 @@ impl TopoDS_Compound {
     }
 
     /// Check if the compound contains a specific component
-    pub fn contains(&self, component: &Handle<TopoDS_Shape>) -> bool {
+    pub fn contains(&self, component: &Handle<TopoDsShape>) -> bool {
         self.components.contains(component)
     }
 
     /// Remove a component from the compound
-    pub fn remove_component(&mut self, component: &Handle<TopoDS_Shape>) {
+    pub fn remove_component(&mut self, component: &Handle<TopoDsShape>) {
         self.components.retain(|c| c != component);
     }
 
@@ -136,12 +136,15 @@ impl TopoDS_Compound {
     }
 
     /// Get the bounding box of a component
-    fn component_bounding_box(&self, _component: &Handle<TopoDS_Shape>) -> Option<(Point, Point)> {
+    fn component_bounding_box(&self, _component: &Handle<TopoDsShape>) -> Option<(Point, Point)> {
         None
     }
 
     /// Get all components of a specific type
-    pub fn components_of_type(&self, shape_type: crate::topology::shape_enum::ShapeType) -> Vec<Handle<TopoDS_Shape>> {
+    pub fn components_of_type(
+        &self,
+        shape_type: crate::topology::shape_enum::ShapeType,
+    ) -> Vec<Handle<TopoDsShape>> {
         self.components
             .iter()
             .filter(|c| c.shape_type() == shape_type)
@@ -150,13 +153,13 @@ impl TopoDS_Compound {
     }
 }
 
-impl Default for TopoDS_Compound {
+impl Default for TopoDsCompound {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Clone for TopoDS_Compound {
+impl Clone for TopoDsCompound {
     fn clone(&self) -> Self {
         Self {
             shape: self.shape.clone(),
@@ -165,7 +168,7 @@ impl Clone for TopoDS_Compound {
     }
 }
 
-impl PartialEq for TopoDS_Compound {
+impl PartialEq for TopoDsCompound {
     fn eq(&self, other: &Self) -> bool {
         self.shape_id() == other.shape_id()
     }
@@ -176,35 +179,35 @@ impl PartialEq for TopoDS_Compound {
 /// A composite solid is a collection of solids that are connected
 /// by shared faces. It's used to represent assemblies of solids.
 #[derive(Debug)]
-pub struct TopoDS_CompSolid {
-    shape: TopoDS_Shape,
-    solids: Vec<Handle<crate::topology::topods_solid::TopoDS_Solid>>,
+pub struct TopoDsCompSolid {
+    shape: TopoDsShape,
+    solids: Vec<Handle<crate::topology::topods_solid::TopoDsSolid>>,
 }
 
-impl TopoDS_CompSolid {
+impl TopoDsCompSolid {
     /// Create a new empty composite solid
     pub fn new() -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::CompSolid),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::CompSolid),
             solids: Vec::new(),
         }
     }
 
     /// Create a new composite solid with specified solids
-    pub fn with_solids(solids: Vec<Handle<crate::topology::topods_solid::TopoDS_Solid>>) -> Self {
+    pub fn with_solids(solids: Vec<Handle<crate::topology::topods_solid::TopoDsSolid>>) -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::CompSolid),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::CompSolid),
             solids,
         }
     }
 
     /// Add a solid to the composite solid
-    pub fn add_solid(&mut self, solid: Handle<crate::topology::topods_solid::TopoDS_Solid>) {
+    pub fn add_solid(&mut self, solid: Handle<crate::topology::topods_solid::TopoDsSolid>) {
         self.solids.push(solid);
     }
 
     /// Get the solids of the composite solid
-    pub fn solids(&self) -> &[Handle<crate::topology::topods_solid::TopoDS_Solid>] {
+    pub fn solids(&self) -> &[Handle<crate::topology::topods_solid::TopoDsSolid>] {
         &self.solids
     }
 
@@ -214,22 +217,22 @@ impl TopoDS_CompSolid {
     }
 
     /// Get the shape base
-    pub fn shape(&self) -> &TopoDS_Shape {
+    pub fn shape(&self) -> &TopoDsShape {
         &self.shape
     }
 
     /// Get mutable reference to shape base
-    pub fn shape_mut(&mut self) -> &mut TopoDS_Shape {
+    pub fn shape_mut(&mut self) -> &mut TopoDsShape {
         &mut self.shape
     }
 
     /// Get the location of the composite solid
-    pub fn location(&self) -> Option<&TopoDS_Location> {
+    pub fn location(&self) -> Option<&TopoDsLocation> {
         self.shape.location()
     }
 
     /// Set the location of the composite solid
-    pub fn set_location(&mut self, location: TopoDS_Location) {
+    pub fn set_location(&mut self, location: TopoDsLocation) {
         self.shape.set_location(location);
     }
 
@@ -274,7 +277,7 @@ impl TopoDS_CompSolid {
     }
 
     /// Check if the composite solid contains a specific solid
-    pub fn contains(&self, solid: &Handle<crate::topology::topods_solid::TopoDS_Solid>) -> bool {
+    pub fn contains(&self, solid: &Handle<crate::topology::topods_solid::TopoDsSolid>) -> bool {
         self.solids.contains(solid)
     }
 
@@ -309,7 +312,7 @@ impl TopoDS_CompSolid {
     }
 
     /// Get all faces in the composite solid
-    pub fn faces(&self) -> Vec<Handle<crate::topology::topods_face::TopoDS_Face>> {
+    pub fn faces(&self) -> Vec<Handle<crate::topology::topods_face::TopoDsFace>> {
         use std::collections::HashSet;
 
         let mut face_set = HashSet::new();
@@ -327,7 +330,7 @@ impl TopoDS_CompSolid {
     }
 
     /// Get all edges in the composite solid
-    pub fn edges(&self) -> Vec<Handle<crate::topology::topods_edge::TopoDS_Edge>> {
+    pub fn edges(&self) -> Vec<Handle<crate::topology::topods_edge::TopoDsEdge>> {
         use std::collections::HashSet;
 
         let mut edge_set = HashSet::new();
@@ -345,7 +348,7 @@ impl TopoDS_CompSolid {
     }
 
     /// Get all vertices in the composite solid
-    pub fn vertices(&self) -> Vec<Handle<crate::topology::topods_vertex::TopoDS_Vertex>> {
+    pub fn vertices(&self) -> Vec<Handle<crate::topology::topods_vertex::TopoDsVertex>> {
         use std::collections::HashSet;
 
         let mut vertex_set = HashSet::new();
@@ -378,13 +381,13 @@ impl TopoDS_CompSolid {
     }
 }
 
-impl Default for TopoDS_CompSolid {
+impl Default for TopoDsCompSolid {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Clone for TopoDS_CompSolid {
+impl Clone for TopoDsCompSolid {
     fn clone(&self) -> Self {
         Self {
             shape: self.shape.clone(),
@@ -393,7 +396,7 @@ impl Clone for TopoDS_CompSolid {
     }
 }
 
-impl PartialEq for TopoDS_CompSolid {
+impl PartialEq for TopoDsCompSolid {
     fn eq(&self, other: &Self) -> bool {
         self.shape_id() == other.shape_id()
     }
@@ -405,74 +408,82 @@ mod tests {
 
     #[test]
     fn test_compound_creation() {
-        let compound = TopoDS_Compound::new();
+        let compound = TopoDsCompound::new();
         assert!(compound.is_empty());
         assert_eq!(compound.num_components(), 0);
     }
 
     #[test]
     fn test_compound_add_component() {
-        let mut compound = TopoDS_Compound::new();
-        let shape = Handle::new(std::sync::Arc::new(TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Vertex)));
-        
+        let mut compound = TopoDsCompound::new();
+        let shape = Handle::new(std::sync::Arc::new(TopoDsShape::new(
+            crate::topology::shape_enum::ShapeType::Vertex,
+        )));
+
         compound.add_component(shape);
         assert_eq!(compound.num_components(), 1);
     }
 
     #[test]
     fn test_compound_clear() {
-        let shape = Handle::new(std::sync::Arc::new(TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Vertex)));
-        let mut compound = TopoDS_Compound::with_components(vec![shape]);
+        let shape = Handle::new(std::sync::Arc::new(TopoDsShape::new(
+            crate::topology::shape_enum::ShapeType::Vertex,
+        )));
+        let mut compound = TopoDsCompound::with_components(vec![shape]);
         assert!(!compound.is_empty());
-        
+
         compound.clear();
         assert!(compound.is_empty());
     }
 
     #[test]
     fn test_compound_shape_id() {
-        let mut compound = TopoDS_Compound::new();
+        let mut compound = TopoDsCompound::new();
         // shape_id is now auto-generated, so it should not be 0
         let initial_id = compound.shape_id();
         assert!(initial_id > 0);
-        
+
         compound.set_shape_id(42);
         assert_eq!(compound.shape_id(), 42);
     }
 
     #[test]
     fn test_compsolid_creation() {
-        let compsolid = TopoDS_CompSolid::new();
+        let compsolid = TopoDsCompSolid::new();
         assert!(compsolid.is_empty());
         assert_eq!(compsolid.num_solids(), 0);
     }
 
     #[test]
     fn test_compsolid_add_solid() {
-        let mut compsolid = TopoDS_CompSolid::new();
-        let solid = Handle::new(std::sync::Arc::new(crate::topology::topods_solid::TopoDS_Solid::new()));
-        
+        let mut compsolid = TopoDsCompSolid::new();
+        let solid = Handle::new(std::sync::Arc::new(
+            crate::topology::topods_solid::TopoDsSolid::new(),
+        ));
+
         compsolid.add_solid(solid);
         assert_eq!(compsolid.num_solids(), 1);
     }
 
     #[test]
     fn test_compsolid_clear() {
-        let solid = Handle::new(std::sync::Arc::new(crate::topology::topods_solid::TopoDS_Solid::new()));
-        let mut compsolid = TopoDS_CompSolid::with_solids(vec![solid]);
+        let solid = Handle::new(std::sync::Arc::new(
+            crate::topology::topods_solid::TopoDsSolid::new(),
+        ));
+        let mut compsolid = TopoDsCompSolid::with_solids(vec![solid]);
         assert!(!compsolid.is_empty());
-        
+
         compsolid.clear();
         assert!(compsolid.is_empty());
     }
 
     #[test]
     fn test_compsolid_shape_id() {
-        let mut compsolid = TopoDS_CompSolid::new();
+        let mut compsolid = TopoDsCompSolid::new();
         // shape_id is now auto-generated, so it should not be 0
         let initial_id = compsolid.shape_id();
         assert!(initial_id > 0);
-        
+
         compsolid.set_shape_id(42);
         assert_eq!(compsolid.shape_id(), 42);
     }

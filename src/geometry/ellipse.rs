@@ -1,18 +1,25 @@
-use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
-use crate::geometry::{Point, Vector, Direction, Axis};
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
+use crate::geometry::{Axis, Direction, Point, Vector};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Ellipse {
     location: Point,
     x_direction: Direction,
     y_direction: Direction,
-    major_radius: Standard_Real,
-    minor_radius: Standard_Real,
+    major_radius: StandardReal,
+    minor_radius: StandardReal,
 }
 
 impl Ellipse {
-    pub fn new(location: Point, x_direction: Direction, major_radius: Standard_Real, minor_radius: Standard_Real) -> Self {
-        let y_direction = x_direction.cross(&Direction::new(0.0, 0.0, 1.0)).normalized();
+    pub fn new(
+        location: Point,
+        x_direction: Direction,
+        major_radius: StandardReal,
+        minor_radius: StandardReal,
+    ) -> Self {
+        let y_direction = x_direction
+            .cross(&Direction::new(0.0, 0.0, 1.0))
+            .normalized();
         Self {
             location,
             x_direction,
@@ -22,7 +29,11 @@ impl Ellipse {
         }
     }
 
-    pub fn from_center_radii(center: Point, major_radius: Standard_Real, minor_radius: Standard_Real) -> Self {
+    pub fn from_center_radii(
+        center: Point,
+        major_radius: StandardReal,
+        minor_radius: StandardReal,
+    ) -> Self {
         Self {
             location: center,
             x_direction: Direction::x_axis(),
@@ -32,7 +43,12 @@ impl Ellipse {
         }
     }
 
-    pub fn from_center_axis_radii(center: Point, axis: &Axis, major_radius: Standard_Real, minor_radius: Standard_Real) -> Self {
+    pub fn from_center_axis_radii(
+        center: Point,
+        axis: &Axis,
+        major_radius: StandardReal,
+        minor_radius: StandardReal,
+    ) -> Self {
         let x_dir = axis.direction();
         let z_dir = Direction::new(0.0, 0.0, 1.0);
         let y_dir = x_dir.cross(&z_dir).normalized();
@@ -45,11 +61,14 @@ impl Ellipse {
         }
     }
 
-    pub fn from_axis(axis: &Axis, major_radius: Standard_Real, minor_radius: Standard_Real) -> Self {
+    pub fn from_axis(axis: &Axis, major_radius: StandardReal, minor_radius: StandardReal) -> Self {
         Self {
             location: *axis.location(),
             x_direction: *axis.direction(),
-            y_direction: axis.direction().cross(&Direction::new(0.0, 0.0, 1.0)).normalized(),
+            y_direction: axis
+                .direction()
+                .cross(&Direction::new(0.0, 0.0, 1.0))
+                .normalized(),
             major_radius,
             minor_radius,
         }
@@ -67,11 +86,11 @@ impl Ellipse {
         &self.y_direction
     }
 
-    pub fn major_radius(&self) -> Standard_Real {
+    pub fn major_radius(&self) -> StandardReal {
         self.major_radius
     }
 
-    pub fn minor_radius(&self) -> Standard_Real {
+    pub fn minor_radius(&self) -> StandardReal {
         self.minor_radius
     }
 
@@ -84,31 +103,35 @@ impl Ellipse {
         self.update_y_direction();
     }
 
-    pub fn set_major_radius(&mut self, major_radius: Standard_Real) {
+    pub fn set_major_radius(&mut self, major_radius: StandardReal) {
         self.major_radius = major_radius;
     }
 
-    pub fn set_minor_radius(&mut self, minor_radius: Standard_Real) {
+    pub fn set_minor_radius(&mut self, minor_radius: StandardReal) {
         self.minor_radius = minor_radius;
     }
 
     fn update_y_direction(&mut self) {
-        self.y_direction = self.x_direction.cross(&Direction::new(0.0, 0.0, 1.0)).normalized();
+        self.y_direction = self
+            .x_direction
+            .cross(&Direction::new(0.0, 0.0, 1.0))
+            .normalized();
     }
 
-    pub fn area(&self) -> Standard_Real {
+    pub fn area(&self) -> StandardReal {
         std::f64::consts::PI * self.major_radius * self.minor_radius
     }
 
-    pub fn length(&self) -> Standard_Real {
+    pub fn length(&self) -> StandardReal {
         let a = self.major_radius;
         let b = self.minor_radius;
         let h = ((a - b) / (a + b)).powi(2);
-        let approximation = std::f64::consts::PI * (a + b) * (1.0 + 3.0 * h / (10.0 + (4.0 - 3.0 * h).sqrt()));
+        let approximation =
+            std::f64::consts::PI * (a + b) * (1.0 + 3.0 * h / (10.0 + (4.0 - 3.0 * h).sqrt()));
         approximation
     }
 
-    pub fn eccentricity(&self) -> Standard_Real {
+    pub fn eccentricity(&self) -> StandardReal {
         let a = self.major_radius.max(self.minor_radius);
         let b = self.major_radius.min(self.minor_radius);
         if a <= STANDARD_REAL_EPSILON {
@@ -118,16 +141,16 @@ impl Ellipse {
         }
     }
 
-    pub fn focal_distance(&self) -> Standard_Real {
+    pub fn focal_distance(&self) -> StandardReal {
         let a = self.major_radius.max(self.minor_radius);
         let b = self.major_radius.min(self.minor_radius);
         (a * a - b * b).sqrt()
     }
 
-    pub fn position(&self, parameter: Standard_Real) -> Point {
+    pub fn position(&self, parameter: StandardReal) -> Point {
         let cos_a = parameter.cos();
         let sin_a = parameter.sin();
-        
+
         let x_offset = self.major_radius * cos_a;
         let y_offset = self.minor_radius * sin_a;
 
@@ -141,7 +164,7 @@ impl Ellipse {
         )
     }
 
-    pub fn d1(&self, parameter: Standard_Real) -> Vector {
+    pub fn d1(&self, parameter: StandardReal) -> Vector {
         let sin_a = parameter.sin();
         let cos_a = parameter.cos();
 
@@ -155,7 +178,7 @@ impl Ellipse {
         )
     }
 
-    pub fn d2(&self, parameter: Standard_Real) -> Vector {
+    pub fn d2(&self, parameter: StandardReal) -> Vector {
         let cos_a = parameter.cos();
         let sin_a = parameter.sin();
 
@@ -169,14 +192,14 @@ impl Ellipse {
         )
     }
 
-    pub fn contains(&self, point: &Point, tolerance: Standard_Real) -> bool {
+    pub fn contains(&self, point: &Point, tolerance: StandardReal) -> bool {
         let distance = self.distance(point);
         distance <= tolerance
     }
 
-    pub fn distance(&self, point: &Point) -> Standard_Real {
+    pub fn distance(&self, point: &Point) -> StandardReal {
         let vec = Vector::from_point(&self.location, point);
-        
+
         let x_vec = Vector::new(self.x_direction.x, self.x_direction.y, self.x_direction.z);
         let y_vec = Vector::new(self.y_direction.x, self.y_direction.y, self.y_direction.z);
 
@@ -189,13 +212,14 @@ impl Ellipse {
         let normalized_x = x_coord / a;
         let normalized_y = y_coord / b;
 
-        let distance_from_center = (normalized_x * normalized_x + normalized_y * normalized_y).sqrt();
+        let distance_from_center =
+            (normalized_x * normalized_x + normalized_y * normalized_y).sqrt();
         let distance_to_ellipse = (distance_from_center - 1.0).abs() * a.min(b);
 
         distance_to_ellipse
     }
 
-    pub fn square_distance(&self, point: &Point) -> Standard_Real {
+    pub fn square_distance(&self, point: &Point) -> StandardReal {
         let dist = self.distance(point);
         dist * dist
     }
@@ -232,13 +256,13 @@ impl Ellipse {
         }
     }
 
-    pub fn rotate(&mut self, axis: &Axis, angle: Standard_Real) {
+    pub fn rotate(&mut self, axis: &Axis, angle: StandardReal) {
         self.location.rotate(axis, angle);
         self.x_direction.rotate(axis, angle);
         self.y_direction.rotate(axis, angle);
     }
 
-    pub fn rotated(&self, axis: &Axis, angle: Standard_Real) -> Ellipse {
+    pub fn rotated(&self, axis: &Axis, angle: StandardReal) -> Ellipse {
         Ellipse {
             location: self.location.rotated(axis, angle),
             x_direction: self.x_direction.rotated(axis, angle),
@@ -248,13 +272,13 @@ impl Ellipse {
         }
     }
 
-    pub fn scale(&mut self, point: &Point, factor: Standard_Real) {
+    pub fn scale(&mut self, point: &Point, factor: StandardReal) {
         self.location.scale(point, factor);
         self.major_radius *= factor.abs();
         self.minor_radius *= factor.abs();
     }
 
-    pub fn scaled(&self, point: &Point, factor: Standard_Real) -> Ellipse {
+    pub fn scaled(&self, point: &Point, factor: StandardReal) -> Ellipse {
         Ellipse {
             location: self.location.scaled(point, factor),
             x_direction: self.x_direction,
@@ -301,10 +325,15 @@ impl Ellipse {
     }
 
     pub fn to_ellipse2d(&self) -> crate::geometry::Ellipse2D {
-        crate::geometry::Ellipse2D::new(self.location, self.x_direction, self.major_radius, self.minor_radius)
+        crate::geometry::Ellipse2D::new(
+            self.location,
+            self.x_direction,
+            self.major_radius,
+            self.minor_radius,
+        )
     }
 
-    pub fn is_circle(&self, tolerance: Standard_Real) -> bool {
+    pub fn is_circle(&self, tolerance: StandardReal) -> bool {
         (self.major_radius - self.minor_radius).abs() <= tolerance
     }
 }

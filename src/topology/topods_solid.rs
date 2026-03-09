@@ -1,6 +1,8 @@
 use crate::foundation::handle::Handle;
-use crate::topology::{topods_shape::TopoDS_Shape, topods_shell::TopoDS_Shell, topods_location::TopoDS_Location};
 use crate::geometry::Point;
+use crate::topology::{
+    topods_location::TopoDsLocation, topods_shape::TopoDsShape, topods_shell::TopoDsShell,
+};
 
 /// Represents a solid in topological structure
 ///
@@ -8,26 +10,26 @@ use crate::geometry::Point;
 /// The first shell is the outer boundary, and subsequent shells
 /// are cavities or voids within the solid.
 #[derive(Debug)]
-pub struct TopoDS_Solid {
-    shape: TopoDS_Shape,
-    shells: Vec<Handle<TopoDS_Shell>>,
+pub struct TopoDsSolid {
+    shape: TopoDsShape,
+    shells: Vec<Handle<TopoDsShell>>,
     tolerance: f64,
 }
 
-impl TopoDS_Solid {
+impl TopoDsSolid {
     /// Create a new empty solid
     pub fn new() -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Solid),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Solid),
             shells: Vec::new(),
             tolerance: 0.001,
         }
     }
 
     /// Create a new solid with specified shells
-    pub fn with_shells(shells: Vec<Handle<TopoDS_Shell>>) -> Self {
+    pub fn with_shells(shells: Vec<Handle<TopoDsShell>>) -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Solid),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Solid),
             shells,
             tolerance: 0.001,
         }
@@ -36,19 +38,19 @@ impl TopoDS_Solid {
     /// Create a new solid with specified tolerance
     pub fn with_tolerance(tolerance: f64) -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Solid),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Solid),
             shells: Vec::new(),
             tolerance,
         }
     }
 
     /// Add a shell to the solid
-    pub fn add_shell(&mut self, shell: Handle<TopoDS_Shell>) {
+    pub fn add_shell(&mut self, shell: Handle<TopoDsShell>) {
         self.shells.push(shell);
     }
 
     /// Get the shells of the solid
-    pub fn shells(&self) -> &[Handle<TopoDS_Shell>] {
+    pub fn shells(&self) -> &[Handle<TopoDsShell>] {
         &self.shells
     }
 
@@ -58,12 +60,12 @@ impl TopoDS_Solid {
     }
 
     /// Get the outer boundary shell (first shell)
-    pub fn outer_shell(&self) -> Option<&Handle<TopoDS_Shell>> {
+    pub fn outer_shell(&self) -> Option<&Handle<TopoDsShell>> {
         self.shells.first()
     }
 
     /// Get the cavity shells (all shells except the first)
-    pub fn cavity_shells(&self) -> &[Handle<TopoDS_Shell>] {
+    pub fn cavity_shells(&self) -> &[Handle<TopoDsShell>] {
         if self.shells.len() <= 1 {
             return &[];
         }
@@ -71,7 +73,7 @@ impl TopoDS_Solid {
     }
 
     /// Set the outer boundary shell (first shell)
-    pub fn set_outer_shell(&mut self, shell: Handle<TopoDS_Shell>) {
+    pub fn set_outer_shell(&mut self, shell: Handle<TopoDsShell>) {
         if self.shells.is_empty() {
             self.shells.push(shell);
         } else {
@@ -80,7 +82,7 @@ impl TopoDS_Solid {
     }
 
     /// Add a cavity shell to the solid
-    pub fn add_cavity_shell(&mut self, shell: Handle<TopoDS_Shell>) {
+    pub fn add_cavity_shell(&mut self, shell: Handle<TopoDsShell>) {
         self.shells.push(shell);
     }
 
@@ -95,22 +97,22 @@ impl TopoDS_Solid {
     }
 
     /// Get the shape base
-    pub fn shape(&self) -> &TopoDS_Shape {
+    pub fn shape(&self) -> &TopoDsShape {
         &self.shape
     }
 
     /// Get mutable reference to shape base
-    pub fn shape_mut(&mut self) -> &mut TopoDS_Shape {
+    pub fn shape_mut(&mut self) -> &mut TopoDsShape {
         &mut self.shape
     }
 
     /// Get the location of the solid
-    pub fn location(&self) -> Option<&TopoDS_Location> {
+    pub fn location(&self) -> Option<&TopoDsLocation> {
         self.shape.location()
     }
 
     /// Set the location of the solid
-    pub fn set_location(&mut self, location: TopoDS_Location) {
+    pub fn set_location(&mut self, location: TopoDsLocation) {
         self.shape.set_location(location);
     }
 
@@ -139,7 +141,7 @@ impl TopoDS_Solid {
     }
 
     /// Calculate the volume bounded by a shell
-    fn shell_volume(&self, shell: &Handle<TopoDS_Shell>) -> f64 {
+    fn shell_volume(&self, shell: &Handle<TopoDsShell>) -> f64 {
         let faces = shell.faces();
         if faces.is_empty() {
             return 0.0;
@@ -155,11 +157,11 @@ impl TopoDS_Solid {
                     for i in 1..vertices.len() - 1 {
                         let v1 = vertices[i].point();
                         let v2 = vertices[i + 1].point();
-                        
+
                         let cross_x = (v1.y - v0.y) * (v2.z - v0.z) - (v1.z - v0.z) * (v2.y - v0.y);
                         let cross_y = (v1.z - v0.z) * (v2.x - v0.x) - (v1.x - v0.x) * (v2.z - v0.z);
                         let cross_z = (v1.x - v0.x) * (v2.y - v0.y) - (v1.y - v0.y) * (v2.x - v0.x);
-                        
+
                         volume += v0.x * cross_x + v0.y * cross_y + v0.z * cross_z;
                     }
                 }
@@ -184,7 +186,7 @@ impl TopoDS_Solid {
     }
 
     /// Calculate the centroid of a shell
-    fn shell_centroid(&self, shell: &Handle<TopoDS_Shell>) -> Option<Point> {
+    fn shell_centroid(&self, shell: &Handle<TopoDsShell>) -> Option<Point> {
         let faces = shell.faces();
         if faces.is_empty() {
             return None;
@@ -237,7 +239,7 @@ impl TopoDS_Solid {
     }
 
     /// Check if the solid contains a specific shell
-    pub fn contains_shell(&self, shell: &Handle<TopoDS_Shell>) -> bool {
+    pub fn contains_shell(&self, shell: &Handle<TopoDsShell>) -> bool {
         self.shells.contains(shell)
     }
 
@@ -272,7 +274,7 @@ impl TopoDS_Solid {
     }
 
     /// Get all faces in the solid
-    pub fn faces(&self) -> Vec<Handle<crate::topology::topods_face::TopoDS_Face>> {
+    pub fn faces(&self) -> Vec<Handle<crate::topology::topods_face::TopoDsFace>> {
         use std::collections::HashSet;
 
         let mut face_set = HashSet::new();
@@ -290,7 +292,7 @@ impl TopoDS_Solid {
     }
 
     /// Get all edges in the solid
-    pub fn edges(&self) -> Vec<Handle<crate::topology::topods_edge::TopoDS_Edge>> {
+    pub fn edges(&self) -> Vec<Handle<crate::topology::topods_edge::TopoDsEdge>> {
         use std::collections::HashSet;
 
         let mut edge_set = HashSet::new();
@@ -308,7 +310,7 @@ impl TopoDS_Solid {
     }
 
     /// Get all vertices in the solid
-    pub fn vertices(&self) -> Vec<Handle<crate::topology::topods_vertex::TopoDS_Vertex>> {
+    pub fn vertices(&self) -> Vec<Handle<crate::topology::topods_vertex::TopoDsVertex>> {
         use std::collections::HashSet;
 
         let mut vertex_set = HashSet::new();
@@ -350,7 +352,7 @@ impl TopoDS_Solid {
     }
 
     /// Check if a point is inside a shell (using ray casting)
-    fn point_in_shell(&self, point: &Point, shell: &Handle<TopoDS_Shell>) -> bool {
+    fn point_in_shell(&self, point: &Point, shell: &Handle<TopoDsShell>) -> bool {
         let faces = shell.faces();
         if faces.is_empty() {
             return false;
@@ -378,7 +380,7 @@ impl TopoDS_Solid {
         &self,
         origin: &Point,
         direction: &crate::geometry::Vector,
-        vertices: &[Handle<crate::topology::topods_vertex::TopoDS_Vertex>],
+        vertices: &[Handle<crate::topology::topods_vertex::TopoDsVertex>],
     ) -> bool {
         if vertices.len() < 3 {
             return false;
@@ -388,16 +390,8 @@ impl TopoDS_Solid {
         let v1 = vertices[1].point();
         let v2 = vertices[2].point();
 
-        let edge1 = crate::geometry::Vector::new(
-            v1.x - v0.x,
-            v1.y - v0.y,
-            v1.z - v0.z,
-        );
-        let edge2 = crate::geometry::Vector::new(
-            v2.x - v0.x,
-            v2.y - v0.y,
-            v2.z - v0.z,
-        );
+        let edge1 = crate::geometry::Vector::new(v1.x - v0.x, v1.y - v0.y, v1.z - v0.z);
+        let edge2 = crate::geometry::Vector::new(v2.x - v0.x, v2.y - v0.y, v2.z - v0.z);
 
         let normal = edge1.cross(&edge2);
         let normal_mag = normal.magnitude();
@@ -418,7 +412,9 @@ impl TopoDS_Solid {
         }
 
         let d = -(normal_unit.x * v0.x + normal_unit.y * v0.y + normal_unit.z * v0.z);
-        let t = -(normal_unit.x * origin.x + normal_unit.y * origin.y + normal_unit.z * origin.z + d) / denom;
+        let t =
+            -(normal_unit.x * origin.x + normal_unit.y * origin.y + normal_unit.z * origin.z + d)
+                / denom;
 
         if t < 0.0 {
             return false;
@@ -437,7 +433,7 @@ impl TopoDS_Solid {
     fn point_in_triangle(
         &self,
         point: &Point,
-        vertices: &[Handle<crate::topology::topods_vertex::TopoDS_Vertex>],
+        vertices: &[Handle<crate::topology::topods_vertex::TopoDsVertex>],
     ) -> bool {
         if vertices.len() < 3 {
             return false;
@@ -447,37 +443,13 @@ impl TopoDS_Solid {
         let v1 = vertices[1].point();
         let v2 = vertices[2].point();
 
-        let edge0 = crate::geometry::Vector::new(
-            v1.x - v0.x,
-            v1.y - v0.y,
-            v1.z - v0.z,
-        );
-        let edge1 = crate::geometry::Vector::new(
-            v2.x - v1.x,
-            v2.y - v1.y,
-            v2.z - v1.z,
-        );
-        let edge2 = crate::geometry::Vector::new(
-            v0.x - v2.x,
-            v0.y - v2.y,
-            v0.z - v2.z,
-        );
+        let edge0 = crate::geometry::Vector::new(v1.x - v0.x, v1.y - v0.y, v1.z - v0.z);
+        let edge1 = crate::geometry::Vector::new(v2.x - v1.x, v2.y - v1.y, v2.z - v1.z);
+        let edge2 = crate::geometry::Vector::new(v0.x - v2.x, v0.y - v2.y, v0.z - v2.z);
 
-        let vp0 = crate::geometry::Vector::new(
-            point.x - v0.x,
-            point.y - v0.y,
-            point.z - v0.z,
-        );
-        let vp1 = crate::geometry::Vector::new(
-            point.x - v1.x,
-            point.y - v1.y,
-            point.z - v1.z,
-        );
-        let vp2 = crate::geometry::Vector::new(
-            point.x - v2.x,
-            point.y - v2.y,
-            point.z - v2.z,
-        );
+        let vp0 = crate::geometry::Vector::new(point.x - v0.x, point.y - v0.y, point.z - v0.z);
+        let vp1 = crate::geometry::Vector::new(point.x - v1.x, point.y - v1.y, point.z - v1.z);
+        let vp2 = crate::geometry::Vector::new(point.x - v2.x, point.y - v2.y, point.z - v2.z);
 
         let c0 = edge0.cross(&vp0);
         let c1 = edge1.cross(&vp1);
@@ -490,13 +462,13 @@ impl TopoDS_Solid {
     }
 }
 
-impl Default for TopoDS_Solid {
+impl Default for TopoDsSolid {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Clone for TopoDS_Solid {
+impl Clone for TopoDsSolid {
     fn clone(&self) -> Self {
         Self {
             shape: self.shape.clone(),
@@ -506,7 +478,7 @@ impl Clone for TopoDS_Solid {
     }
 }
 
-impl PartialEq for TopoDS_Solid {
+impl PartialEq for TopoDsSolid {
     fn eq(&self, other: &Self) -> bool {
         self.shape_id() == other.shape_id()
     }
@@ -518,16 +490,16 @@ mod tests {
 
     #[test]
     fn test_solid_creation() {
-        let solid = TopoDS_Solid::new();
+        let solid = TopoDsSolid::new();
         assert!(solid.is_empty());
         assert_eq!(solid.num_shells(), 0);
     }
 
     #[test]
     fn test_solid_add_shell() {
-        let mut solid = TopoDS_Solid::new();
-        let shell = Handle::new(std::sync::Arc::new(TopoDS_Shell::new()));
-        
+        let mut solid = TopoDsSolid::new();
+        let shell = Handle::new(std::sync::Arc::new(TopoDsShell::new()));
+
         solid.add_shell(shell);
         assert_eq!(solid.num_shells(), 1);
         assert!(!solid.has_cavities());
@@ -535,29 +507,29 @@ mod tests {
 
     #[test]
     fn test_solid_has_cavities() {
-        let shell1 = Handle::new(std::sync::Arc::new(TopoDS_Shell::new()));
-        let shell2 = Handle::new(std::sync::Arc::new(TopoDS_Shell::new()));
-        let solid = TopoDS_Solid::with_shells(vec![shell1, shell2]);
-        
+        let shell1 = Handle::new(std::sync::Arc::new(TopoDsShell::new()));
+        let shell2 = Handle::new(std::sync::Arc::new(TopoDsShell::new()));
+        let solid = TopoDsSolid::with_shells(vec![shell1, shell2]);
+
         assert!(solid.has_cavities());
     }
 
     #[test]
     fn test_solid_outer_shell() {
-        let shell1 = Handle::new(std::sync::Arc::new(TopoDS_Shell::new()));
-        let shell2 = Handle::new(std::sync::Arc::new(TopoDS_Shell::new()));
-        let solid = TopoDS_Solid::with_shells(vec![shell1.clone(), shell2]);
-        
+        let shell1 = Handle::new(std::sync::Arc::new(TopoDsShell::new()));
+        let shell2 = Handle::new(std::sync::Arc::new(TopoDsShell::new()));
+        let solid = TopoDsSolid::with_shells(vec![shell1.clone(), shell2]);
+
         assert_eq!(solid.outer_shell().unwrap().shape_id(), shell1.shape_id());
     }
 
     #[test]
     fn test_solid_cavity_shells() {
-        let shell1 = Handle::new(std::sync::Arc::new(TopoDS_Shell::new()));
-        let shell2 = Handle::new(std::sync::Arc::new(TopoDS_Shell::new()));
-        let shell3 = Handle::new(std::sync::Arc::new(TopoDS_Shell::new()));
-        let solid = TopoDS_Solid::with_shells(vec![shell1, shell2.clone(), shell3.clone()]);
-        
+        let shell1 = Handle::new(std::sync::Arc::new(TopoDsShell::new()));
+        let shell2 = Handle::new(std::sync::Arc::new(TopoDsShell::new()));
+        let shell3 = Handle::new(std::sync::Arc::new(TopoDsShell::new()));
+        let solid = TopoDsSolid::with_shells(vec![shell1, shell2.clone(), shell3.clone()]);
+
         let cavities = solid.cavity_shells();
         assert_eq!(cavities.len(), 2);
         assert_eq!(cavities[0].shape_id(), shell2.shape_id());
@@ -566,39 +538,39 @@ mod tests {
 
     #[test]
     fn test_solid_clear() {
-        let shell = Handle::new(std::sync::Arc::new(TopoDS_Shell::new()));
-        let mut solid = TopoDS_Solid::with_shells(vec![shell]);
+        let shell = Handle::new(std::sync::Arc::new(TopoDsShell::new()));
+        let mut solid = TopoDsSolid::with_shells(vec![shell]);
         assert!(!solid.is_empty());
-        
+
         solid.clear();
         assert!(solid.is_empty());
     }
 
     #[test]
     fn test_solid_shape_id() {
-        let mut solid = TopoDS_Solid::new();
+        let mut solid = TopoDsSolid::new();
         // shape_id is now auto-generated, so it should not be 0
         let initial_id = solid.shape_id();
         assert!(initial_id > 0);
-        
+
         solid.set_shape_id(42);
         assert_eq!(solid.shape_id(), 42);
     }
 
     #[test]
     fn test_solid_mutable() {
-        let mut solid = TopoDS_Solid::new();
+        let mut solid = TopoDsSolid::new();
         assert!(!solid.is_mutable());
-        
+
         solid.set_mutable(true);
         assert!(solid.is_mutable());
     }
 
     #[test]
     fn test_solid_clone() {
-        let mut solid1 = TopoDS_Solid::new();
+        let mut solid1 = TopoDsSolid::new();
         solid1.set_shape_id(10);
-        
+
         let solid2 = solid1.clone();
         assert_eq!(solid2.shape_id(), 10);
         assert_eq!(solid1, solid2);
@@ -606,7 +578,7 @@ mod tests {
 
     #[test]
     fn test_solid_tolerance() {
-        let solid = TopoDS_Solid::with_tolerance(0.01);
+        let solid = TopoDsSolid::with_tolerance(0.01);
         assert_eq!(solid.tolerance(), 0.01);
     }
 }

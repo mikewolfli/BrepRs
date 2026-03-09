@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
-pub struct NCollection_DataMap<K, V> {
+pub struct DataMap<K, V> {
     data: HashMap<K, V>,
 }
 
-impl<K: Hash + Eq, V> NCollection_DataMap<K, V> {
+impl<K: Hash + Eq, V> DataMap<K, V> {
     pub fn new() -> Self {
         Self {
             data: HashMap::new(),
@@ -70,27 +70,27 @@ impl<K: Hash + Eq, V> NCollection_DataMap<K, V> {
         self.data.remove(key)
     }
 
-    pub fn entry(&mut self, key: K) -> std::collections::hash_map::Entry<K, V> {
+    pub fn entry(&mut self, key: K) -> std::collections::hash_map::Entry<'_, K, V> {
         self.data.entry(key)
     }
 
-    pub fn keys(&self) -> std::collections::hash_map::Keys<K, V> {
+    pub fn keys(&self) -> std::collections::hash_map::Keys<'_, K, V> {
         self.data.keys()
     }
 
-    pub fn values(&self) -> std::collections::hash_map::Values<K, V> {
+    pub fn values(&self) -> std::collections::hash_map::Values<'_, K, V> {
         self.data.values()
     }
 
-    pub fn values_mut(&mut self) -> std::collections::hash_map::ValuesMut<K, V> {
+    pub fn values_mut(&mut self) -> std::collections::hash_map::ValuesMut<'_, K, V> {
         self.data.values_mut()
     }
 
-    pub fn iter(&self) -> std::collections::hash_map::Iter<K, V> {
+    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, K, V> {
         self.data.iter()
     }
 
-    pub fn iter_mut(&mut self) -> std::collections::hash_map::IterMut<K, V> {
+    pub fn iter_mut(&mut self) -> std::collections::hash_map::IterMut<'_, K, V> {
         self.data.iter_mut()
     }
 
@@ -101,18 +101,18 @@ impl<K: Hash + Eq, V> NCollection_DataMap<K, V> {
         self.data.retain(f);
     }
 
-    pub fn drain(&mut self) -> std::collections::hash_map::Drain<K, V> {
+    pub fn drain(&mut self) -> std::collections::hash_map::Drain<'_, K, V> {
         self.data.drain()
     }
 }
 
-impl<K: Hash + Eq, V> Default for NCollection_DataMap<K, V> {
+impl<K: Hash + Eq, V> Default for DataMap<K, V> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<K: Hash + Eq + Clone, V: Clone> Clone for NCollection_DataMap<K, V> {
+impl<K: Hash + Eq + Clone, V: Clone> Clone for DataMap<K, V> {
     fn clone(&self) -> Self {
         Self {
             data: self.data.clone(),
@@ -120,27 +120,23 @@ impl<K: Hash + Eq + Clone, V: Clone> Clone for NCollection_DataMap<K, V> {
     }
 }
 
-impl<K: Hash + Eq + std::fmt::Debug, V: std::fmt::Debug> std::fmt::Debug for NCollection_DataMap<K, V> {
+impl<K: Hash + Eq + std::fmt::Debug, V: std::fmt::Debug> std::fmt::Debug for DataMap<K, V> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_map().entries(self.data.iter()).finish()
     }
 }
 
-impl<K: Hash + Eq, V> std::ops::Index<K> for NCollection_DataMap<K, V> {
+impl<K: Hash + Eq, V> std::ops::Index<K> for DataMap<K, V> {
     type Output = V;
 
     fn index(&self, key: K) -> &Self::Output {
-        self.data
-            .get(&key)
-            .expect("key not found in NCollection_DataMap")
+        self.data.get(&key).expect("key not found in DataMap")
     }
 }
 
-impl<K: Hash + Eq, V> std::ops::IndexMut<K> for NCollection_DataMap<K, V> {
+impl<K: Hash + Eq, V> std::ops::IndexMut<K> for DataMap<K, V> {
     fn index_mut(&mut self, key: K) -> &mut Self::Output {
-        self.data
-            .get_mut(&key)
-            .expect("key not found in NCollection_DataMap")
+        self.data.get_mut(&key).expect("key not found in DataMap")
     }
 }
 
@@ -150,14 +146,14 @@ mod tests {
 
     #[test]
     fn test_datamap_creation() {
-        let map: NCollection_DataMap<i32, i32> = NCollection_DataMap::new();
+        let map: DataMap<i32, i32> = DataMap::new();
         assert!(map.is_empty());
         assert_eq!(map.size(), 0);
     }
 
     #[test]
     fn test_datamap_insert() {
-        let mut map = NCollection_DataMap::new();
+        let mut map = DataMap::new();
         assert!(map.insert(1, 10).is_none());
         assert!(map.insert(2, 20).is_none());
         assert_eq!(map.insert(1, 100), Some(10));
@@ -166,7 +162,7 @@ mod tests {
 
     #[test]
     fn test_datamap_contains_key() {
-        let mut map = NCollection_DataMap::new();
+        let mut map = DataMap::new();
         map.insert(1, 10);
         map.insert(2, 20);
         assert!(map.contains_key(&1));
@@ -176,7 +172,7 @@ mod tests {
 
     #[test]
     fn test_datamap_get() {
-        let mut map = NCollection_DataMap::new();
+        let mut map = DataMap::new();
         map.insert(1, 10);
         map.insert(2, 20);
         assert_eq!(map.get(&1), Some(&10));
@@ -186,7 +182,7 @@ mod tests {
 
     #[test]
     fn test_datamap_get_mut() {
-        let mut map = NCollection_DataMap::new();
+        let mut map = DataMap::new();
         map.insert(1, 10);
         if let Some(value) = map.get_mut(&1) {
             *value = 100;
@@ -196,7 +192,7 @@ mod tests {
 
     #[test]
     fn test_datamap_remove() {
-        let mut map = NCollection_DataMap::new();
+        let mut map = DataMap::new();
         map.insert(1, 10);
         map.insert(2, 20);
         assert_eq!(map.remove(&1), Some(10));
@@ -206,7 +202,7 @@ mod tests {
 
     #[test]
     fn test_datamap_clear() {
-        let mut map = NCollection_DataMap::new();
+        let mut map = DataMap::new();
         map.insert(1, 10);
         map.insert(2, 20);
         map.insert(3, 30);
@@ -216,7 +212,7 @@ mod tests {
 
     #[test]
     fn test_datamap_iter() {
-        let mut map = NCollection_DataMap::new();
+        let mut map = DataMap::new();
         map.insert(1, 10);
         map.insert(2, 20);
         map.insert(3, 30);
@@ -226,7 +222,7 @@ mod tests {
 
     #[test]
     fn test_datamap_keys() {
-        let mut map = NCollection_DataMap::new();
+        let mut map = DataMap::new();
         map.insert(1, 10);
         map.insert(2, 20);
         map.insert(3, 30);
@@ -236,7 +232,7 @@ mod tests {
 
     #[test]
     fn test_datamap_values() {
-        let mut map = NCollection_DataMap::new();
+        let mut map = DataMap::new();
         map.insert(1, 10);
         map.insert(2, 20);
         map.insert(3, 30);
@@ -246,7 +242,7 @@ mod tests {
 
     #[test]
     fn test_datamap_clone() {
-        let mut map1 = NCollection_DataMap::new();
+        let mut map1 = DataMap::new();
         map1.insert(1, 10);
         map1.insert(2, 20);
         map1.insert(3, 30);
@@ -259,7 +255,7 @@ mod tests {
 
     #[test]
     fn test_datamap_index() {
-        let mut map = NCollection_DataMap::new();
+        let mut map = DataMap::new();
         map.insert(1, 10);
         map.insert(2, 20);
         assert_eq!(map[1], 10);
@@ -268,7 +264,7 @@ mod tests {
 
     #[test]
     fn test_datamap_index_mut() {
-        let mut map = NCollection_DataMap::new();
+        let mut map = DataMap::new();
         map.insert(1, 10);
         map[1] = 100;
         assert_eq!(map[1], 100);
@@ -276,7 +272,7 @@ mod tests {
 
     #[test]
     fn test_datamap_retain() {
-        let mut map = NCollection_DataMap::new();
+        let mut map = DataMap::new();
         map.insert(1, 10);
         map.insert(2, 20);
         map.insert(3, 30);

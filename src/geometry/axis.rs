@@ -1,4 +1,5 @@
-use crate::geometry::{Point, Direction};
+use crate::foundation::types::StandardReal;
+use crate::geometry::{Direction, Point};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Axis {
@@ -76,24 +77,33 @@ impl Axis {
         }
     }
 
-    pub fn is_co_linear(&self, other: &Axis, angular_tolerance: crate::foundation::types::Standard_Real, linear_tolerance: crate::foundation::types::Standard_Real) -> bool {
-        self.direction.is_co_linear(&other.direction, angular_tolerance) && 
-        self.location.distance(&other.location) <= linear_tolerance
+    pub fn is_co_linear(
+        &self,
+        other: &Axis,
+        angular_tolerance: StandardReal,
+        linear_tolerance: StandardReal,
+    ) -> bool {
+        self.direction
+            .is_co_linear(&other.direction, angular_tolerance)
+            && self.location.distance(&other.location) <= linear_tolerance
     }
 
-    pub fn is_normal(&self, other: &Axis, angular_tolerance: crate::foundation::types::Standard_Real) -> bool {
-        self.direction.is_normal(&other.direction, angular_tolerance)
+    pub fn is_normal(&self, other: &Axis, angular_tolerance: StandardReal) -> bool {
+        self.direction
+            .is_normal(&other.direction, angular_tolerance)
     }
 
-    pub fn is_opposite(&self, other: &Axis, angular_tolerance: crate::foundation::types::Standard_Real) -> bool {
-        self.direction.is_opposite(&other.direction, angular_tolerance)
+    pub fn is_opposite(&self, other: &Axis, angular_tolerance: StandardReal) -> bool {
+        self.direction
+            .is_opposite(&other.direction, angular_tolerance)
     }
 
-    pub fn is_parallel(&self, other: &Axis, angular_tolerance: crate::foundation::types::Standard_Real) -> bool {
-        self.direction.is_parallel(&other.direction, angular_tolerance)
+    pub fn is_parallel(&self, other: &Axis, angular_tolerance: StandardReal) -> bool {
+        self.direction
+            .is_parallel(&other.direction, angular_tolerance)
     }
 
-    pub fn angle(&self, other: &Axis) -> crate::foundation::types::Standard_Real {
+    pub fn angle(&self, other: &Axis) -> StandardReal {
         self.direction.angle(&other.direction)
     }
 
@@ -121,23 +131,23 @@ impl Axis {
         }
     }
 
-    pub fn rotate(&mut self, axis: &Axis, angle: crate::foundation::types::Standard_Real) {
+    pub fn rotate(&mut self, axis: &Axis, angle: StandardReal) {
         self.location.rotate(axis, angle);
         self.direction.rotate(axis, angle);
     }
 
-    pub fn rotated(&self, axis: &Axis, angle: crate::foundation::types::Standard_Real) -> Axis {
+    pub fn rotated(&self, axis: &Axis, angle: StandardReal) -> Axis {
         Axis {
             location: self.location.rotated(axis, angle),
             direction: self.direction.rotated(axis, angle),
         }
     }
 
-    pub fn scale(&mut self, point: &Point, factor: crate::foundation::types::Standard_Real) {
+    pub fn scale(&mut self, point: &Point, factor: StandardReal) {
         self.location.scale(point, factor);
     }
 
-    pub fn scaled(&self, point: &Point, factor: crate::foundation::types::Standard_Real) -> Axis {
+    pub fn scaled(&self, point: &Point, factor: StandardReal) -> Axis {
         Axis {
             location: self.location.scaled(point, factor),
             direction: self.direction,

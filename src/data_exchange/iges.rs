@@ -1,9 +1,9 @@
-use std::fs::{File, OpenOptions}; 
-use std::io::{BufReader, BufWriter, BufRead, Write}; 
-use std::path::Path; 
+use std::fs::{File, OpenOptions};
+use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::path::Path;
 
-use crate::topology::{topods_shape::TopoDS_Shape, shape_enum::ShapeType}; 
-use crate::foundation::handle::Handle; 
+use crate::foundation::handle::Handle;
+use crate::topology::{shape_enum::ShapeType, topods_shape::TopoDsShape};
 
 /// IGES file format error types
 #[derive(Debug)]
@@ -121,32 +121,32 @@ impl IgesReader {
     }
 
     /// Read an IGES file and return a shape
-    pub fn read(&self) -> Result<TopoDS_Shape, IgesError> {
+    pub fn read(&self) -> Result<TopoDsShape, IgesError> {
         let path = Path::new(&self.filename);
         let file = File::open(path)?;
         let mut reader = BufReader::new(file);
-        
+
         // Read and parse the IGES file
         self.parse_iges_file(&mut reader)
     }
 
     /// Parse an IGES file
-    fn parse_iges_file(&self, reader: &mut BufReader<File>) -> Result<TopoDS_Shape, IgesError> {
+    fn parse_iges_file(&self, reader: &mut BufReader<File>) -> Result<TopoDsShape, IgesError> {
         // Read the header section
         let _header = self.read_header(reader)?;
-        
+
         // Read the directory section
         let directory = self.read_directory_section(reader)?;
-        
+
         // Read the parameter section
         let parameters = self.read_parameter_section(reader)?;
-        
+
         // Read the trailer section
         self.read_trailer_section(reader)?;
-        
+
         // Create shape from parsed data
         let shape = self.create_shape_from_data(&directory, &parameters)?;
-        
+
         Ok(shape)
     }
 
@@ -154,7 +154,7 @@ impl IgesReader {
     fn read_header(&self, reader: &mut BufReader<File>) -> Result<String, IgesError> {
         let mut header = String::new();
         let mut line = String::new();
-        
+
         // Read the header section (first 80 lines)
         for _ in 0..80 {
             if reader.read_line(&mut line)? == 0 {
@@ -163,15 +163,18 @@ impl IgesReader {
             header.push_str(&line);
             line.clear();
         }
-        
+
         Ok(header)
     }
 
     /// Read the IGES file directory section
-    fn read_directory_section(&self, reader: &mut BufReader<File>) -> Result<Vec<String>, IgesError> {
+    fn read_directory_section(
+        &self,
+        reader: &mut BufReader<File>,
+    ) -> Result<Vec<String>, IgesError> {
         let mut directory = Vec::new();
         let mut line = String::new();
-        
+
         // Read directory entries until we reach the parameter section
         while reader.read_line(&mut line)? > 0 {
             let trimmed = line.trim();
@@ -179,24 +182,27 @@ impl IgesReader {
                 line.clear();
                 continue;
             }
-            
+
             // Check for the start of the parameter section
             if trimmed.starts_with("S") {
                 break;
             }
-            
+
             directory.push(line.clone());
             line.clear();
         }
-        
+
         Ok(directory)
     }
 
     /// Read the IGES file parameter section
-    fn read_parameter_section(&self, reader: &mut BufReader<File>) -> Result<Vec<String>, IgesError> {
+    fn read_parameter_section(
+        &self,
+        reader: &mut BufReader<File>,
+    ) -> Result<Vec<String>, IgesError> {
         let mut parameters = Vec::new();
         let mut line = String::new();
-        
+
         // Read parameter entries until we reach the trailer section
         while reader.read_line(&mut line)? > 0 {
             let trimmed = line.trim();
@@ -204,36 +210,40 @@ impl IgesReader {
                 line.clear();
                 continue;
             }
-            
+
             // Check for the start of the trailer section
             if trimmed.starts_with("T") {
                 break;
             }
-            
+
             parameters.push(line.clone());
             line.clear();
         }
-        
+
         Ok(parameters)
     }
 
     /// Read the IGES file trailer section
     fn read_trailer_section(&self, reader: &mut BufReader<File>) -> Result<(), IgesError> {
         let mut line = String::new();
-        
+
         // Read the trailer section
         while reader.read_line(&mut line)? > 0 {
             line.clear();
         }
-        
+
         Ok(())
     }
 
     /// Create a shape from parsed IGES data
-    fn create_shape_from_data(&self, _directory: &[String], _parameters: &[String]) -> Result<TopoDS_Shape, IgesError> {
+    fn create_shape_from_data(
+        &self,
+        _directory: &[String],
+        _parameters: &[String],
+    ) -> Result<TopoDsShape, IgesError> {
         // This is a placeholder implementation
         // In a real implementation, we would create shapes from the parsed data
-        let shape = TopoDS_Shape::new(ShapeType::Compound);
+        let shape = TopoDsShape::new(ShapeType::Compound);
         Ok(shape)
     }
 
@@ -283,7 +293,7 @@ impl IgesWriter {
     }
 
     /// Write a shape to an IGES file
-    pub fn write(&self, shape: &TopoDS_Shape) -> Result<(), IgesError> {
+    pub fn write(&self, shape: &TopoDsShape) -> Result<(), IgesError> {
         let path = Path::new(&self.filename);
         let file = OpenOptions::new()
             .write(true)
@@ -291,19 +301,19 @@ impl IgesWriter {
             .truncate(true)
             .open(path)?;
         let mut writer = BufWriter::new(file);
-        
+
         // Write the header section
         self.write_header(&mut writer)?;
-        
+
         // Write the directory section
         self.write_directory_section(&mut writer, shape)?;
-        
+
         // Write the parameter section
         self.write_parameter_section(&mut writer, shape)?;
-        
+
         // Write the trailer section
         self.write_trailer_section(&mut writer)?;
-        
+
         Ok(())
     }
 
@@ -318,28 +328,36 @@ impl IgesWriter {
         writeln!(writer, "{:80}", "")?;
         writeln!(writer, "{:80}", "")?;
         writeln!(writer, "{:80}", "")?;
-        
+
         // Write more header lines (total 80 lines)
         for _ in 8..80 {
             writeln!(writer, "{:80}", "")?;
         }
-        
+
         Ok(())
     }
 
     /// Write the IGES file directory section
-    fn write_directory_section(&self, _writer: &mut BufWriter<File>, _shape: &TopoDS_Shape) -> Result<(), IgesError> {
+    fn write_directory_section(
+        &self,
+        _writer: &mut BufWriter<File>,
+        _shape: &TopoDsShape,
+    ) -> Result<(), IgesError> {
         // This is a placeholder implementation
         // In a real implementation, we would write directory entries for each entity
-        
+
         Ok(())
     }
 
     /// Write the IGES file parameter section
-    fn write_parameter_section(&self, _writer: &mut BufWriter<File>, _shape: &TopoDS_Shape) -> Result<(), IgesError> {
+    fn write_parameter_section(
+        &self,
+        _writer: &mut BufWriter<File>,
+        _shape: &TopoDsShape,
+    ) -> Result<(), IgesError> {
         // This is a placeholder implementation
         // In a real implementation, we would write parameter entries for each entity
-        
+
         Ok(())
     }
 
@@ -366,10 +384,10 @@ mod tests {
     #[test]
     fn test_iges_reader_settings() {
         let mut reader = IgesReader::new("test.iges");
-        
+
         reader.set_tolerance(1e-4);
         assert_eq!(reader.tolerance(), 1e-4);
-        
+
         reader.set_read_colors(true);
         assert!(reader.read_colors());
     }
@@ -384,10 +402,10 @@ mod tests {
     #[test]
     fn test_iges_writer_settings() {
         let mut writer = IgesWriter::new("test.iges");
-        
+
         writer.set_precision(10);
         assert_eq!(writer.precision(), 10);
-        
+
         writer.set_write_colors(true);
         assert!(writer.write_colors());
     }
@@ -406,20 +424,20 @@ mod tests {
     fn test_iges_read_write_cycle() {
         // This is a placeholder test
         // In a real implementation, we would test reading and writing an IGES file
-        let shape = TopoDS_Shape::new(ShapeType::Compound);
-        
+        let shape = TopoDsShape::new(ShapeType::Compound);
+
         let writer = IgesWriter::new("test_iges_cycle.iges");
         let write_result = writer.write(&shape);
         assert!(write_result.is_ok());
-        
+
         let reader = IgesReader::new("test_iges_cycle.iges");
         let read_result = reader.read();
-        
+
         // Clean up
         if Path::new("test_iges_cycle.iges").exists() {
             let _ = fs::remove_file("test_iges_cycle.iges");
         }
-        
+
         // The read operation should succeed (even with placeholder implementation)
         assert!(read_result.is_ok());
     }

@@ -1,28 +1,28 @@
-use crate::foundation::handle::Handle;
-use crate::topology::shape_enum::ShapeType;
-use crate::topology::topods_location::TopoDS_Location;
+
 use crate::geometry::{Point, Transform};
+use crate::topology::shape_enum::ShapeType;
+use crate::topology::topods_location::TopoDsLocation;
 use std::sync::atomic::{AtomicI32, Ordering};
 
 /// Global counter for generating unique shape IDs
 static SHAPE_ID_COUNTER: AtomicI32 = AtomicI32::new(1);
 
 /// Base class for all topological shapes
-/// 
+///
 /// This is the abstract base class for all topological shapes in the
 /// boundary representation (BRep) model. It provides the basic
 /// functionality common to all shapes, including type identification,
 /// location transformation, and shape hierarchy management.
 #[derive(Debug, Clone)]
-pub struct TopoDS_Shape {
+pub struct TopoDsShape {
     shape_type: ShapeType,
-    location: Option<TopoDS_Location>,
+    location: Option<TopoDsLocation>,
     orientation: i32,
     mutable: bool,
     shape_id: i32,
 }
 
-impl TopoDS_Shape {
+impl TopoDsShape {
     /// Create a new shape with the specified type
     pub fn new(shape_type: ShapeType) -> Self {
         Self {
@@ -85,12 +85,12 @@ impl TopoDS_Shape {
     }
 
     /// Get the location of the shape
-    pub fn location(&self) -> Option<&TopoDS_Location> {
+    pub fn location(&self) -> Option<&TopoDsLocation> {
         self.location.as_ref()
     }
 
     /// Set the location of the shape
-    pub fn set_location(&mut self, location: TopoDS_Location) {
+    pub fn set_location(&mut self, location: TopoDsLocation) {
         self.location = Some(location);
     }
 
@@ -125,12 +125,12 @@ impl TopoDS_Shape {
     }
 
     /// Check if this shape is more complex than another shape
-    pub fn is_more_complex(&self, other: &TopoDS_Shape) -> bool {
+    pub fn is_more_complex(&self, other: &TopoDsShape) -> bool {
         self.shape_type.is_more_complex_or_equal(&other.shape_type)
     }
 
     /// Check if this shape is less complex than another shape
-    pub fn is_less_complex(&self, other: &TopoDS_Shape) -> bool {
+    pub fn is_less_complex(&self, other: &TopoDsShape) -> bool {
         self.shape_type.is_less_complex(&other.shape_type)
     }
 
@@ -155,19 +155,19 @@ impl TopoDS_Shape {
     }
 }
 
-impl Default for TopoDS_Shape {
+impl Default for TopoDsShape {
     fn default() -> Self {
         Self::new(ShapeType::Compound)
     }
 }
 
-impl PartialEq for TopoDS_Shape {
+impl PartialEq for TopoDsShape {
     fn eq(&self, other: &Self) -> bool {
         self.shape_id == other.shape_id
     }
 }
 
-impl Eq for TopoDS_Shape {}
+impl Eq for TopoDsShape {}
 
 #[cfg(test)]
 mod tests {
@@ -175,7 +175,7 @@ mod tests {
 
     #[test]
     fn test_shape_creation() {
-        let shape = TopoDS_Shape::new(ShapeType::Vertex);
+        let shape = TopoDsShape::new(ShapeType::Vertex);
         assert!(shape.is_vertex());
         assert!(!shape.is_edge());
         assert_eq!(shape.type_name(), "Vertex");
@@ -183,10 +183,10 @@ mod tests {
 
     #[test]
     fn test_shape_type_checks() {
-        let vertex = TopoDS_Shape::new(ShapeType::Vertex);
-        let edge = TopoDS_Shape::new(ShapeType::Edge);
-        let face = TopoDS_Shape::new(ShapeType::Face);
-        let solid = TopoDS_Shape::new(ShapeType::Solid);
+        let vertex = TopoDsShape::new(ShapeType::Vertex);
+        let edge = TopoDsShape::new(ShapeType::Edge);
+        let face = TopoDsShape::new(ShapeType::Face);
+        let solid = TopoDsShape::new(ShapeType::Solid);
 
         assert!(vertex.is_vertex());
         assert!(edge.is_edge());
@@ -196,9 +196,9 @@ mod tests {
 
     #[test]
     fn test_shape_complexity() {
-        let vertex = TopoDS_Shape::new(ShapeType::Vertex);
-        let edge = TopoDS_Shape::new(ShapeType::Edge);
-        let face = TopoDS_Shape::new(ShapeType::Face);
+        let vertex = TopoDsShape::new(ShapeType::Vertex);
+        let edge = TopoDsShape::new(ShapeType::Edge);
+        let face = TopoDsShape::new(ShapeType::Face);
 
         assert!(face.is_more_complex(&vertex));
         assert!(vertex.is_less_complex(&face));
@@ -207,39 +207,39 @@ mod tests {
 
     #[test]
     fn test_shape_orientation() {
-        let mut shape = TopoDS_Shape::new(ShapeType::Edge);
+        let mut shape = TopoDsShape::new(ShapeType::Edge);
         assert_eq!(shape.orientation(), 1);
-        
+
         shape.set_orientation(-1);
         assert_eq!(shape.orientation(), -1);
     }
 
     #[test]
     fn test_shape_mutable() {
-        let mut shape = TopoDS_Shape::new(ShapeType::Face);
+        let mut shape = TopoDsShape::new(ShapeType::Face);
         assert!(!shape.is_mutable());
-        
+
         shape.set_mutable(true);
         assert!(shape.is_mutable());
     }
 
     #[test]
     fn test_shape_id() {
-        let mut shape = TopoDS_Shape::new(ShapeType::Solid);
+        let mut shape = TopoDsShape::new(ShapeType::Solid);
         // shape_id is now auto-generated, so it should not be 0
         let initial_id = shape.shape_id();
         assert!(initial_id > 0);
-        
+
         shape.set_shape_id(42);
         assert_eq!(shape.shape_id(), 42);
     }
 
     #[test]
     fn test_shape_clone() {
-        let mut shape1 = TopoDS_Shape::new(ShapeType::Edge);
+        let mut shape1 = TopoDsShape::new(ShapeType::Edge);
         shape1.set_shape_id(10);
         shape1.set_orientation(-1);
-        
+
         let shape2 = shape1.clone();
         assert_eq!(shape2.shape_id(), 10);
         assert_eq!(shape2.orientation(), -1);

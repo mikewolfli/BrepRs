@@ -1,6 +1,8 @@
 use crate::foundation::handle::Handle;
-use crate::topology::{topods_shape::TopoDS_Shape, topods_vertex::TopoDS_Vertex, topods_location::TopoDS_Location};
 use crate::geometry::{Point, Vector};
+use crate::topology::{
+    topods_location::TopoDsLocation, topods_shape::TopoDsShape, topods_vertex::TopoDsVertex,
+};
 
 /// Represents an edge in topological structure
 ///
@@ -8,19 +10,19 @@ use crate::geometry::{Point, Vector};
 /// degenerate (both vertices are the same) or can be open
 /// (infinite curve) or closed (loop).
 #[derive(Debug)]
-pub struct TopoDS_Edge {
-    shape: TopoDS_Shape,
+pub struct TopoDsEdge {
+    shape: TopoDsShape,
     curve: Option<Handle<dyn Curve>>,
-    vertices: [Handle<TopoDS_Vertex>; 2],
+    vertices: [Handle<TopoDsVertex>; 2],
     tolerance: f64,
     orientation: i32,
 }
 
-impl TopoDS_Edge {
+impl TopoDsEdge {
     /// Create a new edge with two vertices
-    pub fn new(vertex1: Handle<TopoDS_Vertex>, vertex2: Handle<TopoDS_Vertex>) -> Self {
+    pub fn new(vertex1: Handle<TopoDsVertex>, vertex2: Handle<TopoDsVertex>) -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Edge),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Edge),
             curve: None,
             vertices: [vertex1, vertex2],
             tolerance: 0.001,
@@ -30,12 +32,12 @@ impl TopoDS_Edge {
 
     /// Create a new edge with specified curve
     pub fn with_curve(
-        vertex1: Handle<TopoDS_Vertex>,
-        vertex2: Handle<TopoDS_Vertex>,
+        vertex1: Handle<TopoDsVertex>,
+        vertex2: Handle<TopoDsVertex>,
         curve: Handle<dyn Curve>,
     ) -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Edge),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Edge),
             curve: Some(curve),
             vertices: [vertex1, vertex2],
             tolerance: 0.001,
@@ -45,12 +47,12 @@ impl TopoDS_Edge {
 
     /// Create a new edge with tolerance
     pub fn with_tolerance(
-        vertex1: Handle<TopoDS_Vertex>,
-        vertex2: Handle<TopoDS_Vertex>,
+        vertex1: Handle<TopoDsVertex>,
+        vertex2: Handle<TopoDsVertex>,
         tolerance: f64,
     ) -> Self {
         Self {
-            shape: TopoDS_Shape::new(crate::topology::shape_enum::ShapeType::Edge),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Edge),
             curve: None,
             vertices: [vertex1, vertex2],
             tolerance,
@@ -59,17 +61,17 @@ impl TopoDS_Edge {
     }
 
     /// Get the first vertex
-    pub fn vertex1(&self) -> &Handle<TopoDS_Vertex> {
+    pub fn vertex1(&self) -> &Handle<TopoDsVertex> {
         &self.vertices[0]
     }
 
     /// Get the second vertex
-    pub fn vertex2(&self) -> &Handle<TopoDS_Vertex> {
+    pub fn vertex2(&self) -> &Handle<TopoDsVertex> {
         &self.vertices[1]
     }
 
     /// Get both vertices as a slice
-    pub fn vertices(&self) -> &[Handle<TopoDS_Vertex>] {
+    pub fn vertices(&self) -> &[Handle<TopoDsVertex>] {
         &self.vertices
     }
 
@@ -84,7 +86,7 @@ impl TopoDS_Edge {
     }
 
     /// Set the vertices of the edge
-    pub fn set_vertices(&mut self, vertices: [Handle<TopoDS_Vertex>; 2]) {
+    pub fn set_vertices(&mut self, vertices: [Handle<TopoDsVertex>; 2]) {
         self.vertices = vertices;
     }
 
@@ -109,22 +111,22 @@ impl TopoDS_Edge {
     }
 
     /// Get the shape base
-    pub fn shape(&self) -> &TopoDS_Shape {
+    pub fn shape(&self) -> &TopoDsShape {
         &self.shape
     }
 
     /// Get mutable reference to shape base
-    pub fn shape_mut(&mut self) -> &mut TopoDS_Shape {
+    pub fn shape_mut(&mut self) -> &mut TopoDsShape {
         &mut self.shape
     }
 
     /// Get the location of the edge
-    pub fn location(&self) -> Option<&TopoDS_Location> {
+    pub fn location(&self) -> Option<&TopoDsLocation> {
         self.shape.location()
     }
 
     /// Set the location of the edge
-    pub fn set_location(&mut self, location: TopoDS_Location) {
+    pub fn set_location(&mut self, location: TopoDsLocation) {
         self.shape.set_location(location);
     }
 
@@ -146,11 +148,11 @@ impl TopoDS_Edge {
 
         let v1 = self.vertices[0].point();
         let v2 = self.vertices[1].point();
-        
+
         let dx = v2.x - v1.x;
         let dy = v2.y - v1.y;
         let dz = v2.z - v1.z;
-        
+
         (dx * dx + dy * dy + dz * dz).sqrt()
     }
 
@@ -162,7 +164,7 @@ impl TopoDS_Edge {
 
         let v1 = self.vertices[0].point();
         let v2 = self.vertices[1].point();
-        
+
         Point::new(
             (v1.x + v2.x) / 2.0,
             (v1.y + v2.y) / 2.0,
@@ -178,12 +180,8 @@ impl TopoDS_Edge {
 
         let v1 = self.vertices[0].point();
         let v2 = self.vertices[1].point();
-        
-        Vector::new(
-            v2.x - v1.x,
-            v2.y - v1.y,
-            v2.z - v1.z,
-        )
+
+        Vector::new(v2.x - v1.x, v2.y - v1.y, v2.z - v1.z)
     }
 
     /// Get the unique identifier of the edge
@@ -214,17 +212,17 @@ impl TopoDS_Edge {
 
         let v1 = self.vertices[0].point();
         let v2 = self.vertices[1].point();
-        
+
         let edge_vec = Vector::new(v2.x - v1.x, v2.y - v1.y, v2.z - v1.z);
         let point_vec = Vector::new(point.x - v1.x, point.y - v1.y, point.z - v1.z);
-        
+
         let cross = edge_vec.cross(&point_vec);
         let dot = edge_vec.dot(&point_vec);
-        
+
         if cross.magnitude() < self.tolerance {
             return dot >= 0.0 && dot <= edge_vec.magnitude();
         }
-        
+
         false
     }
 
@@ -236,16 +234,16 @@ impl TopoDS_Edge {
 
         let v1 = self.vertices[0].point();
         let v2 = self.vertices[1].point();
-        
+
         let edge_vec = Vector::new(v2.x - v1.x, v2.y - v1.y, v2.z - v1.z);
         let point_vec = Vector::new(point.x - v1.x, point.y - v1.y, point.z - v1.z);
-        
+
         let edge_len_sq = edge_vec.dot(&edge_vec);
-        
+
         if edge_len_sq < self.tolerance * self.tolerance {
             return None;
         }
-        
+
         Some(edge_vec.dot(&point_vec) / edge_len_sq)
     }
 }
@@ -254,22 +252,22 @@ impl TopoDS_Edge {
 pub trait Curve: std::fmt::Debug {
     /// Get the point on the curve at a parameter value
     fn value(&self, parameter: f64) -> Point;
-    
+
     /// Get the derivative (tangent) at a parameter value
     fn derivative(&self, parameter: f64) -> Vector;
-    
+
     /// Get the parameter range of the curve
     fn parameter_range(&self) -> (f64, f64);
 }
 
-impl Default for TopoDS_Edge {
+impl Default for TopoDsEdge {
     fn default() -> Self {
-        let origin = std::sync::Arc::new(TopoDS_Vertex::new(Point::origin()));
+        let origin = std::sync::Arc::new(TopoDsVertex::new(Point::origin()));
         Self::new(Handle::new(origin.clone()), Handle::new(origin))
     }
 }
 
-impl Clone for TopoDS_Edge {
+impl Clone for TopoDsEdge {
     fn clone(&self) -> Self {
         Self {
             shape: self.shape.clone(),
@@ -281,7 +279,7 @@ impl Clone for TopoDS_Edge {
     }
 }
 
-impl PartialEq for TopoDS_Edge {
+impl PartialEq for TopoDsEdge {
     fn eq(&self, other: &Self) -> bool {
         self.shape_id() == other.shape_id()
     }
@@ -293,10 +291,14 @@ mod tests {
 
     #[test]
     fn test_edge_creation() {
-        let v1 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(0.0, 0.0, 0.0))));
-        let v2 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(1.0, 0.0, 0.0))));
-        let edge = TopoDS_Edge::new(v1.clone(), v2.clone());
-        
+        let v1 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            0.0, 0.0, 0.0,
+        ))));
+        let v2 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            1.0, 0.0, 0.0,
+        ))));
+        let edge = TopoDsEdge::new(v1.clone(), v2.clone());
+
         assert!(!edge.is_degenerate());
         assert_eq!(edge.vertex1(), &v1);
         assert_eq!(edge.vertex2(), &v2);
@@ -304,29 +306,39 @@ mod tests {
 
     #[test]
     fn test_edge_degenerate() {
-        let v = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(1.0, 0.0, 0.0))));
-        let edge = TopoDS_Edge::new(v.clone(), v.clone());
-        
+        let v = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            1.0, 0.0, 0.0,
+        ))));
+        let edge = TopoDsEdge::new(v.clone(), v.clone());
+
         assert!(edge.is_degenerate());
         assert_eq!(edge.length(), 0.0);
     }
 
     #[test]
     fn test_edge_length() {
-        let v1 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(0.0, 0.0, 0.0))));
-        let v2 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(3.0, 0.0, 0.0))));
-        let edge = TopoDS_Edge::new(v1.clone(), v2.clone());
-        
+        let v1 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            0.0, 0.0, 0.0,
+        ))));
+        let v2 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            3.0, 0.0, 0.0,
+        ))));
+        let edge = TopoDsEdge::new(v1.clone(), v2.clone());
+
         let length = edge.length();
         assert!((length - 3.0).abs() < 0.001);
     }
 
     #[test]
     fn test_edge_midpoint() {
-        let v1 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(0.0, 0.0, 0.0))));
-        let v2 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(2.0, 0.0, 0.0))));
-        let edge = TopoDS_Edge::new(v1.clone(), v2.clone());
-        
+        let v1 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            0.0, 0.0, 0.0,
+        ))));
+        let v2 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            2.0, 0.0, 0.0,
+        ))));
+        let edge = TopoDsEdge::new(v1.clone(), v2.clone());
+
         let midpoint = edge.midpoint();
         assert!((midpoint.x - 1.0).abs() < 0.001);
         assert!((midpoint.y - 0.0).abs() < 0.001);
@@ -334,10 +346,14 @@ mod tests {
 
     #[test]
     fn test_edge_direction() {
-        let v1 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(0.0, 0.0, 0.0))));
-        let v2 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(1.0, 1.0, 0.0))));
-        let edge = TopoDS_Edge::new(v1.clone(), v2.clone());
-        
+        let v1 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            0.0, 0.0, 0.0,
+        ))));
+        let v2 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            1.0, 1.0, 0.0,
+        ))));
+        let edge = TopoDsEdge::new(v1.clone(), v2.clone());
+
         let direction = edge.direction();
         assert!((direction.x - 1.0).abs() < 0.001);
         assert!((direction.y - 1.0).abs() < 0.001);
@@ -346,34 +362,46 @@ mod tests {
 
     #[test]
     fn test_edge_tolerance() {
-        let v1 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(0.0, 0.0, 0.0))));
-        let v2 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(1.0, 0.0, 0.0))));
-        let edge = TopoDS_Edge::with_tolerance(v1.clone(), v2.clone(), 0.01);
-        
+        let v1 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            0.0, 0.0, 0.0,
+        ))));
+        let v2 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            1.0, 0.0, 0.0,
+        ))));
+        let edge = TopoDsEdge::with_tolerance(v1.clone(), v2.clone(), 0.01);
+
         assert_eq!(edge.tolerance(), 0.01);
     }
 
     #[test]
     fn test_edge_shape_id() {
-        let v1 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(0.0, 0.0, 0.0))));
-        let v2 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(1.0, 0.0, 0.0))));
-        let mut edge = TopoDS_Edge::new(v1.clone(), v2.clone());
-        
+        let v1 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            0.0, 0.0, 0.0,
+        ))));
+        let v2 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            1.0, 0.0, 0.0,
+        ))));
+        let mut edge = TopoDsEdge::new(v1.clone(), v2.clone());
+
         // shape_id is now auto-generated, so it should not be 0
         let initial_id = edge.shape_id();
         assert!(initial_id > 0);
-        
+
         edge.set_shape_id(42);
         assert_eq!(edge.shape_id(), 42);
     }
 
     #[test]
     fn test_edge_clone() {
-        let v1 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(0.0, 0.0, 0.0))));
-        let v2 = Handle::new(std::sync::Arc::new(TopoDS_Vertex::new(Point::new(1.0, 0.0, 0.0))));
-        let mut edge1 = TopoDS_Edge::new(v1.clone(), v2.clone());
+        let v1 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            0.0, 0.0, 0.0,
+        ))));
+        let v2 = Handle::new(std::sync::Arc::new(TopoDsVertex::new(Point::new(
+            1.0, 0.0, 0.0,
+        ))));
+        let mut edge1 = TopoDsEdge::new(v1.clone(), v2.clone());
         edge1.set_shape_id(10);
-        
+
         let edge2 = edge1.clone();
         assert_eq!(edge2.shape_id(), 10);
         assert_eq!(edge1, edge2);

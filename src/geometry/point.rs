@@ -1,14 +1,14 @@
-use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point {
-    pub x: Standard_Real,
-    pub y: Standard_Real,
-    pub z: Standard_Real,
+    pub x: StandardReal,
+    pub y: StandardReal,
+    pub z: StandardReal,
 }
 
 impl Point {
-    pub fn new(x: Standard_Real, y: Standard_Real, z: Standard_Real) -> Self {
+    pub fn new(x: StandardReal, y: StandardReal, z: StandardReal) -> Self {
         Self { x, y, z }
     }
 
@@ -20,55 +20,55 @@ impl Point {
         }
     }
 
-    pub fn set_x(&mut self, x: Standard_Real) {
+    pub fn set_x(&mut self, x: StandardReal) {
         self.x = x;
     }
 
-    pub fn set_y(&mut self, y: Standard_Real) {
+    pub fn set_y(&mut self, y: StandardReal) {
         self.y = y;
     }
 
-    pub fn set_z(&mut self, z: Standard_Real) {
+    pub fn set_z(&mut self, z: StandardReal) {
         self.z = z;
     }
 
-    pub fn set_coord(&mut self, x: Standard_Real, y: Standard_Real, z: Standard_Real) {
+    pub fn set_coord(&mut self, x: StandardReal, y: StandardReal, z: StandardReal) {
         self.x = x;
         self.y = y;
         self.z = z;
     }
 
-    pub fn coord(&self) -> (Standard_Real, Standard_Real, Standard_Real) {
+    pub fn coord(&self) -> (StandardReal, StandardReal, StandardReal) {
         (self.x, self.y, self.z)
     }
 
-    pub fn x(&self) -> Standard_Real {
+    pub fn x(&self) -> StandardReal {
         self.x
     }
 
-    pub fn y(&self) -> Standard_Real {
+    pub fn y(&self) -> StandardReal {
         self.y
     }
 
-    pub fn z(&self) -> Standard_Real {
+    pub fn z(&self) -> StandardReal {
         self.z
     }
 
-    pub fn distance(&self, other: &Point) -> Standard_Real {
+    pub fn distance(&self, other: &Point) -> StandardReal {
         let dx = self.x - other.x;
         let dy = self.y - other.y;
         let dz = self.z - other.z;
         (dx * dx + dy * dy + dz * dz).sqrt()
     }
 
-    pub fn square_distance(&self, other: &Point) -> Standard_Real {
+    pub fn square_distance(&self, other: &Point) -> StandardReal {
         let dx = self.x - other.x;
         let dy = self.y - other.y;
         let dz = self.z - other.z;
         dx * dx + dy * dy + dz * dz
     }
 
-    pub fn is_equal(&self, other: &Point, tolerance: Standard_Real) -> bool {
+    pub fn is_equal(&self, other: &Point, tolerance: StandardReal) -> bool {
         self.distance(other) <= tolerance
     }
 
@@ -119,14 +119,14 @@ impl Point {
         }
     }
 
-    pub fn rotate(&mut self, axis: &crate::geometry::Axis, angle: Standard_Real) {
+    pub fn rotate(&mut self, axis: &crate::geometry::Axis, angle: StandardReal) {
         let result = self.rotated(axis, angle);
         self.x = result.x;
         self.y = result.y;
         self.z = result.z;
     }
 
-    pub fn rotated(&self, axis: &crate::geometry::Axis, angle: Standard_Real) -> Point {
+    pub fn rotated(&self, axis: &crate::geometry::Axis, angle: StandardReal) -> Point {
         let origin = &axis.location;
         let direction = &axis.direction;
 
@@ -150,13 +150,13 @@ impl Point {
         }
     }
 
-    pub fn scale(&mut self, point: &Point, factor: Standard_Real) {
+    pub fn scale(&mut self, point: &Point, factor: StandardReal) {
         self.x = point.x + factor * (self.x - point.x);
         self.y = point.y + factor * (self.y - point.y);
         self.z = point.z + factor * (self.z - point.z);
     }
 
-    pub fn scaled(&self, point: &Point, factor: Standard_Real) -> Point {
+    pub fn scaled(&self, point: &Point, factor: StandardReal) -> Point {
         Point {
             x: point.x + factor * (self.x - point.x),
             y: point.y + factor * (self.y - point.y),
@@ -190,7 +190,7 @@ impl Point {
         )
     }
 
-    pub fn barycenter(&self, other: &Point, alpha: Standard_Real) -> Point {
+    pub fn barycenter(&self, other: &Point, alpha: StandardReal) -> Point {
         Point {
             x: self.x * (1.0 - alpha) + other.x * alpha,
             y: self.y * (1.0 - alpha) + other.y * alpha,

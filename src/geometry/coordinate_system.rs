@@ -1,5 +1,5 @@
-use crate::foundation::types::{Standard_Real, STANDARD_REAL_EPSILON};
-use crate::geometry::{Point, Direction, Axis, Transform};
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
+use crate::geometry::{Axis, Direction, Point, Transform};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CoordinateSystem {
@@ -46,7 +46,11 @@ impl CoordinateSystem {
         }
     }
 
-    pub fn from_point_direction_xdir(location: Point, direction: Direction, x_direction: Direction) -> Self {
+    pub fn from_point_direction_xdir(
+        location: Point,
+        direction: Direction,
+        x_direction: Direction,
+    ) -> Self {
         let y_direction = direction.cross(&x_direction).normalized();
         Self {
             location,
@@ -153,25 +157,34 @@ impl CoordinateSystem {
         }
     }
 
-    pub fn angle(&self, other: &CoordinateSystem) -> Standard_Real {
+    pub fn angle(&self, other: &CoordinateSystem) -> StandardReal {
         self.direction.angle(&other.direction)
     }
 
-    pub fn is_coaxial(&self, other: &CoordinateSystem, angular_tolerance: Standard_Real, linear_tolerance: Standard_Real) -> bool {
-        self.direction.is_co_linear(&other.direction, angular_tolerance) &&
-        self.location.distance(&other.location) <= linear_tolerance
+    pub fn is_coaxial(
+        &self,
+        other: &CoordinateSystem,
+        angular_tolerance: StandardReal,
+        linear_tolerance: StandardReal,
+    ) -> bool {
+        self.direction
+            .is_co_linear(&other.direction, angular_tolerance)
+            && self.location.distance(&other.location) <= linear_tolerance
     }
 
-    pub fn is_opposite(&self, other: &CoordinateSystem, angular_tolerance: Standard_Real) -> bool {
-        self.direction.is_opposite(&other.direction, angular_tolerance)
+    pub fn is_opposite(&self, other: &CoordinateSystem, angular_tolerance: StandardReal) -> bool {
+        self.direction
+            .is_opposite(&other.direction, angular_tolerance)
     }
 
-    pub fn is_parallel(&self, other: &CoordinateSystem, angular_tolerance: Standard_Real) -> bool {
-        self.direction.is_parallel(&other.direction, angular_tolerance)
+    pub fn is_parallel(&self, other: &CoordinateSystem, angular_tolerance: StandardReal) -> bool {
+        self.direction
+            .is_parallel(&other.direction, angular_tolerance)
     }
 
-    pub fn is_normal(&self, other: &CoordinateSystem, angular_tolerance: Standard_Real) -> bool {
-        self.direction.is_normal(&other.direction, angular_tolerance)
+    pub fn is_normal(&self, other: &CoordinateSystem, angular_tolerance: StandardReal) -> bool {
+        self.direction
+            .is_normal(&other.direction, angular_tolerance)
     }
 
     pub fn mirror(&mut self, point: &Point) {
@@ -222,14 +235,14 @@ impl CoordinateSystem {
         }
     }
 
-    pub fn rotate(&mut self, axis: &Axis, angle: Standard_Real) {
+    pub fn rotate(&mut self, axis: &Axis, angle: StandardReal) {
         self.location.rotate(axis, angle);
         self.direction.rotate(axis, angle);
         self.x_direction.rotate(axis, angle);
         self.y_direction.rotate(axis, angle);
     }
 
-    pub fn rotated(&self, axis: &Axis, angle: Standard_Real) -> CoordinateSystem {
+    pub fn rotated(&self, axis: &Axis, angle: StandardReal) -> CoordinateSystem {
         CoordinateSystem {
             location: self.location.rotated(axis, angle),
             direction: self.direction.rotated(axis, angle),
@@ -238,11 +251,11 @@ impl CoordinateSystem {
         }
     }
 
-    pub fn scale(&mut self, point: &Point, factor: Standard_Real) {
+    pub fn scale(&mut self, point: &Point, factor: StandardReal) {
         self.location.scale(point, factor);
     }
 
-    pub fn scaled(&self, point: &Point, factor: Standard_Real) -> CoordinateSystem {
+    pub fn scaled(&self, point: &Point, factor: StandardReal) -> CoordinateSystem {
         CoordinateSystem {
             location: self.location.scaled(point, factor),
             direction: self.direction,
@@ -282,20 +295,21 @@ impl CoordinateSystem {
 
     pub fn to_transform(&self) -> Transform {
         let mut rotation = crate::geometry::Matrix::identity();
-        
+
         rotation.data[0][0] = self.x_direction.x;
         rotation.data[1][0] = self.x_direction.y;
         rotation.data[2][0] = self.x_direction.z;
-        
+
         rotation.data[0][1] = self.y_direction.x;
         rotation.data[1][1] = self.y_direction.y;
         rotation.data[2][1] = self.y_direction.z;
-        
+
         rotation.data[0][2] = self.direction.x;
         rotation.data[1][2] = self.direction.y;
         rotation.data[2][2] = self.direction.z;
 
-        let translation = crate::geometry::Vector::new(self.location.x, self.location.y, self.location.z);
+        let translation =
+            crate::geometry::Vector::new(self.location.x, self.location.y, self.location.z);
 
         Transform {
             scale: 1.0,
