@@ -9,6 +9,11 @@ use crate::visualization::camera::Camera;
 use crate::visualization::light::Light;
 use crate::visualization::material::Material;
 use crate::visualization::primitives::*;
+use crate::visualization::gpu_memory::{GpuMemoryManager, GpuMemoryStats};
+use crate::visualization::gpu_buffer::{GpuBufferManager, GpuBufferUsage};
+use crate::visualization::texture_stream::{TextureStreamingSystem, TextureDescriptor, TextureFormat};
+use crate::visualization::gpu_compression::{GpuMemoryCompressor, CompressionAlgorithm, CompressionQuality};
+use std::sync::Arc;
 
 /// Render mode for visualization
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -344,11 +349,27 @@ pub struct SoftwareRenderer {
     stats: RenderStats,
     /// Initialized flag
     initialized: bool,
+    /// GPU memory manager
+    gpu_memory_manager: Arc<GpuMemoryManager>,
+    /// GPU buffer manager
+    gpu_buffer_manager: Arc<GpuBufferManager>,
+    /// Texture streaming system
+    texture_streaming: Arc<TextureStreamingSystem>,
+    /// GPU memory compressor
+    gpu_compressor: Arc<GpuMemoryCompressor>,
 }
 
 impl SoftwareRenderer {
     /// Create a new software renderer
     pub fn new() -> Self {
+        let gpu_memory_manager = Arc::new(GpuMemoryManager::new());
+        let gpu_buffer_manager = Arc::new(GpuBufferManager::new(gpu_memory_manager.clone()));
+        let texture_streaming = Arc::new(TextureStreamingSystem::new(gpu_memory_manager.clone(), 100));
+        let gpu_compressor = Arc::new(GpuMemoryCompressor::new(
+            CompressionAlgorithm::Bc3,
+            CompressionQuality::Balanced,
+        ));
+
         Self {
             target: RenderTarget::new(800, 600),
             state: RenderState::default(),
@@ -358,12 +379,40 @@ impl SoftwareRenderer {
             depth_buffer: Vec::new(),
             stats: RenderStats::default(),
             initialized: false,
+            gpu_memory_manager,
+            gpu_buffer_manager,
+            texture_streaming,
+            gpu_compressor,
         }
     }
 
     /// Get frame buffer
     pub fn frame_buffer(&self) -> &[u8] {
         &self.frame_buffer
+    }
+
+    /// Get GPU memory statistics
+    #[inline]
+    pub fn gpu_memory_stats(&self) -> GpuMemoryStats {
+        self.gpu_memory_manager.global_stats()
+    }
+
+    /// Get GPU buffer manager
+    #[inline]
+    pub fn gpu_buffer_manager(&self) -> &Arc<GpuBufferManager> {
+        &self.gpu_buffer_manager
+    }
+
+    /// Get texture streaming system
+    #[inline]
+    pub fn texture_streaming(&self) -> &Arc<TextureStreamingSystem> {
+        &self.texture_streaming
+    }
+
+    /// Get GPU compressor
+    #[inline]
+    pub fn gpu_compressor(&self) -> &Arc<GpuMemoryCompressor> {
+        &self.gpu_compressor
     }
 
     /// Clear buffers

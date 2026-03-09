@@ -1,6 +1,7 @@
 use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Point {
     pub x: StandardReal,
     pub y: StandardReal,
@@ -42,18 +43,22 @@ impl Point {
         (self.x, self.y, self.z)
     }
 
+    #[inline]
     pub fn x(&self) -> StandardReal {
         self.x
     }
 
+    #[inline]
     pub fn y(&self) -> StandardReal {
         self.y
     }
 
+    #[inline]
     pub fn z(&self) -> StandardReal {
         self.z
     }
 
+    #[inline]
     pub fn distance(&self, other: &Point) -> StandardReal {
         let dx = self.x - other.x;
         let dy = self.y - other.y;
@@ -61,6 +66,7 @@ impl Point {
         (dx * dx + dy * dy + dz * dz).sqrt()
     }
 
+    #[inline]
     pub fn square_distance(&self, other: &Point) -> StandardReal {
         let dx = self.x - other.x;
         let dy = self.y - other.y;
@@ -68,6 +74,7 @@ impl Point {
         dx * dx + dy * dy + dz * dz
     }
 
+    #[inline]
     pub fn is_equal(&self, other: &Point, tolerance: StandardReal) -> bool {
         self.distance(other) <= tolerance
     }
@@ -176,6 +183,39 @@ impl Point {
             y: self.y + vec.y,
             z: self.z + vec.z,
         }
+    }
+
+    pub fn translate_by_coords(&mut self, dx: StandardReal, dy: StandardReal, dz: StandardReal) {
+        self.x += dx;
+        self.y += dy;
+        self.z += dz;
+    }
+
+    pub fn translated_by_coords(&self, dx: StandardReal, dy: StandardReal, dz: StandardReal) -> Point {
+        Point {
+            x: self.x + dx,
+            y: self.y + dy,
+            z: self.z + dz,
+        }
+    }
+
+    pub fn transform(&mut self, transform: &crate::geometry::Transform) {
+        let result = self.transformed(transform);
+        self.x = result.x;
+        self.y = result.y;
+        self.z = result.z;
+    }
+
+    pub fn transformed(&self, transform: &crate::geometry::Transform) -> Point {
+        let matrix = &transform.rotation.data;
+        let translation = &transform.translation;
+        let scale = transform.scale;
+        
+        let x = scale * (matrix[0][0] * self.x + matrix[0][1] * self.y + matrix[0][2] * self.z) + translation.x;
+        let y = scale * (matrix[1][0] * self.x + matrix[1][1] * self.y + matrix[1][2] * self.z) + translation.y;
+        let z = scale * (matrix[2][0] * self.x + matrix[2][1] * self.y + matrix[2][2] * self.z) + translation.z;
+        
+        Point { x, y, z }
     }
 
     pub fn add(&self, vec: &crate::geometry::Vector) -> Point {

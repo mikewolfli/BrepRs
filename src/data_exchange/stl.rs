@@ -490,7 +490,11 @@ impl StlWriter {
             explorer.next();
             if let Some(current_shape) = explorer.current() {
                 if current_shape.is_face() {
-                    // Safe cast since we checked the type
+                    // SAFETY: This is safe because:
+                    // - We verified the shape is a face via is_face()
+                    // - TopoDsFace is the concrete type for face shapes
+                    // - The pointer is valid and properly aligned
+                    // - The lifetime of the reference is tied to current_shape
                     let face_ref = unsafe { &*(current_shape as *const _ as *const TopoDsFace) };
                     let facet = self.create_facet_from_face(face_ref)?;
 
@@ -549,7 +553,11 @@ impl StlWriter {
             explorer.next();
             if let Some(current_shape) = explorer.current() {
                 if current_shape.is_face() {
-                    // Safe cast since we checked the type
+                    // SAFETY: This is safe because:
+                    // - We verified the shape is a face via is_face()
+                    // - TopoDsFace is the concrete type for face shapes
+                    // - The pointer is valid and properly aligned
+                    // - The lifetime of the reference is tied to current_shape
                     let face_ref = unsafe { &*(current_shape as *const _ as *const TopoDsFace) };
                     let facet = self.create_facet_from_face(face_ref)?;
                     facets.push(facet);

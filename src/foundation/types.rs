@@ -1,11 +1,80 @@
 use std::ffi::c_char;
 
+/// Standard integer type for CAD operations
+///
+/// This type alias provides a 32-bit signed integer type.
+/// Used for indices, counts, and other discrete values in the CAD kernel.
+///
+/// # FFI Compatibility
+/// - This type is guaranteed to be 32-bit signed integer
+/// - Compatible with C's `int32_t` and C++'s `std::int32_t`
+/// - Safe for cross-platform FFI operations
 pub type StandardInteger = i32;
+
+/// Standard real number type for CAD operations
+///
+/// This type alias provides a 64-bit floating-point number (double precision).
+/// Used for coordinates, distances, angles, and other continuous values.
+///
+/// # FFI Compatibility
+/// - This type is guaranteed to be 64-bit IEEE 754 double precision
+/// - Compatible with C's `double` and C++'s `double`
+/// - Safe for cross-platform FFI operations
+/// - Note: floating-point representation may vary slightly across platforms
 pub type StandardReal = f64;
+
+/// Standard boolean type for CAD operations
+///
+/// This type alias provides a boolean type.
+/// Used for flags, conditions, and logical operations.
+///
+/// # FFI Compatibility
+/// - Rust's `bool` is guaranteed to be 1 byte (8 bits)
+/// - Compatible with C99's `_Bool` and C++'s `bool`
+/// - Use `StandardInteger` (0/1) for C89 compatibility
 pub type StandardBoolean = bool;
+
+/// Standard character type for CAD operations
+///
+/// This type alias provides a character type.
+/// Used for single character values and string operations.
 pub type StandardCharacter = char;
+
+/// Standard extended character type for CAD operations
+///
+/// This type alias provides a 32-bit Unicode character. Used for internationalization
+/// and extended character set support.
 pub type StandardExtCharacter = u32;
+
+/// Standard C string type for FFI operations
+///
+/// This type alias provides a C string type.
+/// Used for FFI (Foreign Function Interface) with C libraries and
+/// interoperability with external C APIs.
+///
+/// # Safety
+/// - This is a raw pointer type and must be used with caution
+/// - The pointer must be valid and null-terminated
+/// - Ownership and lifetime must be carefully managed
+/// - Prefer using Rust's String or &str when possible
+///
+/// # FFI Compatibility
+/// - Uses `c_char` which maps to C's `char` type
+/// - Note: `char` size varies by platform (1 byte on most systems, but may be different on some embedded platforms)
+/// - For maximum portability, use byte arrays (`*const u8`) instead
+/// - Always check for null before dereferencing
 pub type StandardCString = *const c_char;
+
+/// Standard size type for CAD operations
+///
+/// This type alias provides a size type.
+/// Used for sizes of collections, memory allocations, and indexing.
+///
+/// # FFI Compatibility
+/// - Rust's `usize` is platform-dependent (32-bit on 32-bit platforms, 64-bit on 64-bit platforms)
+/// - For FFI, prefer using fixed-size types like `StandardInteger` or `StandardReal`
+/// - When passing to C, use `size_t` which matches platform's pointer size
+/// - For cross-platform compatibility, consider using `u64` for sizes in FFI
 pub type StandardSize = usize;
 
 pub const STANDARD_TRUE: StandardBoolean = true;
@@ -18,22 +87,22 @@ pub const STANDARD_REAL_MAX: StandardReal = f64::MAX;
 pub const STANDARD_REAL_MIN: StandardReal = f64::MIN;
 pub const STANDARD_REAL_EPSILON: StandardReal = f64::EPSILON;
 
-#[inline]
+#[inline(always)]
 pub fn standard_is_nan(value: StandardReal) -> StandardBoolean {
     value.is_nan()
 }
 
-#[inline]
+#[inline(always)]
 pub fn standard_is_infinite(value: StandardReal) -> StandardBoolean {
     value.is_infinite()
 }
 
-#[inline]
+#[inline(always)]
 pub fn standard_is_finite(value: StandardReal) -> StandardBoolean {
     value.is_finite()
 }
 
-#[inline]
+#[inline(always)]
 pub fn standard_approximate(
     value1: StandardReal,
     value2: StandardReal,
@@ -42,9 +111,45 @@ pub fn standard_approximate(
     (value1 - value2).abs() <= tolerance
 }
 
-#[inline]
+#[inline(always)]
 pub fn standard_real_hash(value: StandardReal) -> usize {
     value.to_bits() as usize
+}
+
+/// Fast comparison of two real numbers with tolerance
+///
+/// This function is optimized for performance and should be used
+/// when comparing floating-point values in performance-critical code.
+#[inline(always)]
+pub fn standard_fast_approximate(
+    value1: StandardReal,
+    value2: StandardReal,
+    tolerance: StandardReal,
+) -> StandardBoolean {
+    // Fast path for exact equality
+    if value1 == value2 {
+        return true;
+    }
+    // Otherwise use absolute difference
+    (value1 - value2).abs() <= tolerance
+}
+
+/// Clamp a value to a specified range
+#[inline(always)]
+pub fn standard_clamp<T: PartialOrd>(value: T, min: T, max: T) -> T {
+    if value < min {
+        min
+    } else if value > max {
+        max
+    } else {
+        value
+    }
+}
+
+/// Linear interpolation between two values
+#[inline(always)]
+pub fn standard_lerp(a: StandardReal, b: StandardReal, t: StandardReal) -> StandardReal {
+    a + (b - a) * t
 }
 
 #[cfg(test)]

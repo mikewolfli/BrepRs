@@ -20,6 +20,7 @@ pub struct BooleanOperations {
 
 impl BooleanOperations {
     /// Create a new BooleanOperations instance
+    #[inline]
     pub fn new() -> Self {
         Self {
             builder: BrepBuilder::new(),
@@ -27,6 +28,7 @@ impl BooleanOperations {
     }
 
     /// Check if the boolean operations instance is valid
+    #[inline]
     pub fn is_none(&self) -> bool {
         false
     }
@@ -45,6 +47,7 @@ impl BooleanOperations {
     ///
     /// # Returns
     /// A new compound that is the union of the two input shapes
+    #[inline]
     pub fn fuse(
         &self,
         shape1: &Handle<TopoDsShape>,
@@ -65,6 +68,7 @@ impl BooleanOperations {
     ///
     /// # Returns
     /// A new compound that is the union of all input shapes
+    #[inline]
     pub fn fuse_all(&self, shapes: &[Handle<TopoDsShape>]) -> TopoDsCompound {
         let mut compound = TopoDsCompound::new();
         for shape in shapes {
@@ -87,6 +91,7 @@ impl BooleanOperations {
     ///
     /// # Returns
     /// A new compound that is the first shape with the second shape removed
+    #[inline]
     pub fn cut(
         &self,
         shape1: &Handle<TopoDsShape>,
@@ -113,6 +118,7 @@ impl BooleanOperations {
     ///
     /// # Returns
     /// A new compound that is the intersection of the two input shapes
+    #[inline]
     pub fn common(
         &self,
         _shape1: &Handle<TopoDsShape>,
@@ -137,6 +143,7 @@ impl BooleanOperations {
     ///
     /// # Returns
     /// A new compound that contains the intersection curves
+    #[inline]
     pub fn section(
         &self,
         _shape1: &Handle<TopoDsShape>,
@@ -155,6 +162,7 @@ impl BooleanOperations {
     ///
     /// # Returns
     /// A new compound that contains the intersection curves
+    #[inline]
     pub fn section_with_plane(
         &self,
         _shape: &Handle<TopoDsShape>,
@@ -177,6 +185,7 @@ impl BooleanOperations {
     ///
     /// # Returns
     /// `true` if the shapes can be used for boolean operations, `false` otherwise
+    #[inline]
     pub fn can_perform_boolean(
         &self,
         shape1: &Handle<TopoDsShape>,
@@ -201,6 +210,7 @@ impl BooleanOperations {
     ///
     /// # Returns
     /// `true` if the shapes might intersect, `false` otherwise
+    #[inline]
     pub fn might_intersect(
         &self,
         _shape1: &Handle<TopoDsShape>,
@@ -219,6 +229,7 @@ impl BooleanOperations {
     ///
     /// # Returns
     /// `true` if the bounding boxes intersect, `false` otherwise
+    #[inline]
     pub fn bounding_boxes_intersect(&self, bb1: &(Point, Point), bb2: &(Point, Point)) -> bool {
         let (min1, max1) = bb1;
         let (min2, max2) = bb2;

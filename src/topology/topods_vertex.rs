@@ -5,7 +5,19 @@ use crate::topology::{topods_location::TopoDsLocation, topods_shape::TopoDsShape
 ///
 /// A vertex is the simplest topological element, representing a point
 /// in 3D space. It can be shared by multiple edges and faces.
+///
+/// # Invariants
+/// - A vertex always has a valid geometric point
+/// - Tolerance must be non-negative
+/// - A vertex can be shared by multiple edges and faces
+/// - Two vertices are considered equal if their points are within tolerance
+///
+/// # Usage Patterns
+/// - Vertices are typically created through BRepBuilder or primitive operations
+/// - Use `Handle<TopoDsVertex>` for sharing vertices across multiple edges
+/// - Vertices are immutable after creation (except for tolerance changes)
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TopoDsVertex {
     shape: TopoDsShape,
     point: Point,

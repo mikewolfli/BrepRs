@@ -9,6 +9,28 @@ use std::sync::Arc;
 ///
 /// A face is a bounded portion of a surface, bounded by one or more wires.
 /// The first wire is the outer boundary, and subsequent wires are holes.
+///
+/// # Surface Ownership and Lifetime
+/// - The face holds a `Handle<dyn Surface>` which is a thread-safe reference-counted pointer
+/// - Multiple faces can share the same surface instance
+/// - The surface will be automatically dropped when all handles to it are dropped
+/// - Surfaces must implement `Send + Sync` to be used in a `Handle`
+///
+/// # Invariants
+/// - A face must have at least one wire (the outer boundary)
+/// - The first wire is always the outer boundary
+/// - Subsequent wires represent holes and must be contained within the outer boundary
+/// - All wires must be closed (forming continuous loops)
+/// - Wires must not intersect each other (except at shared vertices)
+/// - Tolerance must be non-negative
+/// - Orientation must be either 1 (forward) or -1 (reversed)
+///
+/// # Usage Patterns
+/// - Faces are typically created through BRepBuilder or primitive operations
+/// - Use `Handle<TopoDsFace>` for sharing faces across multiple shells
+/// - Faces with a surface represent parametric surfaces
+/// - Faces without a surface represent planar faces
+/// - The outer wire defines the face's boundary, holes define cutouts
 #[derive(Debug)]
 pub struct TopoDsFace {
     shape: TopoDsShape,
@@ -378,7 +400,9 @@ impl PartialEq for TopoDsFace {
 }
 
 /// Trait for surfaces that can be associated with faces
-pub trait Surface: std::fmt::Debug {
+///
+/// Surfaces are reference-counted via Handle<T> to allow sharing between multiple faces.
+pub trait Surface: std::fmt::Debug + Send + Sync {
     /// Get the point on the surface at (u, v) parameters
     fn value(&self, u: f64, v: f64) -> Point;
 

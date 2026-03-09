@@ -4,11 +4,43 @@ use crate::topology::{
     topods_location::TopoDsLocation, topods_shape::TopoDsShape, topods_vertex::TopoDsVertex,
 };
 
+/// Trait for curves that can be associated with edges
+///
+/// Curves are reference-counted via Handle<T> to allow sharing between multiple edges.
+pub trait Curve: std::fmt::Debug + Send + Sync {
+    /// Get the point on the curve at a parameter value
+    fn value(&self, parameter: f64) -> Point;
+
+    /// Get the derivative (tangent) at a parameter value
+    fn derivative(&self, parameter: f64) -> Vector;
+
+    /// Get the parameter range of the curve
+    fn parameter_range(&self) -> (f64, f64);
+}
+
 /// Represents an edge in topological structure
 ///
 /// An edge is a curve bounded by two vertices. It can be
 /// degenerate (both vertices are the same) or can be open
 /// (infinite curve) or closed (loop).
+///
+/// # Curve Ownership and Lifetime
+/// - The edge holds a `Handle<dyn Curve>` which is a thread-safe reference-counted pointer
+/// - Multiple edges can share the same curve instance
+/// - The curve will be automatically dropped when all handles to it are dropped
+/// - Curves must implement `Send + Sync` to be used in a `Handle`
+///
+/// # Invariants
+/// - An edge must have exactly two vertices (which may be the same for degenerate edges)
+/// - If the edge has a curve, the vertices must lie on the curve (within tolerance)
+/// - Tolerance must be non-negative
+/// - Orientation must be either 1 (forward) or -1 (reversed)
+///
+/// # Usage Patterns
+/// - Edges are typically created through BRepBuilder or primitive operations
+/// - Use `Handle<TopoDsEdge>` for sharing edges across multiple wires
+/// - Edges can be degenerate (both vertices equal) for representing points
+/// - Edges without a curve represent straight line segments between vertices
 #[derive(Debug)]
 pub struct TopoDsEdge {
     shape: TopoDsShape,
@@ -246,18 +278,6 @@ impl TopoDsEdge {
 
         Some(edge_vec.dot(&point_vec) / edge_len_sq)
     }
-}
-
-/// Trait for curves that can be associated with edges
-pub trait Curve: std::fmt::Debug {
-    /// Get the point on the curve at a parameter value
-    fn value(&self, parameter: f64) -> Point;
-
-    /// Get the derivative (tangent) at a parameter value
-    fn derivative(&self, parameter: f64) -> Vector;
-
-    /// Get the parameter range of the curve
-    fn parameter_range(&self) -> (f64, f64);
 }
 
 impl Default for TopoDsEdge {

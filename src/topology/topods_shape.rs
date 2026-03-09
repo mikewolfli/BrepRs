@@ -24,122 +24,145 @@ pub struct TopoDsShape {
 
 impl TopoDsShape {
     /// Create a new shape with the specified type
+    #[inline]
     pub fn new(shape_type: ShapeType) -> Self {
         Self {
             shape_type,
             location: None,
             orientation: 1,
             mutable: false,
-            shape_id: SHAPE_ID_COUNTER.fetch_add(1, Ordering::SeqCst),
+            shape_id: SHAPE_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
         }
     }
 
     /// Get the shape type
+    #[inline]
     pub fn shape_type(&self) -> ShapeType {
         self.shape_type
     }
 
     /// Check if this shape is of the specified type
+    #[inline]
     pub fn is_kind(&self, shape_type: ShapeType) -> bool {
         self.shape_type == shape_type
     }
 
     /// Check if this shape is a vertex
+    #[inline]
     pub fn is_vertex(&self) -> bool {
         self.shape_type == ShapeType::Vertex
     }
 
     /// Check if this shape is an edge
+    #[inline]
     pub fn is_edge(&self) -> bool {
         self.shape_type == ShapeType::Edge
     }
 
     /// Check if this shape is a wire
+    #[inline]
     pub fn is_wire(&self) -> bool {
         self.shape_type == ShapeType::Wire
     }
 
     /// Check if this shape is a face
+    #[inline]
     pub fn is_face(&self) -> bool {
         self.shape_type == ShapeType::Face
     }
 
     /// Check if this shape is a shell
+    #[inline]
     pub fn is_shell(&self) -> bool {
         self.shape_type == ShapeType::Shell
     }
 
     /// Check if this shape is a solid
+    #[inline]
     pub fn is_solid(&self) -> bool {
         self.shape_type == ShapeType::Solid
     }
 
     /// Check if this shape is a compound
+    #[inline]
     pub fn is_compound(&self) -> bool {
         self.shape_type == ShapeType::Compound
     }
 
     /// Check if this shape is a compsolid
+    #[inline]
     pub fn is_compsolid(&self) -> bool {
         self.shape_type == ShapeType::CompSolid
     }
 
     /// Get the location of the shape
+    #[inline]
     pub fn location(&self) -> Option<&TopoDsLocation> {
         self.location.as_ref()
     }
 
     /// Set the location of the shape
+    #[inline]
     pub fn set_location(&mut self, location: TopoDsLocation) {
         self.location = Some(location);
     }
 
     /// Get the orientation of the shape
+    #[inline]
     pub fn orientation(&self) -> i32 {
         self.orientation
     }
 
     /// Set the orientation of the shape
+    #[inline]
     pub fn set_orientation(&mut self, orientation: i32) {
         self.orientation = orientation;
     }
 
     /// Check if the shape is mutable
+    #[inline]
     pub fn is_mutable(&self) -> bool {
         self.mutable
     }
 
     /// Set the mutability of the shape
+    #[inline]
     pub fn set_mutable(&mut self, mutable: bool) {
         self.mutable = mutable
     }
 
     /// Get the unique identifier of the shape
+    #[inline]
     pub fn shape_id(&self) -> i32 {
         self.shape_id
     }
 
     /// Set the unique identifier of the shape
+    #[inline]
     pub fn set_shape_id(&mut self, id: i32) {
         self.shape_id = id;
     }
 
     /// Check if this shape is more complex than another shape
+    #[inline]
     pub fn is_more_complex(&self, other: &TopoDsShape) -> bool {
         self.shape_type.is_more_complex_or_equal(&other.shape_type)
     }
 
     /// Check if this shape is less complex than another shape
+    #[inline]
     pub fn is_less_complex(&self, other: &TopoDsShape) -> bool {
         self.shape_type.is_less_complex(&other.shape_type)
     }
 
     /// Get the name of the shape type
+    #[inline]
     pub fn type_name(&self) -> &'static str {
         self.shape_type.name()
     }
 
     /// Apply a transformation to the shape
+    #[inline]
     pub fn transform(&mut self, transformation: &Transform) {
         if let Some(loc) = self.location.as_mut() {
             loc.transform(transformation);
@@ -147,11 +170,38 @@ impl TopoDsShape {
     }
 
     /// Get the transformed location of the shape
+    #[inline]
     pub fn transformed_location(&self) -> Option<Point> {
         self.location.as_ref().map(|loc| {
             let transform = loc.to_transform();
             transform.transforms(&Point::origin())
         })
+    }
+
+    /// Create a copy of this shape with a new orientation
+    #[inline]
+    pub fn reversed(&self) -> Self {
+        let mut result = self.clone();
+        result.set_orientation(-result.orientation());
+        result
+    }
+
+    /// Check if this shape is reversed
+    #[inline]
+    pub fn is_reversed(&self) -> bool {
+        self.orientation() < 0
+    }
+
+    /// Clear the location of the shape
+    #[inline]
+    pub fn clear_location(&mut self) {
+        self.location = None;
+    }
+
+    /// Check if the shape has a location
+    #[inline]
+    pub fn has_location(&self) -> bool {
+        self.location.is_some()
     }
 }
 

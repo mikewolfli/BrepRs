@@ -24,12 +24,15 @@
 //! Use the native API for new Rust projects, and the compatibility API for
 //! migrating existing OpenCASCADE code.
 
+pub mod application;
 pub mod collections;
 pub mod data_exchange;
 pub mod foundation;
 pub mod geometry;
+pub mod mesh;
 pub mod modeling;
 pub mod topology;
+pub mod visualization;
 
 /// OpenCASCADE API Compatibility Layer
 ///

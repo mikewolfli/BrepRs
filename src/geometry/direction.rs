@@ -244,6 +244,23 @@ impl Direction {
     pub fn coord_ref(&self) -> &Direction {
         self
     }
+
+    pub fn transform(&mut self, transform: &crate::geometry::Transform) {
+        let result = self.transformed(transform);
+        self.x = result.x;
+        self.y = result.y;
+        self.z = result.z;
+    }
+
+    pub fn transformed(&self, transform: &crate::geometry::Transform) -> Direction {
+        let matrix = &transform.rotation.data;
+        
+        let x = matrix[0][0] * self.x + matrix[0][1] * self.y + matrix[0][2] * self.z;
+        let y = matrix[1][0] * self.x + matrix[1][1] * self.y + matrix[1][2] * self.z;
+        let z = matrix[2][0] * self.x + matrix[2][1] * self.y + matrix[2][2] * self.z;
+        
+        Direction::new(x, y, z)
+    }
 }
 
 impl Default for Direction {

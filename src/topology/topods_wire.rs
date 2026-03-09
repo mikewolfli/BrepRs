@@ -10,6 +10,19 @@ use std::collections::HashSet;
 ///
 /// A wire is an ordered set of edges connected by vertices.
 /// Wires can be open or closed (forming a loop).
+///
+/// # Invariants
+/// - Edges must be connected: the end vertex of one edge must be the start vertex of the next
+/// - A closed wire must form a continuous loop (last edge connects back to first)
+/// - Tolerance must be non-negative
+/// - Duplicate edges are not allowed
+/// - The wire maintains an ordered sequence of edges
+///
+/// # Usage Patterns
+/// - Wires are typically created through BRepBuilder or primitive operations
+/// - Use `Handle<TopoDsWire>` for sharing wires across multiple faces
+/// - Wires can be used as boundaries for faces (outer wire or holes)
+/// - Open wires are used for curves, closed wires for boundaries
 #[derive(Debug)]
 pub struct TopoDsWire {
     shape: TopoDsShape,
@@ -196,6 +209,54 @@ impl TopoDsWire {
     /// Check if the wire contains a specific edge
     pub fn contains_edge(&self, edge: &Handle<TopoDsEdge>) -> bool {
         self.edges.contains(edge)
+    }
+
+    /// Check if the wire has any duplicate edges
+    ///
+    /// Returns true if any edge appears more than once in the wire
+    pub fn has_duplicate_edges(&self) -> bool {
+        let mut seen = HashSet::new();
+        for edge in &self.edges {
+            if !seen.insert(edge.shape_id()) {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Check if the wire has any duplicate vertices (excluding consecutive vertices)
+    ///
+    /// Returns true if any non-consecutive vertex appears more than once
+    pub fn has_duplicate_vertices(&self) -> bool {
+        let mut seen = HashSet::new();
+        for (i, vertex) in self.vertices.iter().enumerate() {
+            // Skip checking consecutive vertices (they should be shared)
+            if i > 0 {
+                let prev_vertex = &self.vertices[i - 1];
+                if vertex == prev_vertex {
+                    continue;
+                }
+            }
+            if !seen.insert(vertex.shape_id()) {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Get all duplicate edges in the wire
+    ///
+    /// Returns a vector of edge IDs that appear more than once
+    pub fn duplicate_edges(&self) -> Vec<i32> {
+        let mut seen = HashSet::new();
+        let mut duplicates = Vec::new();
+        for edge in &self.edges {
+            let id = edge.shape_id();
+            if !seen.insert(id) && !duplicates.contains(&id) {
+                duplicates.push(id);
+            }
+        }
+        duplicates
     }
 
     /// Remove an edge from the wire

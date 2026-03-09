@@ -72,7 +72,11 @@ impl TopExpExplorer {
     pub fn current_vertex(&self) -> Option<&TopoDsVertex> {
         if let Some(shape) = &self.current {
             if shape.is_vertex() {
-                // Safe cast since we checked the type
+                // SAFETY: This is safe because:
+                // - We verified the shape is a vertex via is_vertex()
+                // - TopoDsVertex is the concrete type for vertex shapes
+                // - The pointer is valid and properly aligned
+                // - The lifetime of the reference is tied to self
                 unsafe { Some(&*(shape as *const _ as *const TopoDsVertex)) }
             } else {
                 None
@@ -86,7 +90,11 @@ impl TopExpExplorer {
     pub fn current_edge(&self) -> Option<&TopoDsEdge> {
         if let Some(shape) = &self.current {
             if shape.is_edge() {
-                // Safe cast since we checked the type
+                // SAFETY: This is safe because:
+                // - We verified the shape is an edge via is_edge()
+                // - TopoDsEdge is the concrete type for edge shapes
+                // - The pointer is valid and properly aligned
+                // - The lifetime of the reference is tied to self
                 unsafe { Some(&*(shape as *const _ as *const TopoDsEdge)) }
             } else {
                 None
@@ -100,7 +108,11 @@ impl TopExpExplorer {
     pub fn current_wire(&self) -> Option<&TopoDsWire> {
         if let Some(shape) = &self.current {
             if shape.is_wire() {
-                // Safe cast since we checked the type
+                // SAFETY: This is safe because:
+                // - We verified the shape is a wire via is_wire()
+                // - TopoDsWire is the concrete type for wire shapes
+                // - The pointer is valid and properly aligned
+                // - The lifetime of the reference is tied to self
                 unsafe { Some(&*(shape as *const _ as *const TopoDsWire)) }
             } else {
                 None
@@ -114,7 +126,11 @@ impl TopExpExplorer {
     pub fn current_face(&self) -> Option<&TopoDsFace> {
         if let Some(shape) = &self.current {
             if shape.is_face() {
-                // Safe cast since we checked the type
+                // SAFETY: This is safe because:
+                // - We verified the shape is a face via is_face()
+                // - TopoDsFace is the concrete type for face shapes
+                // - The pointer is valid and properly aligned
+                // - The lifetime of the reference is tied to self
                 unsafe { Some(&*(shape as *const _ as *const TopoDsFace)) }
             } else {
                 None
@@ -128,7 +144,11 @@ impl TopExpExplorer {
     pub fn current_shell(&self) -> Option<&TopoDsShell> {
         if let Some(shape) = &self.current {
             if shape.is_shell() {
-                // Safe cast since we checked the type
+                // SAFETY: This is safe because:
+                // - We verified the shape is a shell via is_shell()
+                // - TopoDsShell is the concrete type for shell shapes
+                // - The pointer is valid and properly aligned
+                // - The lifetime of the reference is tied to self
                 unsafe { Some(&*(shape as *const _ as *const TopoDsShell)) }
             } else {
                 None
@@ -142,7 +162,11 @@ impl TopExpExplorer {
     pub fn current_solid(&self) -> Option<&TopoDsSolid> {
         if let Some(shape) = &self.current {
             if shape.is_solid() {
-                // Safe cast since we checked the type
+                // SAFETY: This is safe because:
+                // - We verified the shape is a solid via is_solid()
+                // - TopoDsSolid is the concrete type for solid shapes
+                // - The pointer is valid and properly aligned
+                // - The lifetime of the reference is tied to self
                 unsafe { Some(&*(shape as *const _ as *const TopoDsSolid)) }
             } else {
                 None
@@ -156,7 +180,11 @@ impl TopExpExplorer {
     pub fn current_compound(&self) -> Option<&TopoDsCompound> {
         if let Some(shape) = &self.current {
             if shape.is_compound() {
-                // Safe cast since we checked the type
+                // SAFETY: This is safe because:
+                // - We verified the shape is a compound via is_compound()
+                // - TopoDsCompound is the concrete type for compound shapes
+                // - The pointer is valid and properly aligned
+                // - The lifetime of the reference is tied to self
                 unsafe { Some(&*(shape as *const _ as *const TopoDsCompound)) }
             } else {
                 None
@@ -170,7 +198,11 @@ impl TopExpExplorer {
     pub fn current_compsolid(&self) -> Option<&TopoDsCompSolid> {
         if let Some(shape) = &self.current {
             if shape.is_compsolid() {
-                // Safe cast since we checked the type
+                // SAFETY: This is safe because:
+                // - We verified the shape is a compsolid via is_compsolid()
+                // - TopoDsCompSolid is the concrete type for compsolid shapes
+                // - The pointer is valid and properly aligned
+                // - The lifetime of the reference is tied to self
                 unsafe { Some(&*(shape as *const _ as *const TopoDsCompSolid)) }
             } else {
                 None

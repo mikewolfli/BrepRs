@@ -17,6 +17,7 @@ use std::sync::Arc;
 ///
 /// # Returns
 /// A solid representing the box
+#[inline]
 pub fn make_box(width: f64, height: f64, depth: f64, center: Option<Point>) -> TopoDsSolid {
     let center = center.unwrap_or(Point::origin());
 
@@ -159,6 +160,7 @@ pub fn make_box(width: f64, height: f64, depth: f64, center: Option<Point>) -> T
 ///
 /// # Returns
 /// A solid representing the sphere
+#[inline]
 pub fn make_sphere(radius: f64, center: Option<Point>) -> TopoDsSolid {
     let center = center.unwrap_or(Point::origin());
 
@@ -189,6 +191,7 @@ pub fn make_sphere(radius: f64, center: Option<Point>) -> TopoDsSolid {
 ///
 /// # Returns
 /// A solid representing the cylinder
+#[inline]
 pub fn make_cylinder(
     radius: f64,
     height: f64,
@@ -243,6 +246,7 @@ pub fn make_cylinder(
 ///
 /// # Returns
 /// A solid representing the cone
+#[inline]
 pub fn make_cone(
     radius1: f64,
     _radius2: f64,
@@ -269,6 +273,7 @@ pub fn make_cone(
 ///
 /// # Returns
 /// A solid representing the torus
+#[inline]
 pub fn make_torus(_major_radius: f64, minor_radius: f64, center: Option<Point>) -> TopoDsSolid {
     let center = center.unwrap_or(Point::origin());
 
@@ -287,6 +292,7 @@ pub fn make_torus(_major_radius: f64, minor_radius: f64, center: Option<Point>) 
 ///
 /// # Returns
 /// A solid representing the prism
+#[inline]
 pub fn make_prism(_wire: &TopoDsWire, _vector: &crate::geometry::Vector) -> TopoDsSolid {
     // TODO: Implement prism creation
 
@@ -303,6 +309,7 @@ pub fn make_prism(_wire: &TopoDsWire, _vector: &crate::geometry::Vector) -> Topo
 ///
 /// # Returns
 /// A solid representing the revolution
+#[inline]
 pub fn make_revolution(_wire: &TopoDsWire, axis: &Axis, _angle: f64) -> TopoDsSolid {
     // TODO: Implement revolution creation
 

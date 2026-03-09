@@ -11,6 +11,14 @@ categories = ["cad", "graphics", "mathematics", "science"]
 [dependencies]
 thiserror = "1.0"
 anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = "0.4"
+uuid = { version = "1.6", features = ["v4"] }
 
 [dev-dependencies]
 criterion = "0.5"
+serde_json = "1.0"
+proptest = "1.4"
+
+

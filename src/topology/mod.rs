@@ -10,6 +10,7 @@ pub mod topods_solid;
 pub mod topods_compound;
 pub mod top_exp_explorer;
 pub mod top_exp_tools;
+pub mod top_tools;
 
 pub use shape_enum::ShapeType;
 pub use topods_shape::TopoDsShape;
@@ -23,3 +24,4 @@ pub use topods_solid::TopoDsSolid;
 pub use topods_compound::{TopoDsCompound, TopoDsCompSolid};
 pub use top_exp_explorer::TopExpExplorer;
 pub use top_exp_tools::{TopExpTools, TopToolsAnalyzer};
+pub use top_tools::{IndexedMapOfShape, ListOfShape, SequenceOfShape, DataMapOfShapeShape, DataMapOfShapeInteger, ShapeSet};

@@ -1,6 +1,7 @@
 use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Vector {
     pub x: StandardReal,
     pub y: StandardReal,
@@ -46,34 +47,42 @@ impl Vector {
         self.z = z;
     }
 
+    #[inline]
     pub fn coord(&self) -> (StandardReal, StandardReal, StandardReal) {
         (self.x, self.y, self.z)
     }
 
+    #[inline]
     pub fn x(&self) -> StandardReal {
         self.x
     }
 
+    #[inline]
     pub fn y(&self) -> StandardReal {
         self.y
     }
 
+    #[inline]
     pub fn z(&self) -> StandardReal {
         self.z
     }
 
+    #[inline]
     pub fn magnitude(&self) -> StandardReal {
         (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
     }
 
+    #[inline]
     pub fn square_magnitude(&self) -> StandardReal {
         self.x * self.x + self.y * self.y + self.z * self.z
     }
 
+    #[inline]
     pub fn is_zero(&self, tolerance: StandardReal) -> bool {
         self.magnitude() <= tolerance
     }
 
+    #[inline]
     pub fn is_equal(&self, other: &Vector, tolerance: StandardReal) -> bool {
         let diff = *self - *other;
         diff.magnitude() <= tolerance
@@ -88,6 +97,7 @@ impl Vector {
         }
     }
 
+    #[inline]
     pub fn normalized(&self) -> Vector {
         let mag = self.magnitude();
         if mag > STANDARD_REAL_EPSILON {
@@ -101,12 +111,14 @@ impl Vector {
         }
     }
 
+    #[inline]
     pub fn reverse(&mut self) {
         self.x = -self.x;
         self.y = -self.y;
         self.z = -self.z;
     }
 
+    #[inline]
     pub fn reversed(&self) -> Vector {
         Vector {
             x: -self.x,
@@ -115,10 +127,12 @@ impl Vector {
         }
     }
 
+    #[inline]
     pub fn dot(&self, other: &Vector) -> StandardReal {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
 
+    #[inline]
     pub fn cross(&self, other: &Vector) -> Vector {
         Vector {
             x: self.y * other.z - self.z * other.y,
@@ -127,14 +141,17 @@ impl Vector {
         }
     }
 
+    #[inline]
     pub fn cross_mag(&self, other: &Vector) -> StandardReal {
         self.cross(other).magnitude()
     }
 
+    #[inline]
     pub fn cross_square_magnitude(&self, other: &Vector) -> StandardReal {
         self.cross(other).square_magnitude()
     }
 
+    #[inline]
     pub fn angle(&self, other: &Vector) -> StandardReal {
         let mag1 = self.magnitude();
         let mag2 = other.magnitude();

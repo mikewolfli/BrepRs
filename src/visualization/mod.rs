@@ -11,6 +11,10 @@ pub mod view;
 pub mod camera;
 pub mod light;
 pub mod material;
+pub mod gpu_memory;
+pub mod gpu_buffer;
+pub mod texture_stream;
+pub mod gpu_compression;
 
 pub use primitives::*;
 pub use renderer::*;
@@ -19,3 +23,7 @@ pub use view::*;
 pub use camera::*;
 pub use light::*;
 pub use material::*;
+pub use gpu_memory::*;
+pub use gpu_buffer::*;
+pub use texture_stream::*;
+pub use gpu_compression::*;

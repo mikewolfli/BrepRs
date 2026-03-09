@@ -64,6 +64,11 @@ macro_rules! impl_standard_transient {
             fn decrement_ref_count(&self) {
                 let count = self.base.decrement_ref_count();
                 if count == 0 {
+                    // SAFETY: This is safe because:
+                    // - The reference count is 0, meaning no other references exist
+                    // - The object was originally allocated on the heap via Box
+                    // - We have exclusive ownership at this point
+                    // - The pointer is valid and properly aligned
                     unsafe {
                         let _ = Box::from_raw(self as *const Self as *mut Self);
                     }
