@@ -1,5 +1,24 @@
+impl Plane {
+    /// Create a plane from three points
+    pub fn from_points(p1: Point, p2: Point, p3: Point) -> Option<Self> {
+        let v1 = crate::geometry::Vector::from_point(&p1, &p2);
+        let v2 = crate::geometry::Vector::from_point(&p1, &p3);
+        let normal = v1.cross(&v2);
+        if normal.magnitude() < 1e-8 {
+            return None; // Collinear points
+        }
+        let direction = crate::geometry::Direction::from_vector(&normal);
+        let x_direction = crate::geometry::Direction::from_vector(&v1);
+        Some(Plane::new(p1, direction, x_direction))
+    }
+
+    /// Get the origin point of the plane
+    pub fn origin(&self) -> &Point {
+        &self.location
+    }
+}
 use crate::foundation::types::StandardReal;
-use crate::geometry::{Point, Direction, Axis, CoordinateSystem, Transform};
+use crate::geometry::{Axis, CoordinateSystem, Direction, Point, Transform};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Plane {
@@ -195,26 +214,36 @@ impl Plane {
         self.direction
     }
 
-    pub fn is_coaxial(&self, other: &Plane, angular_tolerance: StandardReal, linear_tolerance: StandardReal) -> bool {
-        self.direction.is_co_linear(&other.direction, angular_tolerance) &&
-        self.location.distance(&other.location) <= linear_tolerance
+    pub fn is_coaxial(
+        &self,
+        other: &Plane,
+        angular_tolerance: StandardReal,
+        linear_tolerance: StandardReal,
+    ) -> bool {
+        self.direction
+            .is_co_linear(&other.direction, angular_tolerance)
+            && self.location.distance(&other.location) <= linear_tolerance
     }
 
     pub fn is_opposite(&self, other: &Plane, angular_tolerance: StandardReal) -> bool {
-        self.direction.is_opposite(&other.direction, angular_tolerance)
+        self.direction
+            .is_opposite(&other.direction, angular_tolerance)
     }
 
     pub fn is_parallel(&self, other: &Plane, angular_tolerance: StandardReal) -> bool {
-        self.direction.is_parallel(&other.direction, angular_tolerance)
+        self.direction
+            .is_parallel(&other.direction, angular_tolerance)
     }
 
     pub fn is_normal(&self, other: &Plane, angular_tolerance: StandardReal) -> bool {
-        self.direction.is_normal(&other.direction, angular_tolerance)
+        self.direction
+            .is_normal(&other.direction, angular_tolerance)
     }
 
     pub fn distance(&self, point: &Point) -> StandardReal {
         let vec = crate::geometry::Vector::from_point(&self.location, point);
-        let normal = crate::geometry::Vector::new(self.direction.x, self.direction.y, self.direction.z);
+        let normal =
+            crate::geometry::Vector::new(self.direction.x, self.direction.y, self.direction.z);
         normal.dot(&vec).abs()
     }
 
@@ -353,6 +382,25 @@ impl Plane {
     pub fn is_left_handed(&self) -> bool {
         !self.is_direct()
     }
+
+    /// Compute signed distance from point to plane
+    pub fn signed_distance_to(&self, point: &Point) -> f64 {
+        let vec = crate::geometry::Vector::from_point(&self.location, point);
+        let normal =
+            crate::geometry::Vector::new(self.direction.x, self.direction.y, self.direction.z);
+        normal.dot(&vec)
+    }
+
+    /// Project a point onto the plane
+    pub fn project_point(&self, point: &Point) -> Point {
+        let distance = self.signed_distance_to(point);
+        let normal_vec = crate::geometry::Vector::new(
+            self.direction.x * distance,
+            self.direction.y * distance,
+            self.direction.z * distance,
+        );
+        point.translated(&normal_vec.negated())
+    }
 }
 
 impl Default for Plane {
@@ -373,7 +421,10 @@ impl crate::topology::topods_face::Surface for Plane {
     }
 
     fn parameter_range(&self) -> ((f64, f64), (f64, f64)) {
-        ((-f64::INFINITY, f64::INFINITY), (-f64::INFINITY, f64::INFINITY))
+        (
+            (-f64::INFINITY, f64::INFINITY),
+            (-f64::INFINITY, f64::INFINITY),
+        )
     }
 }
 

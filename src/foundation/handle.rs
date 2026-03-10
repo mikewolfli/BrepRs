@@ -1,3 +1,5 @@
+/// Downcast inner Arc to a specific type if possible
+// Moved to impl block below
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
@@ -76,8 +78,6 @@ impl<T: ?Sized> Handle<T> {
             None => None,
         }
     }
-
-
 }
 
 impl<T: ?Sized> Clone for Handle<T> {
@@ -134,6 +134,15 @@ impl<T: ?Sized> std::ops::Deref for Handle<T> {
 
     fn deref(&self) -> &Self::Target {
         self.inner.as_ref().unwrap()
+    }
+}
+
+impl<T: ?Sized> std::ops::DerefMut for Handle<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        // Arc<T> does not support mutable borrow unless there is only one strong reference.
+        // Use as_mut() for safe mutable access, otherwise panic.
+        self.as_mut()
+            .expect("Cannot borrow mutably: multiple references exist or handle is null")
     }
 }
 
@@ -211,7 +220,7 @@ mod tests {
     fn test_handle_as_mut() {
         let obj = Arc::new(42);
         let mut handle = Handle::new(obj);
-        
+
         // Can get mutable reference when only one reference exists
         if let Some(val) = handle.as_mut() {
             *val = 100;
@@ -289,10 +298,10 @@ mod tests {
     #[test]
     fn test_handle_thread_safety() {
         use std::thread;
-        
+
         let obj = Arc::new(AtomicUsize::new(0));
         let handle = Handle::new(obj);
-        
+
         let mut handles = vec![];
         for i in 0..10 {
             let _ = i;

@@ -5,6 +5,9 @@
 use crate::geometry::Point;
 use std::collections::HashMap;
 
+#[cfg(feature = "rayon")]
+use rayon::prelude::*;
+
 /// Mesh vertex
 #[derive(Debug, Clone, PartialEq)]
 pub struct MeshVertex {
@@ -16,6 +19,14 @@ pub struct MeshVertex {
     pub normal: Option<[f64; 3]>,
     /// Optional texture coordinates
     pub uv: Option<[f64; 2]>,
+    /// Optional color
+    pub color: Option<[f64; 4]>,
+    /// Optional scalar field values
+    pub field_values: HashMap<String, f64>,
+    /// Optional BRep vertex ID
+    pub brep_vertex_id: Option<i32>,
+    /// Optional BRep face ID
+    pub brep_face_id: Option<i32>,
 }
 
 impl MeshVertex {
@@ -26,6 +37,10 @@ impl MeshVertex {
             point,
             normal: None,
             uv: None,
+            color: None,
+            field_values: HashMap::new(),
+            brep_vertex_id: None,
+            brep_face_id: None,
         }
     }
 
@@ -37,6 +52,26 @@ impl MeshVertex {
     /// Set texture coordinates
     pub fn set_uv(&mut self, uv: [f64; 2]) {
         self.uv = Some(uv);
+    }
+
+    /// Set color
+    pub fn set_color(&mut self, color: [f64; 4]) {
+        self.color = Some(color);
+    }
+
+    /// Add field value
+    pub fn add_field_value(&mut self, name: &str, value: f64) {
+        self.field_values.insert(name.to_string(), value);
+    }
+
+    /// Set BRep vertex ID
+    pub fn set_brep_vertex_id(&mut self, id: i32) {
+        self.brep_vertex_id = Some(id);
+    }
+
+    /// Set BRep face ID
+    pub fn set_brep_face_id(&mut self, id: i32) {
+        self.brep_face_id = Some(id);
     }
 }
 
@@ -82,6 +117,8 @@ pub struct MeshFace {
     pub material_id: Option<usize>,
     /// Optional face data
     pub data: HashMap<String, f64>,
+    /// Optional BRep face ID
+    pub brep_face_id: Option<i32>,
 }
 
 impl MeshFace {
@@ -94,6 +131,7 @@ impl MeshFace {
             normal: None,
             material_id: None,
             data: HashMap::new(),
+            brep_face_id: None,
         }
     }
 
@@ -111,9 +149,14 @@ impl MeshFace {
     pub fn add_data(&mut self, key: &str, value: f64) {
         self.data.insert(key.to_string(), value);
     }
+
+    /// Set BRep face ID
+    pub fn set_brep_face_id(&mut self, id: i32) {
+        self.brep_face_id = Some(id);
+    }
 }
 
-/// 2D mesh
+/// 2D mesh - AoS (Array of Structs) format
 #[derive(Debug, Clone)]
 pub struct Mesh2D {
     /// Vertices
@@ -126,6 +169,84 @@ pub struct Mesh2D {
     pub bbox: (Point, Point),
     /// Mesh quality metrics
     pub quality: HashMap<String, f64>,
+}
+
+/// 2D mesh - SoA (Struct of Arrays) format for better memory access
+#[derive(Debug, Clone)]
+pub struct Mesh2DSOA {
+    /// Vertex positions
+    pub positions: Vec<[f64; 3]>,
+    /// Vertex normals
+    pub normals: Vec<Option<[f64; 3]>>,
+    /// Vertex UV coordinates
+    pub uvs: Vec<Option<[f64; 2]>>,
+    /// Vertex colors
+    pub colors: Vec<Option<[f64; 4]>>,
+    /// Face indices
+    pub face_indices: Vec<[usize; 3]>,
+    /// Bounding box
+    pub bbox: (Point, Point),
+    /// Mesh quality metrics
+    pub quality: HashMap<String, f64>,
+}
+
+impl Mesh2DSOA {
+    /// Create from Mesh2D
+    pub fn from_mesh2d(mesh: &Mesh2D) -> Self {
+        let mut positions = Vec::with_capacity(mesh.vertices.len());
+        let mut normals = Vec::with_capacity(mesh.vertices.len());
+        let mut uvs = Vec::with_capacity(mesh.vertices.len());
+        let mut colors = Vec::with_capacity(mesh.vertices.len());
+        let mut face_indices = Vec::with_capacity(mesh.faces.len());
+
+        for vertex in &mesh.vertices {
+            positions.push([vertex.point.x, vertex.point.y, vertex.point.z]);
+            normals.push(vertex.normal);
+            uvs.push(vertex.uv);
+            colors.push(vertex.color);
+        }
+
+        for face in &mesh.faces {
+            if face.vertices.len() == 3 {
+                face_indices.push([face.vertices[0], face.vertices[1], face.vertices[2]]);
+            }
+        }
+
+        Self {
+            positions,
+            normals,
+            uvs,
+            colors,
+            face_indices,
+            bbox: mesh.bbox.clone(),
+            quality: mesh.quality.clone(),
+        }
+    }
+
+    /// Convert back to Mesh2D
+    pub fn to_mesh2d(&self) -> Mesh2D {
+        let mut mesh = Mesh2D::new();
+
+        for (i, pos) in self.positions.iter().enumerate() {
+            let vertex = mesh.add_vertex(Point::new(pos[0], pos[1], pos[2]));
+            if let Some(normal) = self.normals[i] {
+                mesh.vertices[vertex].set_normal(normal);
+            }
+            if let Some(uv) = self.uvs[i] {
+                mesh.vertices[vertex].set_uv(uv);
+            }
+            if let Some(color) = self.colors[i] {
+                mesh.vertices[vertex].set_color(color);
+            }
+        }
+
+        for indices in &self.face_indices {
+            mesh.add_face(indices[0], indices[1], indices[2]);
+        }
+
+        mesh.quality = self.quality.clone();
+        mesh
+    }
 }
 
 impl Mesh2D {
@@ -160,6 +281,28 @@ impl Mesh2D {
         let id = self.faces.len();
         self.faces.push(MeshFace::new(id, vec![v1, v2, v3]));
         id
+    }
+
+    /// Update vertex positions without changing topology
+    pub fn update_vertex_positions(&mut self, new_positions: &[(usize, Point)]) {
+        for (vertex_id, new_position) in new_positions {
+            if *vertex_id < self.vertices.len() {
+                self.vertices[*vertex_id].point = new_position.clone();
+            }
+        }
+        self.update_bbox();
+    }
+
+    /// Create mesh from BRep shape
+    pub fn from_brep(shape: &crate::topology::topods_shape::TopoDsShape) -> Result<Self, String> {
+        // Implementation will be added in a future update
+        Err("Not implemented yet".to_string())
+    }
+
+    /// Convert mesh back to BRep shape
+    pub fn to_brep(&self) -> Result<crate::topology::topods_shape::TopoDsShape, String> {
+        // Implementation will be added in a future update
+        Err("Not implemented yet".to_string())
     }
 
     /// Update bounding box
@@ -210,13 +353,71 @@ impl Mesh2D {
 
     /// Calculate all face normals
     pub fn calculate_normals(&mut self) {
-        for i in 0..self.faces.len() {
-            self.calculate_face_normal(i);
+        #[cfg(feature = "rayon")]
+        {
+            let faces = &self.faces;
+            let vertices = &self.vertices;
+            let mut results = vec![None; faces.len()];
+
+            results.par_iter_mut().enumerate().for_each(|(i, result)| {
+                let face = &faces[i];
+                if face.vertices.len() >= 3 {
+                    let v0 = &vertices[face.vertices[0]];
+                    let v1 = &vertices[face.vertices[1]];
+                    let v2 = &vertices[face.vertices[2]];
+
+                    let vec1 = [v1.point.x - v0.point.x, v1.point.y - v0.point.y, 0.0];
+                    let vec2 = [v2.point.x - v0.point.x, v2.point.y - v0.point.y, 0.0];
+
+                    let normal = [0.0, 0.0, vec1[0] * vec2[1] - vec1[1] * vec2[0]];
+
+                    let length =
+                        (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2])
+                            .sqrt();
+                    if length > 1e-6 {
+                        let normalized_normal =
+                            [normal[0] / length, normal[1] / length, normal[2] / length];
+                        *result = Some(normalized_normal);
+                    }
+                }
+            });
+
+            for (i, normal) in results.into_iter().enumerate() {
+                if let Some(normal) = normal {
+                    self.faces[i].set_normal(normal);
+                }
+            }
         }
+
+        #[cfg(not(feature = "rayon"))]
+        {
+            for i in 0..self.faces.len() {
+                self.calculate_face_normal(i);
+            }
+        }
+    }
+
+    pub fn vertex_count(&self) -> usize {
+        self.vertices.len()
+    }
+    pub fn triangle_count(&self) -> usize {
+        self.faces.len()
+    }
+    pub fn vertex(&self, i: usize) -> Option<&MeshVertex> {
+        self.vertices.get(i)
+    }
+    pub fn triangle(&self, i: usize) -> Option<[usize; 3]> {
+        self.faces.get(i).and_then(|face| {
+            if face.vertices.len() == 3 {
+                Some([face.vertices[0], face.vertices[1], face.vertices[2]])
+            } else {
+                None
+            }
+        })
     }
 }
 
-/// 3D mesh
+/// 3D mesh - AoS (Array of Structs) format
 #[derive(Debug, Clone)]
 pub struct Mesh3D {
     /// Vertices
@@ -227,10 +428,125 @@ pub struct Mesh3D {
     pub faces: Vec<MeshFace>,
     /// Tetrahedrons
     pub tetrahedrons: Vec<MeshTetrahedron>,
+    /// Hexahedrons
+    pub hexahedrons: Vec<MeshHexahedron>,
+    /// Prisms
+    pub prisms: Vec<MeshPrism>,
     /// Bounding box
     pub bbox: (Point, Point),
     /// Mesh quality metrics
     pub quality: HashMap<String, f64>,
+    /// Mesh metadata
+    pub metadata: HashMap<String, String>,
+}
+
+/// 3D mesh - SoA (Struct of Arrays) format for better memory access
+#[derive(Debug, Clone)]
+pub struct Mesh3DSOA {
+    /// Vertex positions
+    pub positions: Vec<[f64; 3]>,
+    /// Vertex normals
+    pub normals: Vec<Option<[f64; 3]>>,
+    /// Vertex UV coordinates
+    pub uvs: Vec<Option<[f64; 2]>>,
+    /// Vertex colors
+    pub colors: Vec<Option<[f64; 4]>>,
+    /// Tetrahedron indices
+    pub tetra_indices: Vec<[usize; 4]>,
+    /// Hexahedron indices
+    pub hex_indices: Vec<[usize; 8]>,
+    /// Prism indices
+    pub prism_indices: Vec<[usize; 6]>,
+    /// Bounding box
+    pub bbox: (Point, Point),
+    /// Mesh quality metrics
+    pub quality: HashMap<String, f64>,
+    /// Mesh metadata
+    pub metadata: HashMap<String, String>,
+}
+
+impl Mesh3DSOA {
+    /// Create from Mesh3D
+    pub fn from_mesh3d(mesh: &Mesh3D) -> Self {
+        let mut positions = Vec::with_capacity(mesh.vertices.len());
+        let mut normals = Vec::with_capacity(mesh.vertices.len());
+        let mut uvs = Vec::with_capacity(mesh.vertices.len());
+        let mut colors = Vec::with_capacity(mesh.vertices.len());
+        let mut tetra_indices = Vec::with_capacity(mesh.tetrahedrons.len());
+        let mut hex_indices = Vec::with_capacity(mesh.hexahedrons.len());
+        let mut prism_indices = Vec::with_capacity(mesh.prisms.len());
+
+        for vertex in &mesh.vertices {
+            positions.push([vertex.point.x, vertex.point.y, vertex.point.z]);
+            normals.push(vertex.normal);
+            uvs.push(vertex.uv);
+            colors.push(vertex.color);
+        }
+
+        for tetra in &mesh.tetrahedrons {
+            tetra_indices.push(tetra.vertices);
+        }
+
+        for hex in &mesh.hexahedrons {
+            hex_indices.push(hex.vertices);
+        }
+
+        for prism in &mesh.prisms {
+            prism_indices.push(prism.vertices);
+        }
+
+        Self {
+            positions,
+            normals,
+            uvs,
+            colors,
+            tetra_indices,
+            hex_indices,
+            prism_indices,
+            bbox: mesh.bbox.clone(),
+            quality: mesh.quality.clone(),
+            metadata: mesh.metadata.clone(),
+        }
+    }
+
+    /// Convert back to Mesh3D
+    pub fn to_mesh3d(&self) -> Mesh3D {
+        let mut mesh = Mesh3D::new();
+
+        for (i, pos) in self.positions.iter().enumerate() {
+            let vertex = mesh.add_vertex(Point::new(pos[0], pos[1], pos[2]));
+            if let Some(normal) = self.normals[i] {
+                mesh.vertices[vertex].set_normal(normal);
+            }
+            if let Some(uv) = self.uvs[i] {
+                mesh.vertices[vertex].set_uv(uv);
+            }
+            if let Some(color) = self.colors[i] {
+                mesh.vertices[vertex].set_color(color);
+            }
+        }
+
+        for indices in &self.tetra_indices {
+            mesh.add_tetrahedron(indices[0], indices[1], indices[2], indices[3]);
+        }
+
+        for indices in &self.hex_indices {
+            mesh.add_hexahedron(
+                indices[0], indices[1], indices[2], indices[3], indices[4], indices[5], indices[6],
+                indices[7],
+            );
+        }
+
+        for indices in &self.prism_indices {
+            mesh.add_prism(
+                indices[0], indices[1], indices[2], indices[3], indices[4], indices[5],
+            );
+        }
+
+        mesh.quality = self.quality.clone();
+        mesh.metadata = self.metadata.clone();
+        mesh
+    }
 }
 
 impl Mesh3D {
@@ -241,8 +557,11 @@ impl Mesh3D {
             edges: Vec::new(),
             faces: Vec::new(),
             tetrahedrons: Vec::new(),
+            hexahedrons: Vec::new(),
+            prisms: Vec::new(),
             bbox: (Point::new(0.0, 0.0, 0.0), Point::new(0.0, 0.0, 0.0)),
             quality: HashMap::new(),
+            metadata: HashMap::new(),
         }
     }
 
@@ -276,6 +595,61 @@ impl Mesh3D {
         id
     }
 
+    /// Add a hexahedron
+    pub fn add_hexahedron(
+        &mut self,
+        v1: usize,
+        v2: usize,
+        v3: usize,
+        v4: usize,
+        v5: usize,
+        v6: usize,
+        v7: usize,
+        v8: usize,
+    ) -> usize {
+        let id = self.hexahedrons.len();
+        self.hexahedrons
+            .push(MeshHexahedron::new(id, v1, v2, v3, v4, v5, v6, v7, v8));
+        id
+    }
+
+    /// Add a prism
+    pub fn add_prism(
+        &mut self,
+        v1: usize,
+        v2: usize,
+        v3: usize,
+        v4: usize,
+        v5: usize,
+        v6: usize,
+    ) -> usize {
+        let id = self.prisms.len();
+        self.prisms.push(MeshPrism::new(id, v1, v2, v3, v4, v5, v6));
+        id
+    }
+
+    /// Update vertex positions without changing topology
+    pub fn update_vertex_positions(&mut self, new_positions: &[(usize, Point)]) {
+        for (vertex_id, new_position) in new_positions {
+            if *vertex_id < self.vertices.len() {
+                self.vertices[*vertex_id].point = new_position.clone();
+            }
+        }
+        self.update_bbox();
+    }
+
+    /// Create mesh from BRep shape
+    pub fn from_brep(shape: &crate::topology::topods_shape::TopoDsShape) -> Result<Self, String> {
+        // Implementation will be added in a future update
+        Err("Not implemented yet".to_string())
+    }
+
+    /// Convert mesh back to BRep shape
+    pub fn to_brep(&self) -> Result<crate::topology::topods_shape::TopoDsShape, String> {
+        // Implementation will be added in a future update
+        Err("Not implemented yet".to_string())
+    }
+
     /// Update bounding box
     fn update_bbox(&mut self) {
         if self.vertices.is_empty() {
@@ -295,6 +669,11 @@ impl Mesh3D {
         }
 
         self.bbox = (min_point, max_point);
+    }
+
+    /// Add metadata
+    pub fn add_metadata(&mut self, key: &str, value: &str) {
+        self.metadata.insert(key.to_string(), value.to_string());
     }
 }
 
@@ -323,6 +702,84 @@ impl MeshTetrahedron {
     }
 
     /// Add tetrahedron data
+    pub fn add_data(&mut self, key: &str, value: f64) {
+        self.data.insert(key.to_string(), value);
+    }
+}
+
+/// Mesh hexahedron
+#[derive(Debug, Clone, PartialEq)]
+pub struct MeshHexahedron {
+    /// Hexahedron ID
+    pub id: usize,
+    /// Vertex indices
+    pub vertices: [usize; 8],
+    /// Face indices
+    pub faces: [usize; 6],
+    /// Optional hexahedron data
+    pub data: HashMap<String, f64>,
+}
+
+impl MeshHexahedron {
+    /// Create a new mesh hexahedron
+    pub fn new(
+        id: usize,
+        v1: usize,
+        v2: usize,
+        v3: usize,
+        v4: usize,
+        v5: usize,
+        v6: usize,
+        v7: usize,
+        v8: usize,
+    ) -> Self {
+        Self {
+            id,
+            vertices: [v1, v2, v3, v4, v5, v6, v7, v8],
+            faces: [0, 0, 0, 0, 0, 0], // Will be filled later
+            data: HashMap::new(),
+        }
+    }
+
+    /// Add hexahedron data
+    pub fn add_data(&mut self, key: &str, value: f64) {
+        self.data.insert(key.to_string(), value);
+    }
+}
+
+/// Mesh prism
+#[derive(Debug, Clone, PartialEq)]
+pub struct MeshPrism {
+    /// Prism ID
+    pub id: usize,
+    /// Vertex indices
+    pub vertices: [usize; 6],
+    /// Face indices
+    pub faces: [usize; 5],
+    /// Optional prism data
+    pub data: HashMap<String, f64>,
+}
+
+impl MeshPrism {
+    /// Create a new mesh prism
+    pub fn new(
+        id: usize,
+        v1: usize,
+        v2: usize,
+        v3: usize,
+        v4: usize,
+        v5: usize,
+        v6: usize,
+    ) -> Self {
+        Self {
+            id,
+            vertices: [v1, v2, v3, v4, v5, v6],
+            faces: [0, 0, 0, 0, 0], // Will be filled later
+            data: HashMap::new(),
+        }
+    }
+
+    /// Add prism data
     pub fn add_data(&mut self, key: &str, value: f64) {
         self.data.insert(key.to_string(), value);
     }

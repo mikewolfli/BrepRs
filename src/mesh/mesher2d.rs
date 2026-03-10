@@ -2,8 +2,7 @@
 //!
 //! This module provides functionality for 2D triangle meshing.
 
-use super::mesh_data::Mesh2D;
-use crate::geometry::{Point, Vector};
+use super::mesh_data::{Mesh2D, MeshVertex}; use crate::geometry::{Point, Vector};
 
 /// 2D mesher error types
 #[derive(Debug)]
@@ -29,6 +28,16 @@ pub struct Mesher2DParams {
     pub density_factor: f64,
     /// Use quality mesh
     pub quality_mesh: bool,
+    /// Curvature refinement factor
+    pub curvature_factor: f64,
+    /// Proximity refinement factor
+    pub proximity_factor: f64,
+    /// Size field control
+    pub size_field: Option<Box<dyn Fn(&Point) -> f64>>,
+    /// Maximum edge length
+    pub max_edge_length: f64,
+    /// Minimum edge length
+    pub min_edge_length: f64,
 }
 
 impl Default for Mesher2DParams {
@@ -38,6 +47,11 @@ impl Default for Mesher2DParams {
             min_angle: 20.0,
             density_factor: 1.0,
             quality_mesh: true,
+            curvature_factor: 1.0,
+            proximity_factor: 1.0,
+            size_field: None,
+            max_edge_length: 1.0,
+            min_edge_length: 0.01,
         }
     }
 }
@@ -50,6 +64,10 @@ pub struct Mesher2D {
     input_vertices: Vec<Point>,
     /// Input polygon edges
     input_edges: Vec<(usize, usize)>,
+    /// Curvature values for vertices
+    vertex_curvatures: Vec<f64>,
+    /// Size field values for vertices
+    vertex_sizes: Vec<f64>,
 }
 
 impl Mesher2D {
@@ -59,6 +77,8 @@ impl Mesher2D {
             params,
             input_vertices: Vec::new(),
             input_edges: Vec::new(),
+            vertex_curvatures: Vec::new(),
+            vertex_sizes: Vec::new(),
         }
     }
 
@@ -71,11 +91,77 @@ impl Mesher2D {
         let start_idx = self.input_vertices.len();
         for vertex in vertices {
             self.input_vertices.push(vertex.clone());
+            self.vertex_curvatures.push(0.0);
+            self.vertex_sizes.push(self.params.max_edge_length);
         }
 
         for i in 0..vertices.len() {
             let j = (i + 1) % vertices.len();
             self.input_edges.push((start_idx + i, start_idx + j));
+        }
+    }
+
+    /// Compute vertex curvatures
+    fn compute_curvatures(&mut self) {
+        for i in 0..self.input_vertices.len() {
+            let prev = (i + self.input_vertices.len() - 1) % self.input_vertices.len();
+            let next = (i + 1) % self.input_vertices.len();
+
+            let p_prev = &self.input_vertices[prev];
+            let p_curr = &self.input_vertices[i];
+            let p_next = &self.input_vertices[next];
+
+            // Compute curvature as the angle between consecutive edges
+            let v1 = Vector::new(p_curr.x - p_prev.x, p_curr.y - p_prev.y, 0.0);
+            let v2 = Vector::new(p_next.x - p_curr.x, p_next.y - p_curr.y, 0.0);
+
+            let dot = v1.x * v2.x + v1.y * v2.y;
+            let mag1 = (v1.x * v1.x + v1.y * v1.y).sqrt();
+            let mag2 = (v2.x * v2.x + v2.y * v2.y).sqrt();
+
+            let curvature = if mag1 > 1e-6 && mag2 > 1e-6 {
+                let cos_angle = (dot / (mag1 * mag2)).clamp(-1.0, 1.0);
+                let angle = cos_angle.acos();
+                angle / std::f64::consts::PI
+            } else {
+                0.0
+            };
+
+            self.vertex_curvatures[i] = curvature * self.params.curvature_factor;
+        }
+    }
+
+    /// Compute size field
+    fn compute_size_field(&mut self) {
+        for i in 0..self.input_vertices.len() {
+            let p = &self.input_vertices[i];
+
+            // Use custom size field if provided
+            let size = if let Some(ref size_field) = self.params.size_field {
+                size_field(p)
+            } else {
+                // Default size field based on curvature and proximity
+                let curvature = self.vertex_curvatures[i];
+                let base_size = self.params.max_edge_length;
+                let curvature_size = base_size * (1.0 - curvature * 0.8);
+
+                // Proximity to other vertices
+                let mut min_distance = f64::MAX;
+                for j in 0..self.input_vertices.len() {
+                    if i != j {
+                        let p_j = &self.input_vertices[j];
+                        let distance = ((p.x - p_j.x).powi(2) + (p.y - p_j.y).powi(2)).sqrt();
+                        min_distance = min_distance.min(distance);
+                    }
+                }
+
+                let proximity_size = min_distance * 0.5 * self.params.proximity_factor;
+                curvature_size
+                    .min(proximity_size)
+                    .max(self.params.min_edge_length)
+            };
+
+            self.vertex_sizes[i] = size;
         }
     }
 
@@ -85,16 +171,23 @@ impl Mesher2D {
             return Err(Mesher2DError::EmptyInput);
         }
 
+        // Compute curvatures and size field
+        self.compute_curvatures();
+        self.compute_size_field();
+
         // Create initial mesh
         let mut mesh = self.create_initial_mesh()?;
 
-        // Refine mesh
+        // Refine mesh based on curvature and size field
         if self.params.quality_mesh {
             self.refine_mesh(&mut mesh);
         }
 
         // Optimize mesh quality
         self.optimize_mesh(&mut mesh);
+
+        // Fix inverted triangles
+        self.fix_inverted_triangles(&mut mesh);
 
         Ok(mesh)
     }
@@ -209,14 +302,67 @@ impl Mesher2D {
         let mut edges_to_split = Vec::new();
 
         // Identify edges that need splitting
-        for (edge_id, edge) in mesh.edges.iter().enumerate() {
-            let v0 = &mesh.vertices[edge.vertices[0]];
-            let v1 = &mesh.vertices[edge.vertices[1]];
-            let length =
-                ((v1.point.x - v0.point.x).powi(2) + (v1.point.y - v0.point.y).powi(2)).sqrt();
+        #[cfg(feature = "rayon")]
+        {
+            edges_to_split = mesh.edges.par_iter().enumerate().filter_map(|(edge_id, edge)| {
+                let v0 = &mesh.vertices[edge.vertices[0]];
+                let v1 = &mesh.vertices[edge.vertices[1]];
+                let length =
+                    ((v1.point.x - v0.point.x).powi(2) + (v1.point.y - v0.point.y).powi(2)).sqrt();
 
-            if length > self.params.max_area.sqrt() {
-                edges_to_split.push(edge_id);
+                // Determine appropriate edge length based on vertices
+                let mut max_edge_length = self.params.max_edge_length;
+
+                // Check if vertices are in the input polygon
+                for (i, input_vertex) in self.input_vertices.iter().enumerate() {
+                    if (input_vertex.x - v0.point.x).abs() < 1e-6
+                        && (input_vertex.y - v0.point.y).abs() < 1e-6
+                    {
+                        max_edge_length = max_edge_length.min(self.vertex_sizes[i]);
+                    }
+                    if (input_vertex.x - v1.point.x).abs() < 1e-6
+                        && (input_vertex.y - v1.point.y).abs() < 1e-6
+                    {
+                        max_edge_length = max_edge_length.min(self.vertex_sizes[i]);
+                    }
+                }
+
+                if length > max_edge_length {
+                    Some(edge_id)
+                } else {
+                    None
+                }
+            }).collect();
+        }
+
+        #[cfg(not(feature = "rayon"))]
+        {
+            for (edge_id, edge) in mesh.edges.iter().enumerate() {
+                let v0 = &mesh.vertices[edge.vertices[0]];
+                let v1 = &mesh.vertices[edge.vertices[1]];
+                let length =
+                    ((v1.point.x - v0.point.x).powi(2) + (v1.point.y - v0.point.y).powi(2)).sqrt();
+
+                // Determine appropriate edge length based on vertices
+                let mut max_edge_length = self.params.max_edge_length;
+
+                // Check if vertices are in the input polygon
+                for (i, input_vertex) in self.input_vertices.iter().enumerate() {
+                    if (input_vertex.x - v0.point.x).abs() < 1e-6
+                        && (input_vertex.y - v0.point.y).abs() < 1e-6
+                    {
+                        max_edge_length = max_edge_length.min(self.vertex_sizes[i]);
+                    }
+                    if (input_vertex.x - v1.point.x).abs() < 1e-6
+                        && (input_vertex.y - v1.point.y).abs() < 1e-6
+                    {
+                        max_edge_length = max_edge_length.min(self.vertex_sizes[i]);
+                    }
+                }
+
+                if length > max_edge_length {
+                    edges_to_split.push(edge_id);
+                }
             }
         }
 
@@ -281,8 +427,144 @@ impl Mesher2D {
         }
 
         // Check if edge swap would improve quality
-        // This is a simplified implementation
+        let v0 = &mesh.vertices[face.vertices[0]];
+        let v1 = &mesh.vertices[face.vertices[1]];
+        let v2 = &mesh.vertices[face.vertices[2]];
+
+        // Calculate current quality
+        let current_quality = self.calculate_triangle_quality(v0, v1, v2);
+
+        // Try edge swaps
+        for i in 0..3 {
+            let j = (i + 1) % 3;
+            let k = (i + 2) % 3;
+
+            // Find adjacent face
+            let adjacent_face = self.find_adjacent_face(mesh, face.vertices[i], face.vertices[j]);
+            if let Some(adj_face_id) = adjacent_face {
+                let adj_face = &mesh.faces[adj_face_id];
+                if adj_face.vertices.len() == 3 {
+                    // Get the fourth vertex
+                    let mut fourth_vertex = 0;
+                    for &v in &adj_face.vertices {
+                        if v != face.vertices[i] && v != face.vertices[j] {
+                            fourth_vertex = v;
+                            break;
+                        }
+                    }
+
+                    // Calculate new quality if we swap edges
+                    let new_quality1 = self.calculate_triangle_quality(
+                        &mesh.vertices[face.vertices[i]],
+                        &mesh.vertices[fourth_vertex],
+                        &mesh.vertices[face.vertices[k]],
+                    );
+
+                    let new_quality2 = self.calculate_triangle_quality(
+                        &mesh.vertices[face.vertices[j]],
+                        &mesh.vertices[fourth_vertex],
+                        &mesh.vertices[face.vertices[k]],
+                    );
+
+                    let new_quality = (new_quality1 + new_quality2) / 2.0;
+                    if new_quality > current_quality {
+                        // Perform edge swap
+                        self.swap_edges(
+                            mesh,
+                            face_id,
+                            adj_face_id,
+                            face.vertices[i],
+                            face.vertices[j],
+                            fourth_vertex,
+                            face.vertices[k],
+                        );
+                        return true;
+                    }
+                }
+            }
+        }
+
         false
+    }
+
+    /// Calculate triangle quality based on minimum angle
+    fn calculate_triangle_quality(&self, v0: &MeshVertex, v1: &MeshVertex, v2: &MeshVertex) -> f64 {
+        let angle1 = self.calculate_angle(&v1.point, &v0.point, &v2.point);
+        let angle2 = self.calculate_angle(&v0.point, &v1.point, &v2.point);
+        let angle3 = self.calculate_angle(&v0.point, &v2.point, &v1.point);
+
+        let min_angle = angle1.min(angle2).min(angle3);
+        min_angle / 60.0 // Normalize to [0, 1] where 1 is ideal (60 degrees)
+    }
+
+    /// Calculate angle between three points
+    fn calculate_angle(&self, p1: &Point, p2: &Point, p3: &Point) -> f64 {
+        let v1 = Vector::new(p1.x - p2.x, p1.y - p2.y, 0.0);
+        let v2 = Vector::new(p3.x - p2.x, p3.y - p2.y, 0.0);
+
+        let dot = v1.x * v2.x + v1.y * v2.y;
+        let mag1 = (v1.x * v1.x + v1.y * v1.y).sqrt();
+        let mag2 = (v2.x * v2.x + v2.y * v2.y).sqrt();
+
+        if mag1 < 1e-6 || mag2 < 1e-6 {
+            return 0.0;
+        }
+
+        let cos_angle = (dot / (mag1 * mag2)).clamp(-1.0, 1.0);
+        cos_angle.acos() * 180.0 / std::f64::consts::PI
+    }
+
+    /// Find adjacent face sharing an edge
+    fn find_adjacent_face(&self, mesh: &Mesh2D, v1: usize, v2: usize) -> Option<usize> {
+        for (face_id, face) in mesh.faces.iter().enumerate() {
+            if face.vertices.len() == 3 {
+                let has_v1 = face.vertices.contains(&v1);
+                let has_v2 = face.vertices.contains(&v2);
+                if has_v1 && has_v2 {
+                    return Some(face_id);
+                }
+            }
+        }
+        None
+    }
+
+    /// Swap edges between two triangles
+    fn swap_edges(
+        &self,
+        mesh: &mut Mesh2D,
+        face1_id: usize,
+        face2_id: usize,
+        v1: usize,
+        v2: usize,
+        v3: usize,
+        v4: usize,
+    ) {
+        // Update first face
+        mesh.faces[face1_id].vertices = vec![v1, v3, v4];
+
+        // Update second face
+        mesh.faces[face2_id].vertices = vec![v2, v3, v4];
+    }
+
+    /// Ensure no inverted triangles
+    fn fix_inverted_triangles(&self, mesh: &mut Mesh2D) {
+        for face in &mut mesh.faces {
+            if face.vertices.len() == 3 {
+                let v0 = &mesh.vertices[face.vertices[0]];
+                let v1 = &mesh.vertices[face.vertices[1]];
+                let v2 = &mesh.vertices[face.vertices[2]];
+
+                // Calculate normal
+                let vec1 = Vector::new(v1.point.x - v0.point.x, v1.point.y - v0.point.y, 0.0);
+                let vec2 = Vector::new(v2.point.x - v0.point.x, v2.point.y - v0.point.y, 0.0);
+                let cross = vec1.x * vec2.y - vec1.y * vec2.x;
+
+                // If normal is negative, reverse the face
+                if cross < 0.0 {
+                    face.vertices.reverse();
+                }
+            }
+        }
     }
 }
 

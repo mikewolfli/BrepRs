@@ -1,6 +1,6 @@
 use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Matrix {
     pub data: [[StandardReal; 3]; 3],
 }

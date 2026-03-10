@@ -1,4 +1,3 @@
-
 use crate::geometry::{Point, Transform};
 use crate::topology::shape_enum::ShapeType;
 use crate::topology::topods_location::TopoDsLocation;
@@ -13,7 +12,7 @@ static SHAPE_ID_COUNTER: AtomicI32 = AtomicI32::new(1);
 /// boundary representation (BRep) model. It provides the basic
 /// functionality common to all shapes, including type identification,
 /// location transformation, and shape hierarchy management.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TopoDsShape {
     shape_type: ShapeType,
     location: Option<TopoDsLocation>,
@@ -218,6 +217,17 @@ impl PartialEq for TopoDsShape {
 }
 
 impl Eq for TopoDsShape {}
+
+impl TopoDsShape {
+    /// Compute the bounding box of the shape
+    /// 
+    /// Returns (min_point, max_point) representing the bounding box
+    pub fn bounding_box(&self) -> (Point, Point) {
+        // Default implementation returns origin points
+        // Subclasses should override this with proper implementation
+        (Point::origin(), Point::origin())
+    }
+}
 
 #[cfg(test)]
 mod tests {

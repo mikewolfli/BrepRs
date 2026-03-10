@@ -3,29 +3,29 @@
 /// This enum defines all the types of topological shapes in the
 /// boundary representation (BRep) model, ordered from simplest
 /// to most complex.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum ShapeType {
     /// A single point in 3D space
     Vertex,
-    
+
     /// A curve bounded by two vertices
     Edge,
-    
+
     /// An ordered set of connected edges
     Wire,
-    
+
     /// A bounded portion of a surface
     Face,
-    
+
     /// A set of connected faces
     Shell,
-    
+
     /// A 3D region bounded by shells
     Solid,
-    
+
     /// A collection of shapes of any type
     Compound,
-    
+
     /// A collection of connected solids
     CompSolid,
 }

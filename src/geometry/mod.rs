@@ -24,6 +24,7 @@ pub mod sphere;
 pub mod torus;
 pub mod curve_intersection;
 pub mod surface_intersection;
+pub mod spiral;
 
 pub use point::*;
 pub use vector::*;
@@ -51,3 +52,4 @@ pub use sphere::*;
 pub use torus::*;
 pub use curve_intersection::*;
 pub use surface_intersection::*;
+pub use spiral::*;

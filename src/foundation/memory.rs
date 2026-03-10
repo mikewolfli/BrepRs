@@ -238,6 +238,115 @@ impl MemoryStats {
     }
 }
 
+/// LOD memory manager
+///
+/// This manager provides specialized memory management for LOD (Level of Detail) data,
+/// including memory budgeting and automatic memory release for lower priority LOD levels.
+pub struct LodMemoryManager {
+    /// Memory usage per LOD level
+    lod_usage: Vec<AtomicUsize>,
+    /// Total memory budget in bytes
+    memory_budget: AtomicUsize,
+}
+
+impl LodMemoryManager {
+    /// Create a new LOD memory manager
+    pub fn new(num_levels: usize, memory_budget: usize) -> Self {
+        let mut lod_usage = Vec::with_capacity(num_levels);
+        for _ in 0..num_levels {
+            lod_usage.push(AtomicUsize::new(0));
+        }
+
+        Self {
+            lod_usage,
+            memory_budget: AtomicUsize::new(memory_budget),
+        }
+    }
+
+    /// Allocate memory for LOD data
+    pub fn allocate(&self, lod_level: usize, size: usize) -> Result<(), String> {
+        // Check if LOD level is valid
+        if lod_level >= self.lod_usage.len() {
+            return Err(format!("Invalid LOD level: {}", lod_level));
+        }
+
+        // Check memory budget
+        let current_usage = self.current_usage();
+        if current_usage + size > self.memory_budget.load(Ordering::Relaxed) {
+            // Try to free memory from lower priority LOD levels
+            self.free_memory(size)?;
+        }
+
+        // Allocate memory
+        self.lod_usage[lod_level].fetch_add(size, Ordering::Relaxed);
+
+        Ok(())
+    }
+
+    /// Free memory for LOD data
+    pub fn free(&self, lod_level: usize, size: usize) {
+        if lod_level < self.lod_usage.len() {
+            self.lod_usage[lod_level].fetch_sub(size, Ordering::Relaxed);
+        }
+    }
+
+    /// Free memory to meet memory budget
+    fn free_memory(&self, required_size: usize) -> Result<(), String> {
+        let current_usage = self.current_usage();
+        let target_usage = current_usage.saturating_sub(required_size);
+
+        // Free memory from lowest priority LOD levels first
+        for level in (0..self.lod_usage.len()).rev() {
+            let level_usage = self.lod_usage[level].load(Ordering::Relaxed);
+            if level_usage > 0 {
+                // Free all memory for this level
+                self.lod_usage[level].store(0, Ordering::Relaxed);
+
+                if self.current_usage() <= target_usage {
+                    return Ok(());
+                }
+            }
+        }
+
+        Err("Insufficient memory budget".to_string())
+    }
+
+    /// Get current memory usage
+    pub fn current_usage(&self) -> usize {
+        self.lod_usage
+            .iter()
+            .map(|usage| usage.load(Ordering::Relaxed))
+            .sum()
+    }
+
+    /// Get memory usage per LOD level
+    pub fn usage_per_level(&self) -> Vec<usize> {
+        self.lod_usage
+            .iter()
+            .map(|usage| usage.load(Ordering::Relaxed))
+            .collect()
+    }
+
+    /// Set memory budget
+    pub fn set_memory_budget(&self, budget: usize) {
+        self.memory_budget.store(budget, Ordering::Relaxed);
+    }
+
+    /// Get memory budget
+    pub fn memory_budget(&self) -> usize {
+        self.memory_budget.load(Ordering::Relaxed)
+    }
+}
+
+impl Default for LodMemoryManager {
+    fn default() -> Self {
+        Self::new(5, 1024 * 1024 * 1024) // 1GB default budget
+    }
+}
+
+/// Global LOD memory manager instance
+pub static LOD_MEMORY_MANAGER: LodMemoryManager = LodMemoryManager::new(5, 1024 * 1024 * 1024);
+
 #[macro_export]
 macro_rules! track_allocation {
     ($expr:expr) => {

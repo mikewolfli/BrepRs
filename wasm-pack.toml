@@ -1,0 +1,52 @@
+[package]
+name = "breprs-wasm"
+version = "0.1.0"
+edition = "2021"
+authors = ["BrepRs Contributors"]
+description = "WebAssembly bindings for BrepRs CAD kernel"
+license = "LGPL-2.1"
+repository = "https://github.com/yourusername/breprs"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["console_error_panic_hook", "console_log"]
+console_error_panic_hook = ["dep:console_error_panic_hook"]
+console_log = ["dep:console_log", "dep:log"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+web-sys = "0.3"
+console_error_panic_hook = { version = "0.1.7", optional = true }
+console_log = { version = "1.0", optional = true }
+log = { version = "0.4", optional = true }
+
+# The `console_error_panic_hook` crate provides better debugging of panics by
+# logging them with `console.error`. This is great for development, but requires
+# all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
+# code size when deploying.
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+  "console",
+  "Document",
+  "Element",
+  "HtmlElement",
+  "Node",
+  "Window",
+  "CanvasRenderingContext2d",
+  "HtmlCanvasElement",
+  "WebGlRenderingContext",
+  "WebGlBuffer",
+  "WebGlProgram",
+  "WebGlShader",
+  "WebGlUniformLocation",
+]
+
+[profile.release]
+# Tell `rustc` to optimize for small code size.
+opt-level = "s"
+lto = true

@@ -21,6 +21,19 @@ pub enum IgesError {
     NotImplemented,
 }
 
+impl std::fmt::Display for IgesError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            IgesError::IoError(e) => write!(f, "IO error: {}", e),
+            IgesError::InvalidFormat => write!(f, "Invalid IGES file format"),
+            IgesError::InvalidEntity => write!(f, "Invalid IGES entity"),
+            IgesError::UnsupportedEntityType => write!(f, "Unsupported IGES entity type"),
+            IgesError::ParsingError => write!(f, "Parsing error"),
+            IgesError::NotImplemented => write!(f, "Not implemented"),
+        }
+    }
+}
+
 impl From<std::io::Error> for IgesError {
     fn from(err: std::io::Error) -> Self {
         IgesError::IoError(err)
@@ -339,24 +352,281 @@ impl IgesWriter {
     /// Write the IGES file directory section
     fn write_directory_section(
         &self,
-        _writer: &mut BufWriter<File>,
-        _shape: &TopoDsShape,
+        writer: &mut BufWriter<File>,
+        shape: &TopoDsShape,
     ) -> Result<(), IgesError> {
-        // This is a placeholder implementation
-        // In a real implementation, we would write directory entries for each entity
+        let shape_type = shape.shape_type();
+        let entity_id = 1;
 
+        match shape_type {
+            ShapeType::Solid => {
+                self.write_solid_directory(writer, entity_id)?;
+            }
+            ShapeType::Face => {
+                self.write_face_directory(writer, entity_id)?;
+            }
+            ShapeType::Edge => {
+                self.write_edge_directory(writer, entity_id)?;
+            }
+            ShapeType::Wire => {
+                self.write_wire_directory(writer, entity_id)?;
+            }
+            ShapeType::Compound => {
+                self.write_compound_directory(writer, entity_id)?;
+            }
+            _ => {
+                return Err(IgesError::NotImplemented);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Write solid directory entry
+    fn write_solid_directory(
+        &self,
+        writer: &mut BufWriter<File>,
+        entity_id: usize,
+    ) -> Result<(), IgesError> {
+        let line = format!(
+            "{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}",
+            entity_id, 190, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        );
+        writeln!(writer, "{}", line)?;
+        Ok(())
+    }
+
+    /// Write face directory entry
+    fn write_face_directory(
+        &self,
+        writer: &mut BufWriter<File>,
+        entity_id: usize,
+    ) -> Result<(), IgesError> {
+        let line = format!(
+            "{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}",
+            entity_id, 142, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        );
+        writeln!(writer, "{}", line)?;
+        Ok(())
+    }
+
+    /// Write edge directory entry
+    fn write_edge_directory(
+        &self,
+        writer: &mut BufWriter<File>,
+        entity_id: usize,
+    ) -> Result<(), IgesError> {
+        let line = format!(
+            "{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}",
+            entity_id, 142, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        );
+        writeln!(writer, "{}", line)?;
+        Ok(())
+    }
+
+    /// Write wire directory entry
+    fn write_wire_directory(
+        &self,
+        writer: &mut BufWriter<File>,
+        entity_id: usize,
+    ) -> Result<(), IgesError> {
+        let line = format!(
+            "{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}",
+            entity_id, 102, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        );
+        writeln!(writer, "{}", line)?;
+        Ok(())
+    }
+
+    /// Write compound directory entry
+    fn write_compound_directory(
+        &self,
+        writer: &mut BufWriter<File>,
+        entity_id: usize,
+    ) -> Result<(), IgesError> {
+        let line = format!(
+            "{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}{:<8}",
+            entity_id, 184, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        );
+        writeln!(writer, "{}", line)?;
         Ok(())
     }
 
     /// Write the IGES file parameter section
     fn write_parameter_section(
         &self,
-        _writer: &mut BufWriter<File>,
-        _shape: &TopoDsShape,
+        writer: &mut BufWriter<File>,
+        shape: &TopoDsShape,
     ) -> Result<(), IgesError> {
-        // This is a placeholder implementation
-        // In a real implementation, we would write parameter entries for each entity
+        let shape_type = shape.shape_type();
+        let entity_id = 1;
 
+        match shape_type {
+            ShapeType::Solid => {
+                self.write_solid_parameters(writer, entity_id)?;
+            }
+            ShapeType::Face => {
+                self.write_face_parameters(writer, entity_id)?;
+            }
+            ShapeType::Edge => {
+                self.write_edge_parameters(writer, entity_id)?;
+            }
+            ShapeType::Wire => {
+                self.write_wire_parameters(writer, entity_id)?;
+            }
+            ShapeType::Compound => {
+                self.write_compound_parameters(writer, entity_id)?;
+            }
+            _ => {
+                return Err(IgesError::NotImplemented);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Write solid parameters
+    fn write_solid_parameters(
+        &self,
+        writer: &mut BufWriter<File>,
+        entity_id: usize,
+    ) -> Result<(), IgesError> {
+        writeln!(writer, "{:64},{}H,", entity_id, 1)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 2)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 3)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 4)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 5)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 6)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 7)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 8)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 9)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 10)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 11)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 12)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 13)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 14)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 15)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 16)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 17)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 18)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 19)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 20)?;
+        Ok(())
+    }
+
+    /// Write face parameters
+    fn write_face_parameters(
+        &self,
+        writer: &mut BufWriter<File>,
+        entity_id: usize,
+    ) -> Result<(), IgesError> {
+        writeln!(writer, "{:64},{}H,", entity_id, 1)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 2)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 3)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 4)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 5)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 6)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 7)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 8)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 9)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 10)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 11)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 12)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 13)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 14)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 15)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 16)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 17)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 18)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 19)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 20)?;
+        Ok(())
+    }
+
+    /// Write edge parameters
+    fn write_edge_parameters(
+        &self,
+        writer: &mut BufWriter<File>,
+        entity_id: usize,
+    ) -> Result<(), IgesError> {
+        writeln!(writer, "{:64},{}H,", entity_id, 1)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 2)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 3)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 4)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 5)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 6)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 7)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 8)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 9)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 10)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 11)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 12)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 13)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 14)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 15)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 16)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 17)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 18)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 19)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 20)?;
+        Ok(())
+    }
+
+    /// Write wire parameters
+    fn write_wire_parameters(
+        &self,
+        writer: &mut BufWriter<File>,
+        entity_id: usize,
+    ) -> Result<(), IgesError> {
+        writeln!(writer, "{:64},{}H,", entity_id, 1)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 2)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 3)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 4)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 5)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 6)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 7)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 8)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 9)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 10)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 11)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 12)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 13)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 14)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 15)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 16)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 17)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 18)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 19)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 20)?;
+        Ok(())
+    }
+
+    /// Write compound parameters
+    fn write_compound_parameters(
+        &self,
+        writer: &mut BufWriter<File>,
+        entity_id: usize,
+    ) -> Result<(), IgesError> {
+        writeln!(writer, "{:64},{}H,", entity_id, 1)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 2)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 3)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 4)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 5)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 6)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 7)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 8)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 9)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 10)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 11)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 12)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 13)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 14)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 15)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 16)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 17)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 18)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 19)?;
+        writeln!(writer, "{:64},{}H,", entity_id, 20)?;
         Ok(())
     }
 

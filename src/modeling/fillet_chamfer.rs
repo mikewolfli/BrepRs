@@ -1,12 +1,11 @@
-#[cfg(test)]
-use crate::topology::ShapeType;
 /// Fillet and Chamfer module
 ///
 /// This module provides fillet and chamfer operations for topological shapes,
 /// including edge filleting and face chamfering.
-
 use crate::foundation::handle::Handle;
 use crate::geometry::Point;
+#[cfg(test)]
+use crate::topology::ShapeType;
 
 use crate::topology::{
     topods_edge::TopoDsEdge, topods_face::TopoDsFace, topods_solid::TopoDsSolid,
@@ -16,6 +15,7 @@ use crate::topology::{
 ///
 /// This class provides methods to perform fillet and chamfer operations on topological shapes.
 /// It follows the OpenCASCADE BRepFilletAPI pattern.
+#[derive(Debug, Clone)]
 pub struct FilletChamfer {
     radius: f64,
     chamfer_distance: f64,
@@ -122,24 +122,30 @@ impl FilletChamfer {
     /// # Returns
     /// A new shape with fillets applied
     pub fn apply_fillet(&self, shape: &TopoDsSolid) -> TopoDsSolid {
-        // For now, return a copy of the input shape as a placeholder
-        // In a real implementation, this would:
-        // 1. Find all edges in the shape
-        // 2. Create fillet surfaces for each edge
-        // 3. Trim the original faces
-        // 4. Create new fillet faces
-        // 5. Rebuild the solid
+        // Create a copy of the input shape
+        let mut result = shape.clone();
 
-        let result = shape.clone();
-
-        // Apply tolerance modification to simulate fillet effect
-        // This is a simplified placeholder implementation
+        // For each edge to fillet
         for edge in &self.edges_to_fillet {
-            if let Some(_edge_ref) = edge.get() {
-                // In a real implementation, we would:
-                // - Calculate the fillet surface
-                // - Trim adjacent faces
-                // - Create new topology
+            if let Some(edge_ref) = edge.get() {
+                // Check if edge can be filleted
+                if self.can_fillet_edge(edge) {
+                    // Get adjacent faces
+                    let adjacent_faces = edge_ref.adjacent_faces();
+                    if adjacent_faces.len() == 2 {
+                        // Calculate fillet surface
+                        let fillet_surface = self.calculate_fillet_surface(edge, self.radius);
+
+                        // Create fillet face
+                        // TODO: Implement face creation from fillet surface
+
+                        // Trim original faces
+                        // TODO: Implement face trimming
+
+                        // Add fillet face to the solid
+                        // TODO: Implement face addition
+                    }
+                }
             }
         }
 
@@ -214,25 +220,34 @@ impl FilletChamfer {
     /// # Returns
     /// A new shape with chamfers applied
     pub fn apply_chamfer(&self, shape: &TopoDsSolid) -> TopoDsSolid {
-        // For now, return a copy of the input shape as a placeholder
-        // In a real implementation, this would:
-        // 1. Find all edges adjacent to the specified faces
-        // 2. Create chamfer surfaces for each edge
-        // 3. Trim the original faces
-        // 4. Create new chamfer faces
-        // 5. Rebuild the solid
+        // Create a copy of the input shape
+        let mut result = shape.clone();
 
-        let result = shape.clone();
-
-        // Apply tolerance modification to simulate chamfer effect
-        // This is a simplified placeholder implementation
+        // For each face to chamfer
         for face in &self.faces_to_chamfer {
-            if let Some(_face_ref) = face.get() {
-                // In a real implementation, we would:
-                // - Find edges adjacent to this face
-                // - Calculate the chamfer surface
-                // - Trim adjacent faces
-                // - Create new topology
+            if let Some(face_ref) = face.get() {
+                // Check if face can be chamfered
+                if self.can_chamfer_face(face) {
+                    // Get edges adjacent to this face
+                    let edges = face_ref.edges();
+                    for edge in edges {
+                        // Check if edge can be chamfered
+                        if self.can_fillet_edge(&edge) {
+                            // Calculate chamfer surface
+                            let chamfer_surface =
+                                self.calculate_chamfer_surface(&edge, self.chamfer_distance);
+
+                            // Create chamfer face
+                            // TODO: Implement face creation from chamfer surface
+
+                            // Trim original faces
+                            // TODO: Implement face trimming
+
+                            // Add chamfer face to the solid
+                            // TODO: Implement face addition
+                        }
+                    }
+                }
             }
         }
 
@@ -553,5 +568,75 @@ mod tests {
 
         // Should return empty for a degenerate edge
         assert!(points.is_empty());
+    }
+
+    #[test]
+    fn test_apply_fillet_to_box() {
+        let mut fc = FilletChamfer::with_radius(0.1);
+
+        // Create a simple box
+        let box_solid = primitives::make_box(1.0, 1.0, 1.0, Some(Point::new(0.0, 0.0, 0.0)));
+
+        // Apply fillet
+        let result = fc.apply_fillet(&box_solid);
+
+        // Verify result is a solid
+        assert_eq!(result.shape().shape_type(), ShapeType::Solid);
+    }
+
+    #[test]
+    fn test_apply_chamfer_to_box() {
+        let mut fc = FilletChamfer::with_chamfer_distance(0.1);
+
+        // Create a simple box
+        let box_solid = primitives::make_box(1.0, 1.0, 1.0, Some(Point::new(0.0, 0.0, 0.0)));
+
+        // Apply chamfer
+        let result = fc.apply_chamfer(&box_solid);
+
+        // Verify result is a solid
+        assert_eq!(result.shape().shape_type(), ShapeType::Solid);
+    }
+
+    #[test]
+    fn test_fillet_edges() {
+        let fc = FilletChamfer::new();
+
+        // Create a simple box
+        let box_solid = primitives::make_box(1.0, 1.0, 1.0, Some(Point::new(0.0, 0.0, 0.0)));
+
+        // Create a simple edge
+        let v1 = crate::topology::TopoDsVertex::new(Point::new(0.0, 0.0, 0.0));
+        let v2 = crate::topology::TopoDsVertex::new(Point::new(1.0, 0.0, 0.0));
+        let edge = Handle::new(std::sync::Arc::new(crate::topology::TopoDsEdge::new(
+            Handle::new(std::sync::Arc::new(v1)),
+            Handle::new(std::sync::Arc::new(v2)),
+        )));
+
+        let edges = vec![edge];
+
+        // Apply fillet to specific edges
+        let result = fc.fillet_edges(&box_solid, &edges, 0.1);
+
+        // Verify result is a solid
+        assert_eq!(result.shape().shape_type(), ShapeType::Solid);
+    }
+
+    #[test]
+    fn test_chamfer_faces() {
+        let fc = FilletChamfer::new();
+
+        // Create a simple box
+        let box_solid = primitives::make_box(1.0, 1.0, 1.0, Some(Point::new(0.0, 0.0, 0.0)));
+
+        // Create a simple face
+        let face = TopoDsFace::new();
+        let faces = vec![Handle::new(std::sync::Arc::new(face))];
+
+        // Apply chamfer to specific faces
+        let result = fc.chamfer_faces(&box_solid, &faces, 0.1);
+
+        // Verify result is a solid
+        assert_eq!(result.shape().shape_type(), ShapeType::Solid);
     }
 }

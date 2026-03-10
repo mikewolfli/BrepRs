@@ -2,9 +2,7 @@
 //!
 //! This module provides functionality for 3D tetrahedral meshing.
 
-use super::mesh_data::Mesh3D;
-use crate::geometry::Point;
-use std::collections::{HashMap, HashSet};
+use super::mesh_data::Mesh3D; use crate::geometry::{Point, Vector}; use std::collections::{HashMap, HashSet};
 
 /// 3D mesher error types
 #[derive(Debug)]
@@ -26,10 +24,30 @@ pub struct Mesher3DParams {
     pub max_volume: f64,
     /// Minimum dihedral angle (in degrees)
     pub min_dihedral_angle: f64,
+    /// Maximum dihedral angle (in degrees)
+    pub max_dihedral_angle: f64,
+    /// Minimum aspect ratio
+    pub min_aspect_ratio: f64,
+    /// Maximum aspect ratio
+    pub max_aspect_ratio: f64,
+    /// Minimum radius ratio
+    pub min_radius_ratio: f64,
     /// Mesh density factor
     pub density_factor: f64,
     /// Use quality mesh
     pub quality_mesh: bool,
+    /// Use size field
+    pub use_size_field: bool,
+    /// Maximum edge length
+    pub max_edge_length: f64,
+    /// Minimum edge length
+    pub min_edge_length: f64,
+    /// Curvature refinement factor
+    pub curvature_factor: f64,
+    /// Proximity refinement factor
+    pub proximity_factor: f64,
+    /// Size field control
+    pub size_field: Option<Box<dyn Fn(&Point) -> f64>>,
 }
 
 impl Default for Mesher3DParams {
@@ -37,8 +55,18 @@ impl Default for Mesher3DParams {
         Self {
             max_volume: 1.0,
             min_dihedral_angle: 10.0,
+            max_dihedral_angle: 170.0,
+            min_aspect_ratio: 0.1,
+            max_aspect_ratio: 10.0,
+            min_radius_ratio: 0.1,
             density_factor: 1.0,
             quality_mesh: true,
+            use_size_field: false,
+            max_edge_length: 1.0,
+            min_edge_length: 0.01,
+            curvature_factor: 1.0,
+            proximity_factor: 1.0,
+            size_field: None,
         }
     }
 }
@@ -53,6 +81,10 @@ pub struct Mesher3D {
     input_faces: Vec<Vec<usize>>,
     /// Input edges
     input_edges: Vec<(usize, usize)>,
+    /// Curvature values for vertices
+    vertex_curvatures: Vec<f64>,
+    /// Size field values for vertices
+    vertex_sizes: Vec<f64>,
 }
 
 impl Mesher3D {
@@ -63,6 +95,8 @@ impl Mesher3D {
             input_vertices: Vec::new(),
             input_faces: Vec::new(),
             input_edges: Vec::new(),
+            vertex_curvatures: Vec::new(),
+            vertex_sizes: Vec::new(),
         }
     }
 
@@ -71,6 +105,8 @@ impl Mesher3D {
         let start_idx = self.input_vertices.len();
         for vertex in vertices {
             self.input_vertices.push(vertex.clone());
+            self.vertex_curvatures.push(0.0);
+            self.vertex_sizes.push(self.params.max_edge_length);
         }
 
         for face in faces {
@@ -106,6 +142,10 @@ impl Mesher3D {
             return Err(Mesher3DError::EmptyInput);
         }
 
+        // Compute curvatures and size field
+        self.compute_curvatures();
+        self.compute_size_field();
+
         // Create initial mesh
         let mut mesh = self.create_initial_mesh()?;
 
@@ -117,7 +157,140 @@ impl Mesher3D {
         // Optimize mesh quality
         self.optimize_mesh(&mut mesh);
 
+        // Fix inverted tetrahedrons
+        self.fix_inverted_tetrahedrons(&mut mesh);
+
         Ok(mesh)
+    }
+
+    /// Fix inverted tetrahedrons
+    fn fix_inverted_tetrahedrons(&self, mesh: &mut Mesh3D) {
+        for tetra in &mut mesh.tetrahedrons {
+            let v0 = &mesh.vertices[tetra.vertices[0]].point;
+            let v1 = &mesh.vertices[tetra.vertices[1]].point;
+            let v2 = &mesh.vertices[tetra.vertices[2]].point;
+            let v3 = &mesh.vertices[tetra.vertices[3]].point;
+
+            // Calculate tetrahedron volume
+            let volume = self.calculate_tetrahedron_volume(v0, v1, v2, v3);
+
+            // If volume is negative, tetrahedron is inverted
+            if volume < 0.0 {
+                // Reverse vertex order to fix inversion
+                tetra.vertices.reverse();
+            }
+        }
+    }
+
+    /// Calculate tetrahedron volume
+    fn calculate_tetrahedron_volume(&self, p1: &Point, p2: &Point, p3: &Point, p4: &Point) -> f64 {
+        let v1 = Vector::new(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z);
+        let v2 = Vector::new(p3.x - p1.x, p3.y - p1.y, p3.z - p1.z);
+        let v3 = Vector::new(p4.x - p1.x, p4.y - p1.y, p4.z - p1.z);
+
+        let cross = Vector::new(
+            v2.y * v3.z - v2.z * v3.y,
+            v2.z * v3.x - v2.x * v3.z,
+            v2.x * v3.y - v2.y * v3.x,
+        );
+
+        (v1.x * cross.x + v1.y * cross.y + v1.z * cross.z) / 6.0
+    }
+
+    /// Compute vertex curvatures
+    fn compute_curvatures(&mut self) {
+        for i in 0..self.input_vertices.len() {
+            // Find adjacent vertices
+            let mut adjacent_vertices = Vec::new();
+            for edge in &self.input_edges {
+                if edge.0 == i {
+                    adjacent_vertices.push(edge.1);
+                } else if edge.1 == i {
+                    adjacent_vertices.push(edge.0);
+                }
+            }
+
+            if adjacent_vertices.len() >= 2 {
+                // Calculate curvature as the average angle between consecutive edges
+                let mut total_curvature = 0.0;
+                let mut count = 0;
+
+                for j in 0..adjacent_vertices.len() {
+                    let prev = adjacent_vertices[j];
+                    let next = adjacent_vertices[(j + 1) % adjacent_vertices.len()];
+
+                    let p_prev = &self.input_vertices[prev];
+                    let p_curr = &self.input_vertices[i];
+                    let p_next = &self.input_vertices[next];
+
+                    // Compute vectors
+                    let v1 = [
+                        p_prev.x - p_curr.x,
+                        p_prev.y - p_curr.y,
+                        p_prev.z - p_curr.z,
+                    ];
+                    let v2 = [
+                        p_next.x - p_curr.x,
+                        p_next.y - p_curr.y,
+                        p_next.z - p_curr.z,
+                    ];
+
+                    // Compute dot product
+                    let dot = v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
+                    let mag1 = (v1[0] * v1[0] + v1[1] * v1[1] + v1[2] * v1[2]).sqrt();
+                    let mag2 = (v2[0] * v2[0] + v2[1] * v2[1] + v2[2] * v2[2]).sqrt();
+
+                    if mag1 > 1e-6 && mag2 > 1e-6 {
+                        let cos_angle = (dot / (mag1 * mag2)).clamp(-1.0, 1.0);
+                        let angle = cos_angle.acos();
+                        total_curvature += angle;
+                        count += 1;
+                    }
+                }
+
+                if count > 0 {
+                    let avg_curvature = total_curvature / count as f64;
+                    self.vertex_curvatures[i] =
+                        avg_curvature / std::f64::consts::PI * self.params.curvature_factor;
+                }
+            }
+        }
+    }
+
+    /// Compute size field
+    fn compute_size_field(&mut self) {
+        for i in 0..self.input_vertices.len() {
+            let p = &self.input_vertices[i];
+
+            // Use custom size field if provided
+            let size = if let Some(ref size_field) = self.params.size_field {
+                size_field(p)
+            } else {
+                // Default size field based on curvature and proximity
+                let curvature = self.vertex_curvatures[i];
+                let base_size = self.params.max_edge_length;
+                let curvature_size = base_size * (1.0 - curvature * 0.8);
+
+                // Proximity to other vertices
+                let mut min_distance = f64::MAX;
+                for j in 0..self.input_vertices.len() {
+                    if i != j {
+                        let p_j = &self.input_vertices[j];
+                        let distance =
+                            ((p.x - p_j.x).powi(2) + (p.y - p_j.y).powi(2) + (p.z - p_j.z).powi(2))
+                                .sqrt();
+                        min_distance = min_distance.min(distance);
+                    }
+                }
+
+                let proximity_size = min_distance * 0.5 * self.params.proximity_factor;
+                curvature_size
+                    .min(proximity_size)
+                    .max(self.params.min_edge_length)
+            };
+
+            self.vertex_sizes[i] = size;
+        }
     }
 
     /// Create initial mesh
@@ -281,7 +454,26 @@ impl Mesher3D {
                 + (v1.point.z - v0.point.z).powi(2))
             .sqrt();
 
-            if length > self.params.max_volume.cbrt() {
+            // Determine appropriate edge length based on size field
+            let mut max_edge_length = self.params.max_edge_length;
+
+            // Check if vertices are in the input set
+            for (i, input_vertex) in self.input_vertices.iter().enumerate() {
+                if (input_vertex.x - v0.point.x).abs() < 1e-6
+                    && (input_vertex.y - v0.point.y).abs() < 1e-6
+                    && (input_vertex.z - v0.point.z).abs() < 1e-6
+                {
+                    max_edge_length = max_edge_length.min(self.vertex_sizes[i]);
+                }
+                if (input_vertex.x - v1.point.x).abs() < 1e-6
+                    && (input_vertex.y - v1.point.y).abs() < 1e-6
+                    && (input_vertex.z - v1.point.z).abs() < 1e-6
+                {
+                    max_edge_length = max_edge_length.min(self.vertex_sizes[i]);
+                }
+            }
+
+            if length > max_edge_length {
                 edges_to_split.push(edge_id);
             }
         }
@@ -327,11 +519,354 @@ impl Mesher3D {
 
     /// Optimize a single tetrahedron
     fn optimize_tetrahedron(&self, mesh: &mut Mesh3D, tetra_id: usize) -> bool {
-        let _tetra = &mesh.tetrahedrons[tetra_id];
+        let tetra = &mesh.tetrahedrons[tetra_id];
 
-        // Check if edge swap would improve quality
-        // This is a simplified implementation
+        // Calculate current quality
+        let current_quality = self.calculate_tetrahedron_quality(mesh, tetra);
+
+        // Try all possible edge swaps
+        let edges = vec![
+            (
+                tetra.vertices[0],
+                tetra.vertices[1],
+                tetra.vertices[2],
+                tetra.vertices[3],
+            ),
+            (
+                tetra.vertices[0],
+                tetra.vertices[2],
+                tetra.vertices[1],
+                tetra.vertices[3],
+            ),
+            (
+                tetra.vertices[0],
+                tetra.vertices[3],
+                tetra.vertices[1],
+                tetra.vertices[2],
+            ),
+        ];
+
+        for (v0, v1, v2, v3) in edges {
+            // Find adjacent tetrahedron sharing edge (v0, v1)
+            let adjacent_tetra = self.find_adjacent_tetrahedron(mesh, v0, v1, tetra_id);
+            if let Some(adj_tetra_id) = adjacent_tetra {
+                let adj_tetra = &mesh.tetrahedrons[adj_tetra_id];
+
+                // Get the fourth vertex of the adjacent tetrahedron
+                let mut fourth_vertex = 0;
+                for &v in &adj_tetra.vertices {
+                    if v != v0 && v != v1 {
+                        fourth_vertex = v;
+                        break;
+                    }
+                }
+
+                // Create new tetrahedrons by swapping edges
+                let new_tetra1 = [v0, v2, v3, fourth_vertex];
+                let new_tetra2 = [v1, v2, v3, fourth_vertex];
+
+                // Calculate new quality
+                let new_quality1 =
+                    self.calculate_tetrahedron_quality_with_vertices(mesh, &new_tetra1);
+                let new_quality2 =
+                    self.calculate_tetrahedron_quality_with_vertices(mesh, &new_tetra2);
+                let new_quality = (new_quality1 + new_quality2) / 2.0;
+
+                if new_quality > current_quality {
+                    // Perform edge swap
+                    mesh.tetrahedrons[tetra_id].vertices = new_tetra1;
+                    mesh.tetrahedrons[adj_tetra_id].vertices = new_tetra2;
+                    return true;
+                }
+            }
+        }
+
         false
+    }
+
+    /// Find adjacent tetrahedron sharing an edge
+    fn find_adjacent_tetrahedron(
+        &self,
+        mesh: &Mesh3D,
+        v1: usize,
+        v2: usize,
+        exclude_tetra: usize,
+    ) -> Option<usize> {
+        for (tetra_id, tetra) in mesh.tetrahedrons.iter().enumerate() {
+            if tetra_id == exclude_tetra {
+                continue;
+            }
+
+            let has_v1 = tetra.vertices.contains(&v1);
+            let has_v2 = tetra.vertices.contains(&v2);
+            if has_v1 && has_v2 {
+                return Some(tetra_id);
+            }
+        }
+        None
+    }
+
+    /// Calculate tetrahedron quality from vertex indices
+    fn calculate_tetrahedron_quality_with_vertices(
+        &self,
+        mesh: &Mesh3D,
+        vertices: &[usize; 4],
+    ) -> f64 {
+        let v0 = &mesh.vertices[vertices[0]];
+        let v1 = &mesh.vertices[vertices[1]];
+        let v2 = &mesh.vertices[vertices[2]];
+        let v3 = &mesh.vertices[vertices[3]];
+
+        // Calculate dihedral angles
+        let angles = vec![
+            self.calculate_dihedral_angle(
+                &v0.point, &v1.point, &v2.point, &v0.point, &v1.point, &v3.point,
+            ),
+            self.calculate_dihedral_angle(
+                &v0.point, &v1.point, &v2.point, &v0.point, &v2.point, &v3.point,
+            ),
+            self.calculate_dihedral_angle(
+                &v0.point, &v1.point, &v2.point, &v1.point, &v2.point, &v3.point,
+            ),
+            self.calculate_dihedral_angle(
+                &v0.point, &v1.point, &v3.point, &v0.point, &v2.point, &v3.point,
+            ),
+            self.calculate_dihedral_angle(
+                &v0.point, &v1.point, &v3.point, &v1.point, &v2.point, &v3.point,
+            ),
+            self.calculate_dihedral_angle(
+                &v0.point, &v2.point, &v3.point, &v1.point, &v2.point, &v3.point,
+            ),
+        ];
+
+        // Calculate aspect ratio
+        let aspect_ratio =
+            self.calculate_tetrahedron_aspect_ratio(&v0.point, &v1.point, &v2.point, &v3.point);
+
+        // Calculate radius ratio
+        let radius_ratio =
+            self.calculate_tetrahedron_radius_ratio(&v0.point, &v1.point, &v2.point, &v3.point);
+
+        // Calculate volume
+        let volume = self.calculate_tetrahedron_volume(&v0.point, &v1.point, &v2.point, &v3.point);
+
+        // Calculate quality score
+        let angle_score = angles.iter().fold(1.0, |score, &angle| {
+            if angle < self.params.min_dihedral_angle || angle > self.params.max_dihedral_angle {
+                score * 0.5
+            } else {
+                score
+            }
+        });
+
+        let aspect_score = if aspect_ratio < self.params.min_aspect_ratio
+            || aspect_ratio > self.params.max_aspect_ratio
+        {
+            0.5
+        } else {
+            1.0
+        };
+
+        let radius_score = if radius_ratio < self.params.min_radius_ratio {
+            0.5
+        } else {
+            1.0
+        };
+
+        let volume_score = if volume > self.params.max_volume {
+            0.5
+        } else {
+            1.0
+        };
+
+        (angle_score * 0.4 + aspect_score * 0.2 + radius_score * 0.2 + volume_score * 0.2)
+    }
+
+    /// Calculate tetrahedron quality
+    fn calculate_tetrahedron_quality(
+        &self,
+        mesh: &Mesh3D,
+        tetra: &crate::mesh::mesh_data::MeshTetrahedron,
+    ) -> f64 {
+        let v0 = &mesh.vertices[tetra.vertices[0]];
+        let v1 = &mesh.vertices[tetra.vertices[1]];
+        let v2 = &mesh.vertices[tetra.vertices[2]];
+        let v3 = &mesh.vertices[tetra.vertices[3]];
+
+        // Calculate dihedral angles
+        let angles = vec![
+            self.calculate_dihedral_angle(
+                &v0.point, &v1.point, &v2.point, &v0.point, &v1.point, &v3.point,
+            ),
+            self.calculate_dihedral_angle(
+                &v0.point, &v1.point, &v2.point, &v0.point, &v2.point, &v3.point,
+            ),
+            self.calculate_dihedral_angle(
+                &v0.point, &v1.point, &v2.point, &v1.point, &v2.point, &v3.point,
+            ),
+            self.calculate_dihedral_angle(
+                &v0.point, &v1.point, &v3.point, &v0.point, &v2.point, &v3.point,
+            ),
+            self.calculate_dihedral_angle(
+                &v0.point, &v1.point, &v3.point, &v1.point, &v2.point, &v3.point,
+            ),
+            self.calculate_dihedral_angle(
+                &v0.point, &v2.point, &v3.point, &v1.point, &v2.point, &v3.point,
+            ),
+        ];
+
+        // Calculate aspect ratio
+        let aspect_ratio =
+            self.calculate_tetrahedron_aspect_ratio(&v0.point, &v1.point, &v2.point, &v3.point);
+
+        // Calculate radius ratio
+        let radius_ratio =
+            self.calculate_tetrahedron_radius_ratio(&v0.point, &v1.point, &v2.point, &v3.point);
+
+        // Calculate volume
+        let volume = self.calculate_tetrahedron_volume(&v0.point, &v1.point, &v2.point, &v3.point);
+
+        // Calculate quality score
+        let angle_score = angles.iter().fold(1.0, |score, &angle| {
+            if angle < self.params.min_dihedral_angle || angle > self.params.max_dihedral_angle {
+                score * 0.5
+            } else {
+                score
+            }
+        });
+
+        let aspect_score = if aspect_ratio < self.params.min_aspect_ratio
+            || aspect_ratio > self.params.max_aspect_ratio
+        {
+            0.5
+        } else {
+            1.0
+        };
+
+        let radius_score = if radius_ratio < self.params.min_radius_ratio {
+            0.5
+        } else {
+            1.0
+        };
+
+        let volume_score = if volume > self.params.max_volume {
+            0.5
+        } else {
+            1.0
+        };
+
+        (angle_score * 0.4 + aspect_score * 0.2 + radius_score * 0.2 + volume_score * 0.2)
+    }
+
+    /// Calculate dihedral angle between two planes
+    fn calculate_dihedral_angle(
+        &self,
+        p1: &Point,
+        p2: &Point,
+        p3: &Point,
+        p4: &Point,
+        p5: &Point,
+        p6: &Point,
+    ) -> f64 {
+        let v1 = [p2.x - p1.x, p2.y - p1.y, p2.z - p1.z];
+        let v2 = [p3.x - p1.x, p3.y - p1.y, p3.z - p1.z];
+        let normal1 = [
+            v1[1] * v2[2] - v1[2] * v2[1],
+            v1[2] * v2[0] - v1[0] * v2[2],
+            v1[0] * v2[1] - v1[1] * v2[0],
+        ];
+
+        let v3 = [p5.x - p4.x, p5.y - p4.y, p5.z - p4.z];
+        let v4 = [p6.x - p4.x, p6.y - p4.y, p6.z - p4.z];
+        let normal2 = [
+            v3[1] * v4[2] - v3[2] * v4[1],
+            v3[2] * v4[0] - v3[0] * v4[2],
+            v3[0] * v4[1] - v3[1] * v4[0],
+        ];
+
+        let dot = normal1[0] * normal2[0] + normal1[1] * normal2[1] + normal1[2] * normal2[2];
+        let mag1 =
+            (normal1[0] * normal1[0] + normal1[1] * normal1[1] + normal1[2] * normal1[2]).sqrt();
+        let mag2 =
+            (normal2[0] * normal2[0] + normal2[1] * normal2[1] + normal2[2] * normal2[2]).sqrt();
+
+        if mag1 < 1e-6 || mag2 < 1e-6 {
+            return 0.0;
+        }
+
+        let cos_angle = (dot / (mag1 * mag2)).clamp(-1.0, 1.0);
+        cos_angle.acos() * 180.0 / std::f64::consts::PI
+    }
+
+    /// Calculate tetrahedron aspect ratio
+    fn calculate_tetrahedron_aspect_ratio(
+        &self,
+        p1: &Point,
+        p2: &Point,
+        p3: &Point,
+        p4: &Point,
+    ) -> f64 {
+        let edges = vec![
+            ((p2.x - p1.x).powi(2) + (p2.y - p1.y).powi(2) + (p2.z - p1.z).powi(2)).sqrt(),
+            ((p3.x - p1.x).powi(2) + (p3.y - p1.y).powi(2) + (p3.z - p1.z).powi(2)).sqrt(),
+            ((p4.x - p1.x).powi(2) + (p4.y - p1.y).powi(2) + (p4.z - p1.z).powi(2)).sqrt(),
+            ((p3.x - p2.x).powi(2) + (p3.y - p2.y).powi(2) + (p3.z - p2.z).powi(2)).sqrt(),
+            ((p4.x - p2.x).powi(2) + (p4.y - p2.y).powi(2) + (p4.z - p2.z).powi(2)).sqrt(),
+            ((p4.x - p3.x).powi(2) + (p4.y - p3.y).powi(2) + (p4.z - p3.z).powi(2)).sqrt(),
+        ];
+
+        let max_edge = edges.iter().fold(0.0, |max, &e| max.max(e));
+        let min_edge = edges.iter().fold(f64::MAX, |min, &e| min.min(e));
+
+        if min_edge < 1e-6 {
+            return 10.0;
+        }
+
+        max_edge / min_edge
+    }
+
+    /// Calculate tetrahedron radius ratio
+    fn calculate_tetrahedron_radius_ratio(
+        &self,
+        p1: &Point,
+        p2: &Point,
+        p3: &Point,
+        p4: &Point,
+    ) -> f64 {
+        let volume = self.calculate_tetrahedron_volume(p1, p2, p3, p4);
+        let edges = vec![
+            ((p2.x - p1.x).powi(2) + (p2.y - p1.y).powi(2) + (p2.z - p1.z).powi(2)).sqrt(),
+            ((p3.x - p1.x).powi(2) + (p3.y - p1.y).powi(2) + (p3.z - p1.z).powi(2)).sqrt(),
+            ((p4.x - p1.x).powi(2) + (p4.y - p1.y).powi(2) + (p4.z - p1.z).powi(2)).sqrt(),
+            ((p3.x - p2.x).powi(2) + (p3.y - p2.y).powi(2) + (p3.z - p2.z).powi(2)).sqrt(),
+            ((p4.x - p2.x).powi(2) + (p4.y - p2.y).powi(2) + (p4.z - p2.z).powi(2)).sqrt(),
+            ((p4.x - p3.x).powi(2) + (p4.y - p3.y).powi(2) + (p4.z - p3.z).powi(2)).sqrt(),
+        ];
+
+        let sum_edges = edges.iter().sum::<f64>();
+        let product_edges = edges.iter().product::<f64>();
+
+        if sum_edges < 1e-6 || product_edges < 1e-6 {
+            return 0.0;
+        }
+
+        let radius_ratio = (2.0 * volume) / (sum_edges * product_edges).powf(1.0 / 3.0);
+        radius_ratio
+    }
+
+    /// Calculate tetrahedron volume
+    fn calculate_tetrahedron_volume(&self, p1: &Point, p2: &Point, p3: &Point, p4: &Point) -> f64 {
+        let v1 = [p2.x - p1.x, p2.y - p1.y, p2.z - p1.z];
+        let v2 = [p3.x - p1.x, p3.y - p1.y, p3.z - p1.z];
+        let v3 = [p4.x - p1.x, p4.y - p1.y, p4.z - p1.z];
+
+        let cross = [
+            v2[1] * v3[2] - v2[2] * v3[1],
+            v2[2] * v3[0] - v2[0] * v3[2],
+            v2[0] * v3[1] - v2[1] * v3[0],
+        ];
+
+        (v1[0] * cross[0] + v1[1] * cross[1] + v1[2] * cross[2]).abs() / 6.0
     }
 }
 

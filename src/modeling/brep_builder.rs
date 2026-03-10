@@ -20,10 +20,10 @@ use crate::topology::{
 ///
 /// BrepBuilder provides methods to create and modify topological shapes.
 /// It follows the OpenCASCADE BrepBuilder pattern.
+#[derive(Debug, Clone)]
 pub struct BrepBuilder {}
 
 impl BrepBuilder {
-    /// Create a new BrepBuilder instance
     #[inline]
     pub fn new() -> Self {
         Self {}

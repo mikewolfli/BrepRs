@@ -1,6 +1,6 @@
+use crate::foundation::types::StandardReal;
 #[cfg(test)]
 use crate::foundation::types::STANDARD_REAL_EPSILON;
-use crate::foundation::types::StandardReal;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -109,11 +109,8 @@ impl Point {
         let p = *self - *origin;
         let dot = direction.x * p.x + direction.y * p.y + direction.z * p.z;
 
-        let proj = crate::geometry::Vector::new(
-            direction.x * dot,
-            direction.y * dot,
-            direction.z * dot,
-        );
+        let proj =
+            crate::geometry::Vector::new(direction.x * dot, direction.y * dot, direction.z * dot);
 
         let result = crate::geometry::Vector::new(
             2.0 * proj.x - p.x,
@@ -193,7 +190,12 @@ impl Point {
         self.z += dz;
     }
 
-    pub fn translated_by_coords(&self, dx: StandardReal, dy: StandardReal, dz: StandardReal) -> Point {
+    pub fn translated_by_coords(
+        &self,
+        dx: StandardReal,
+        dy: StandardReal,
+        dz: StandardReal,
+    ) -> Point {
         Point {
             x: self.x + dx,
             y: self.y + dy,
@@ -212,11 +214,14 @@ impl Point {
         let matrix = &transform.rotation.data;
         let translation = &transform.translation;
         let scale = transform.scale;
-        
-        let x = scale * (matrix[0][0] * self.x + matrix[0][1] * self.y + matrix[0][2] * self.z) + translation.x;
-        let y = scale * (matrix[1][0] * self.x + matrix[1][1] * self.y + matrix[1][2] * self.z) + translation.y;
-        let z = scale * (matrix[2][0] * self.x + matrix[2][1] * self.y + matrix[2][2] * self.z) + translation.z;
-        
+
+        let x = scale * (matrix[0][0] * self.x + matrix[0][1] * self.y + matrix[0][2] * self.z)
+            + translation.x;
+        let y = scale * (matrix[1][0] * self.x + matrix[1][1] * self.y + matrix[1][2] * self.z)
+            + translation.y;
+        let z = scale * (matrix[2][0] * self.x + matrix[2][1] * self.y + matrix[2][2] * self.z)
+            + translation.z;
+
         Point { x, y, z }
     }
 
@@ -225,11 +230,20 @@ impl Point {
     }
 
     pub fn subtract(&self, other: &Point) -> crate::geometry::Vector {
-        crate::geometry::Vector::new(
-            self.x - other.x,
-            self.y - other.y,
-            self.z - other.z,
-        )
+        crate::geometry::Vector::new(self.x - other.x, self.y - other.y, self.z - other.z)
+    }
+
+    /// Compute distance to another point
+    pub fn distance_to(&self, other: &Point) -> f64 {
+        let dx = self.x - other.x;
+        let dy = self.y - other.y;
+        let dz = self.z - other.z;
+        (dx * dx + dy * dy + dz * dz).sqrt()
+    }
+
+    /// Compute vector from this point to another point
+    pub fn sub(&self, other: &Point) -> crate::geometry::Vector {
+        self.subtract(other)
     }
 
     pub fn barycenter(&self, other: &Point, alpha: StandardReal) -> Point {
@@ -263,11 +277,7 @@ impl std::ops::Sub<Point> for Point {
     type Output = crate::geometry::Vector;
 
     fn sub(self, other: Point) -> Self::Output {
-        crate::geometry::Vector::new(
-            self.x - other.x,
-            self.y - other.y,
-            self.z - other.z,
-        )
+        crate::geometry::Vector::new(self.x - other.x, self.y - other.y, self.z - other.z)
     }
 }
 

@@ -247,6 +247,78 @@ impl TopExpExplorer {
             }
         }
     }
+
+    /// LOD-aware shape traversal
+    pub fn explore_with_lod(&mut self, shape: &TopoDsShape, lod_level: usize) -> Vec<TopoDsShape> {
+        // Implementation of LOD-aware shape traversal
+        // This is a placeholder implementation
+        let mut result = Vec::new();
+        let mut queue = Vec::new();
+        queue.push(shape.clone());
+        
+        while let Some(current) = queue.pop() {
+            if self.is_suitable_for_lod(&current, lod_level) {
+                result.push(current.clone());
+                
+                // Add sub-shapes to the queue
+                match (current.shape_type(), self.shape_type) {
+                    (ShapeType::Edge, ShapeType::Vertex) => {
+                        let v1 = TopoDsVertex::new(crate::geometry::Point::new(0.0, 0.0, 0.0));
+                        let v2 = TopoDsVertex::new(crate::geometry::Point::new(1.0, 0.0, 0.0));
+                        queue.push(v1.shape().clone());
+                        queue.push(v2.shape().clone());
+                    }
+                    (ShapeType::Wire, ShapeType::Edge) => {
+                        let v1 = TopoDsVertex::new(crate::geometry::Point::new(0.0, 0.0, 0.0));
+                        let v2 = TopoDsVertex::new(crate::geometry::Point::new(1.0, 0.0, 0.0));
+                        let v3 = TopoDsVertex::new(crate::geometry::Point::new(1.0, 1.0, 0.0));
+                        let edge1 = TopoDsEdge::new(
+                            crate::foundation::handle::Handle::new(std::sync::Arc::new(v1)),
+                            crate::foundation::handle::Handle::new(std::sync::Arc::new(v2.clone())),
+                        );
+                        let edge2 = TopoDsEdge::new(
+                            crate::foundation::handle::Handle::new(std::sync::Arc::new(v2)),
+                            crate::foundation::handle::Handle::new(std::sync::Arc::new(v3)),
+                        );
+                        queue.push(edge1.shape().clone());
+                        queue.push(edge2.shape().clone());
+                    }
+                    _ => {}
+                }
+            }
+        }
+        
+        result
+    }
+
+    /// LOD-aware shape simplification
+    pub fn simplify_shape(&self, shape: &TopoDsShape, lod_level: usize) -> Option<TopoDsShape> {
+        // Implementation of LOD-aware shape simplification
+        // This is a placeholder implementation
+        Some(shape.clone())
+    }
+
+    /// Calculate LOD level based on distance
+    pub fn calculate_lod_level(&self, shape: &TopoDsShape, distance: f64) -> usize {
+        // Implementation of LOD level calculation based on distance
+        // This is a placeholder implementation
+        if distance < 1.0 {
+            0
+        } else if distance < 10.0 {
+            1
+        } else if distance < 100.0 {
+            2
+        } else {
+            3
+        }
+    }
+
+    /// Check if shape is suitable for given LOD level
+    pub fn is_suitable_for_lod(&self, shape: &TopoDsShape, lod_level: usize) -> bool {
+        // Implementation of LOD suitability check
+        // This is a placeholder implementation
+        true
+    }
 }
 
 impl Iterator for TopExpExplorer {

@@ -5,7 +5,7 @@ use crate::geometry::{Axis, Direction, Point, Transform, Vector};
 /// A location consists of a point (translation) and a transformation
 /// (rotation, scaling, etc.). This is used to position and
 /// orient topological shapes in 3D space.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TopoDsLocation {
     translation: Point,
     transformation: Transform,

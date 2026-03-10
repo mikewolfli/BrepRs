@@ -127,6 +127,12 @@ impl Vector {
         }
     }
 
+    /// Get the negated vector (alias for reversed)
+    #[inline]
+    pub fn negated(&self) -> Vector {
+        self.reversed()
+    }
+
     #[inline]
     pub fn dot(&self, other: &Vector) -> StandardReal {
         self.x * other.x + self.y * other.y + self.z * other.z

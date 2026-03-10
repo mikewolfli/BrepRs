@@ -1,13 +1,12 @@
-#[cfg(test)]
-use crate::topology::ShapeType;
 /// Offset operations module
 ///
 /// This module provides offset operations for topological shapes,
 /// including surface offsetting, thick solid creation, pipe creation,
 /// and shell operations.
-
 use crate::foundation::handle::Handle;
 use crate::geometry::Vector;
+#[cfg(test)]
+use crate::topology::ShapeType;
 
 use crate::topology::{
     topods_face::TopoDsFace, topods_shell::TopoDsShell, topods_solid::TopoDsSolid,
@@ -18,6 +17,7 @@ use crate::topology::{
 ///
 /// This class provides methods to perform offset operations on topological shapes.
 /// It follows the OpenCASCADE BRepOffsetAPI pattern.
+#[derive(Debug, Clone)]
 pub struct OffsetOperations {
     offset_distance: f64,
     tolerance: f64,
@@ -118,22 +118,26 @@ impl OffsetOperations {
     ///
     /// # Returns
     /// A new face that is the offset of the input face
-    pub fn offset_face(&self, face: &TopoDsFace, _distance: f64) -> TopoDsFace {
-        // For now, return a copy of the input face as a placeholder
-        // In a real implementation, this would:
-        // 1. Get the face's surface
-        // 2. Create an offset surface
-        // 3. Update the face's geometry
-        // 4. Adjust the face's wires if necessary
+    pub fn offset_face(&self, face: &TopoDsFace, distance: f64) -> TopoDsFace {
+        // Create a copy of the input face
+        let mut result = face.clone();
 
-        let result = face.clone();
+        // Check if face can be offset
+        if self.can_offset_face(face) {
+            // Get the face's surface
+            if let Some(surface) = result.surface() {
+                // Calculate offset direction
+                if let Some(offset_dir) = self.calculate_offset_direction(face) {
+                    // Create offset surface
+                    // TODO: Implement surface offsetting
 
-        // Apply tolerance modification to simulate offset effect
-        // This is a simplified placeholder implementation
-        if let Some(_surface) = result.surface() {
-            // In a real implementation, we would:
-            // - Create an offset surface
-            // - Update the face's surface
+                    // Update the face's surface
+                    // TODO: Implement surface update
+
+                    // Adjust the face's wires if necessary
+                    // TODO: Implement wire adjustment
+                }
+            }
         }
 
         result
@@ -148,20 +152,20 @@ impl OffsetOperations {
     /// # Returns
     /// A new shell that is the offset of the input shell
     pub fn offset_shell(&self, shell: &TopoDsShell, distance: f64) -> TopoDsShell {
-        // For now, return a copy of the input shell as a placeholder
-        // In a real implementation, this would:
-        // 1. Offset each face in the shell
-        // 2. Adjust the connections between faces
-        // 3. Create a new shell with the offset faces
+        // Create a new shell
+        let mut result = TopoDsShell::new();
 
-        let result = shell.clone();
+        // Check if shell can be offset
+        if self.can_offset_shell(shell) {
+            // Offset each face in the shell
+            for face in shell.faces() {
+                if let Some(face_ref) = face.get() {
+                    // Offset the face
+                    let offset_face = self.offset_face(face_ref, distance);
 
-        // Apply tolerance modification to simulate offset effect
-        // This is a simplified placeholder implementation
-        for face in result.faces() {
-            if let Some(face_ref) = face.get() {
-                let _offset_face = self.offset_face(face_ref, distance);
-                // In a real implementation, we would replace the face in the shell
+                    // Add the offset face to the new shell
+                    result.add_face(Handle::new(std::sync::Arc::new(offset_face)));
+                }
             }
         }
 
@@ -184,24 +188,24 @@ impl OffsetOperations {
     pub fn make_thick_solid(
         &self,
         shell: &TopoDsShell,
-        _thickness: f64,
+        thickness: f64,
         offset: f64,
     ) -> TopoDsSolid {
-        // For now, return an empty solid as a placeholder
-        // In a real implementation, this would:
-        // 1. Offset the shell by the specified distance
-        // 2. Create a solid by connecting the original and offset shells
-        // 3. Fill the space between them
+        // Create a new solid
+        let mut result = TopoDsSolid::new();
 
-        let result = TopoDsSolid::new();
+        // Check if shell can be offset
+        if self.can_offset_shell(shell) {
+            // Offset the shell by the specified thickness
+            let offset_shell = self.offset_shell(shell, offset * thickness);
 
-        // Apply tolerance modification to simulate thickening effect
-        // This is a simplified placeholder implementation
-        let _offset_shell = self.offset_shell(shell, offset);
+            // Add both the original and offset shells to the solid
+            result.add_shell(Handle::new(std::sync::Arc::new(shell.clone())));
+            result.add_shell(Handle::new(std::sync::Arc::new(offset_shell)));
 
-        // In a real implementation, we would:
-        // - Create a solid by connecting the original and offset shells
-        // - Add both shells to the solid
+            // Connect the shells to form a closed solid
+            // TODO: Implement shell connection
+        }
 
         result
     }
@@ -218,24 +222,32 @@ impl OffsetOperations {
     pub fn make_thick_from_face(
         &self,
         face: &TopoDsFace,
-        _thickness: f64,
+        thickness: f64,
         offset: f64,
     ) -> TopoDsSolid {
-        // For now, return an empty solid as a placeholder
-        // In a real implementation, this would:
-        // 1. Create a shell from the face
-        // 2. Thicken the shell
+        // Create a new solid
+        let mut result = TopoDsSolid::new();
 
-        let result = TopoDsSolid::new();
+        // Check if face can be offset
+        if self.can_offset_face(face) {
+            // Create a shell from the original face
+            let mut original_shell = TopoDsShell::new();
+            original_shell.add_face(Handle::new(std::sync::Arc::new(face.clone())));
 
-        // Apply tolerance modification to simulate thickening effect
-        // This is a simplified placeholder implementation
-        let _offset_face = self.offset_face(face, offset);
+            // Offset the face
+            let offset_face = self.offset_face(face, offset * thickness);
 
-        // In a real implementation, we would:
-        // - Create a shell from the original face
-        // - Create a shell from the offset face
-        // - Connect them to form a solid
+            // Create a shell from the offset face
+            let mut offset_shell = TopoDsShell::new();
+            offset_shell.add_face(Handle::new(std::sync::Arc::new(offset_face)));
+
+            // Add both shells to the solid
+            result.add_shell(Handle::new(std::sync::Arc::new(original_shell)));
+            result.add_shell(Handle::new(std::sync::Arc::new(offset_shell)));
+
+            // Connect the shells to form a closed solid
+            // TODO: Implement shell connection
+        }
 
         result
     }
@@ -593,5 +605,34 @@ mod tests {
         assert_eq!(offset.tolerance(), 0.001);
         assert_eq!(offset.join_type(), JoinType::Round);
         assert_eq!(offset.intersection_type(), IntersectionType::NoIntersection);
+    }
+
+    #[test]
+    fn test_make_thick_from_face() {
+        let offset = OffsetOperations::with_offset_distance(0.1);
+
+        // Create a simple face
+        let face = TopoDsFace::new();
+
+        // Make thick solid from face
+        let result = offset.make_thick_from_face(&face, 0.1, 1.0);
+
+        // Verify result is a solid
+        assert_eq!(result.shape().shape_type(), ShapeType::Solid);
+    }
+
+    #[test]
+    fn test_make_shell_from_faces() {
+        let offset = OffsetOperations::with_offset_distance(0.1);
+
+        // Create a simple face
+        let face = TopoDsFace::new();
+        let faces = vec![Handle::new(std::sync::Arc::new(face))];
+
+        // Make shell from faces
+        let result = offset.make_shell_from_faces(&faces);
+
+        // Verify result is a shell
+        assert_eq!(result.shape().shape_type(), ShapeType::Shell);
     }
 }
