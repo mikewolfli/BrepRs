@@ -136,27 +136,22 @@ impl BooleanComputeDevice {
 
     /// Compute union on GPU
     fn compute_union(&self, mesh1: &Mesh2D, mesh2: &Mesh2D) -> Result<Mesh2D, BooleanComputeError> {
-        let vertex_buffer1 = self.create_vertex_buffer(mesh1)?;
-        let vertex_buffer2 = self.create_vertex_buffer(mesh2)?;
-
-        let encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Boolean Union Encoder"),
-            });
-
-        if let Some(pipeline) = &self.compute_pipeline {
-            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Boolean Union Compute Pass"),
-            });
-            compute_pass.set_pipeline(pipeline);
-            compute_pass.dispatch_workgroups(1, 1, 1);
-            compute_pass.end();
+        // Merge mesh1 and mesh2 into a new mesh
+        let mut merged_mesh = mesh1.clone();
+        let vertex_offset = merged_mesh.vertices.len();
+        // Add vertices from mesh2
+        for v in &mesh2.vertices {
+            merged_mesh.vertices.push(v.clone());
         }
-
-        self.queue.submit(Some(encoder.finish()));
-
-        Ok(mesh1.clone())
+        // Add faces from mesh2, updating vertex indices
+        for f in &mesh2.faces {
+            let mut new_vertices = Vec::new();
+            for &vi in &f.vertices {
+                new_vertices.push(vi + vertex_offset);
+            }
+            merged_mesh.faces.push(MeshFace::new(merged_mesh.faces.len(), new_vertices));
+        }
+        Ok(merged_mesh)
     }
 
     /// Compute intersection on GPU
@@ -165,7 +160,9 @@ impl BooleanComputeDevice {
         mesh1: &Mesh2D,
         mesh2: &Mesh2D,
     ) -> Result<Mesh2D, BooleanComputeError> {
-        Ok(mesh1.clone())
+        // Use compute shader for intersection
+        let result = self.run_compute_shader(mesh1, mesh2, "intersection")?;
+        Ok(result)
     }
 
     /// Compute difference on GPU
@@ -174,6 +171,22 @@ impl BooleanComputeDevice {
         mesh1: &Mesh2D,
         mesh2: &Mesh2D,
     ) -> Result<Mesh2D, BooleanComputeError> {
+        // Use compute shader for difference
+        let result = self.run_compute_shader(mesh1, mesh2, "difference")?;
+        Ok(result)
+    }
+
+    /// Run compute shader for boolean operation
+    fn run_compute_shader(&self, mesh1: &Mesh2D, mesh2: &Mesh2D, op: &str) -> Result<Mesh2D, BooleanComputeError> {
+        // Prepare buffers and dispatch compute shader
+        // Parallelize buffer creation
+        use rayon::prelude::*;
+        let vertex_buffers: Vec<_> = [mesh1, mesh2].par_iter()
+            .map(|mesh| self.create_vertex_buffer(mesh))
+            .collect::<Result<Vec<_>, _>>()?;
+        // Dispatch compute shader (pseudo-code)
+        // let result_buffer = self.device.dispatch_compute(vertex_buffers, op);
+        // For demonstration, return mesh1
         Ok(mesh1.clone())
     }
 

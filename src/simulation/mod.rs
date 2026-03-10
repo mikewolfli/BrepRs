@@ -272,37 +272,18 @@ impl SimulationExporter {
 
         // Write prism faces
         for prism in &mesh.prisms {
-            let faces = [
-                [prism.vertices[0], prism.vertices[1], prism.vertices[2]],
-                [prism.vertices[3], prism.vertices[4], prism.vertices[5]],
-                [
-                    prism.vertices[0],
-                    prism.vertices[1],
-                    prism.vertices[4],
-                    prism.vertices[3],
-                ],
-                [
-                    prism.vertices[1],
-                    prism.vertices[2],
-                    prism.vertices[5],
-                    prism.vertices[4],
-                ],
-                [
-                    prism.vertices[2],
-                    prism.vertices[0],
-                    prism.vertices[3],
-                    prism.vertices[5],
-                ],
+            let faces: Vec<Vec<usize>> = vec![
+                vec![prism.vertices[0], prism.vertices[1], prism.vertices[2]],
+                vec![prism.vertices[3], prism.vertices[4], prism.vertices[5]],
+                vec![prism.vertices[0], prism.vertices[1], prism.vertices[4], prism.vertices[3]],
+                vec![prism.vertices[1], prism.vertices[2], prism.vertices[5], prism.vertices[4]],
+                vec![prism.vertices[2], prism.vertices[0], prism.vertices[3], prism.vertices[5]],
             ];
 
             for face in &faces {
                 match face.len() {
                     3 => writeln!(faces_file, "(3 {} {} {})", face[0], face[1], face[2])?,
-                    4 => writeln!(
-                        faces_file,
-                        "(4 {} {} {} {})",
-                        face[0], face[1], face[2], face[3]
-                    )?,
+                    4 => writeln!(faces_file, "(4 {} {} {} {})", face[0], face[1], face[2], face[3])?,
                     _ => writeln!(faces_file, "({} {:?})", face.len(), face)?,
                 }
             }
@@ -314,7 +295,7 @@ impl SimulationExporter {
         let mut owner_file = File::create(format!("{}/owner", directory))?;
         let mut neighbour_file = File::create(format!("{}/neighbour", directory))?;
 
-        for i in 0..total_faces {
+        for _ in 0..total_faces {
             writeln!(owner_file, "0")?;
             writeln!(neighbour_file, "-1")?;
         }

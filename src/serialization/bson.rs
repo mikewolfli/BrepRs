@@ -34,14 +34,19 @@ pub enum BsonCompression {
 
 /// Serialize to BSON bytes
 pub fn to_bson<T: Serialize>(_value: &T) -> Result<Vec<u8>, BsonError> {
-    // Placeholder implementation - would use bson crate in production
-    Err(BsonError::NotImplemented)
+    // Real implementation with metadata option
+    let mut doc = bson::to_document(_value).map_err(|e| BsonError::SerializationError(e.to_string()))?;
+    // Optionally add metadata
+    if let Some(meta) = get_metadata() {
+        doc.insert("_meta", meta);
+    }
+    bson::to_vec(&doc).map_err(|e| BsonError::SerializationError(e.to_string()))
 }
 
 /// Deserialize from BSON bytes
 pub fn from_bson<T: for<'de> Deserialize<'de>>(_bytes: &[u8]) -> Result<T, BsonError> {
-    // Placeholder implementation - would use bson crate in production
-    Err(BsonError::NotImplemented)
+    // Real implementation using bson crate
+    bson::from_slice(_bytes).map_err(|e| BsonError::DeserializationError(e.to_string()))
 }
 
 /// BSON error types
@@ -109,7 +114,9 @@ impl<W: std::io::Write> BsonWriter<W> {
     }
 
     pub fn write_document<T: Serialize>(&mut self, _document: &T) -> Result<(), BsonError> {
-        // Placeholder implementation
+        // Real implementation
+        let bytes = bson::to_vec(_document).map_err(|e| BsonError::SerializationError(e.to_string()))?;
+        self.writer.write_all(&bytes).map_err(|e| BsonError::SerializationError(e.to_string()))?;
         self.document_count += 1;
         Ok(())
     }
@@ -138,8 +145,16 @@ impl<R: std::io::Read> BsonReader<R> {
     }
 
     pub fn read_document<T: for<'de> Deserialize<'de>>(&mut self) -> Result<Option<T>, BsonError> {
-        // Placeholder implementation
-        Ok(None)
+        // Real implementation
+        let mut buf = Vec::new();
+        self.reader.read_to_end(&mut buf).map_err(|e| BsonError::DeserializationError(e.to_string()))?;
+        if buf.is_empty() {
+            Ok(None)
+        } else {
+            let doc = bson::from_slice(&buf).map_err(|e| BsonError::DeserializationError(e.to_string()))?;
+            self.document_count += 1;
+            Ok(Some(doc))
+        }
     }
 
     pub fn document_count(&self) -> u32 {
@@ -149,14 +164,30 @@ impl<R: std::io::Read> BsonReader<R> {
 
 /// Convert BSON to JSON
 pub fn bson_to_json(_bson_bytes: &[u8]) -> Result<String, BsonError> {
-    // Placeholder implementation
-    Err(BsonError::NotImplemented)
+    // Real implementation
+    let doc = bson::from_slice(_bson_bytes).map_err(|e| BsonError::DeserializationError(e.to_string()))?;
+    serde_json::to_string(&doc).map_err(|e| BsonError::InvalidData(e.to_string()))
 }
 
 /// Convert JSON to BSON
 pub fn json_to_bson(_json: &str) -> Result<Vec<u8>, BsonError> {
-    // Placeholder implementation
-    Err(BsonError::NotImplemented)
+    // Real implementation
+    let value: serde_json::Value = serde_json::from_str(_json).map_err(|e| BsonError::InvalidData(e.to_string()))?;
+    let doc = bson::to_vec(&value).map_err(|e| BsonError::SerializationError(e.to_string()))?;
+    Ok(doc)
+
+/// Stream BSON serialization
+pub fn stream_bson<T: Serialize, W: std::io::Write>(value: &T, writer: W) -> Result<(), BsonError> {
+    use bson::ser::Serializer;
+    let mut serializer = Serializer::new(writer);
+    value.serialize(&mut serializer).map_err(|e| BsonError::SerializationError(e.to_string()))
+}
+
+/// Helper to get metadata (stub)
+fn get_metadata() -> Option<bson::Document> {
+    // Example: return None or some metadata
+    None
+}
 }
 
 /// BSON type information

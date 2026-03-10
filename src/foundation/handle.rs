@@ -146,6 +146,18 @@ impl<T: ?Sized> std::ops::DerefMut for Handle<T> {
     }
 }
 
+// Specific implementation for Handle<TopoDsShape> to provide faces method
+impl Handle<crate::topology::topods_shape::TopoDsShape> {
+    /// Get faces of the shape
+    pub fn faces(&self) -> Vec<crate::topology::topods_face::TopoDsFace> {
+        if let Some(shape) = self.as_ref() {
+            shape.faces()
+        } else {
+            Vec::new()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

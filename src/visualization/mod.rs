@@ -1,3 +1,4 @@
+pub mod font;
 //! Visualization module
 //!
 //! This module provides functionality for 3D visualization, including

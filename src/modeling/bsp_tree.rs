@@ -137,17 +137,106 @@ impl BspNode {
 
     /// Split a face by the node's plane
     fn split_face(&self, face: &TopoDsFace, tolerance: f64) -> (Option<TopoDsFace>, Option<TopoDsFace>) {
-        // TODO: Implement face splitting
-        // This is a complex operation that requires:
-        // 1. Finding the intersection curve between the face and the plane
-        // 2. Creating two new faces from the split
-        (None, None)
+        // Find intersection points between the face and the splitting plane
+        let mut front_vertices = Vec::new();
+        let mut back_vertices = Vec::new();
+        let mut intersection_vertices = Vec::new();
+        let plane = &self.plane;
+        let wire = match face.outer_wire() {
+            Some(w) => w,
+            None => return (None, None),
+        };
+        let vertices = wire.vertices();
+        if vertices.len() < 3 {
+            return (None, None);
+        }
+        for i in 0..vertices.len() {
+            let v1 = &vertices[i];
+            let v2 = &vertices[(i + 1) % vertices.len()];
+            let p1 = v1.point();
+            let p2 = v2.point();
+            let d1 = plane.distance(&p1);
+            let d2 = plane.distance(&p2);
+            if d1 > tolerance {
+                front_vertices.push(v1.clone());
+            } else if d1 < -tolerance {
+                back_vertices.push(v1.clone());
+            }
+            // Check for intersection
+            if (d1 > tolerance && d2 < -tolerance) || (d1 < -tolerance && d2 > tolerance) {
+                // Linear interpolation for intersection point
+                let t = d1 / (d1 - d2);
+                let ix = p1.x + t * (p2.x - p1.x);
+                let iy = p1.y + t * (p2.y - p1.y);
+                let iz = p1.z + t * (p2.z - p1.z);
+                let intersection = Handle::new(std::sync::Arc::new(crate::topology::topods_vertex::TopoDsVertex::new(
+                    crate::geometry::Point::new(ix, iy, iz)
+                )));
+                intersection_vertices.push(intersection.clone());
+                front_vertices.push(intersection.clone());
+                back_vertices.push(intersection.clone());
+            }
+        }
+        // Build new wires for each side
+        let mut front_wire = crate::topology::topods_wire::TopoDsWire::new();
+        for v in &front_vertices {
+            // Create edges between consecutive vertices
+            if front_wire.num_vertices() > 0 {
+                let prev = front_wire.vertices()[front_wire.num_vertices() - 1].clone();
+                let edge = Handle::new(std::sync::Arc::new(crate::topology::topods_edge::TopoDsEdge::new(prev, v.clone())));
+                front_wire.add_edge(edge);
+            } else {
+                front_wire.vertices().push(v.clone());
+            }
+        }
+        front_wire.update_closed();
+        let mut back_wire = crate::topology::topods_wire::TopoDsWire::new();
+        for v in &back_vertices {
+            if back_wire.num_vertices() > 0 {
+                let prev = back_wire.vertices()[back_wire.num_vertices() - 1].clone();
+                let edge = Handle::new(std::sync::Arc::new(crate::topology::topods_edge::TopoDsEdge::new(prev, v.clone())));
+                back_wire.add_edge(edge);
+            } else {
+                back_wire.vertices().push(v.clone());
+            }
+        }
+        back_wire.update_closed();
+        // Create new faces
+        let front_face = if front_wire.num_vertices() >= 3 {
+            Some(crate::topology::topods_face::TopoDsFace::with_outer_wire(front_wire))
+        } else {
+            None
+        };
+        let back_face = if back_wire.num_vertices() >= 3 {
+            Some(crate::topology::topods_face::TopoDsFace::with_outer_wire(back_wire))
+        } else {
+            None
+        };
+        (front_face, back_face)
     }
 
     /// Create a plane from a face
     fn create_plane_from_face(&self, face: &TopoDsFace) -> Plane {
-        // TODO: Implement plane creation from face
-        // For now, return a default plane
+        // Create a plane from the first three vertices of the outer wire
+        if let Some(wire) = face.outer_wire() {
+            let vertices = wire.vertices();
+            if vertices.len() >= 3 {
+                let p1 = vertices[0].point().clone();
+                let p2 = vertices[1].point().clone();
+                let p3 = vertices[2].point().clone();
+                if let Some(plane) = crate::geometry::Plane::from_points(p1, p2, p3) {
+                    return plane;
+                }
+            }
+        }
+        // Fallback: best-fit plane from all face points
+        let points: Vec<_> = face.all_points();
+        if points.len() >= 3 {
+            if let Some(plane) = crate::geometry::Plane::best_fit(&points) {
+                return plane;
+            }
+        }
+        // Absolute fallback: return default plane
         Plane::new(Point::origin(), crate::geometry::Direction::z_axis(), crate::geometry::Direction::x_axis())
     }
 }
@@ -210,20 +299,61 @@ impl BspTree {
 
     /// Perform boolean union with another BSP tree
     pub fn union(&self, other: &BspTree) -> BspTree {
-        // TODO: Implement union operation
-        self.clone()
+        // Boolean union: merge faces from both trees
+        let mut result = BspTree::new(self.tolerance);
+        if let Some(ref root) = self.root {
+            for face in &root.faces {
+                result.insert_face(face.clone());
+            }
+        }
+        if let Some(ref other_root) = other.root {
+            for face in &other_root.faces {
+                result.insert_face(face.clone());
+            }
+        }
+        result
     }
 
     /// Perform boolean difference with another BSP tree
     pub fn difference(&self, other: &BspTree) -> BspTree {
-        // TODO: Implement difference operation
-        self.clone()
+        // Boolean difference: keep faces in self not in other
+        let mut result = BspTree::new(self.tolerance);
+        if let Some(ref root) = self.root {
+            for face in &root.faces {
+                // Check if face exists in other
+                let mut found = false;
+                if let Some(ref other_root) = other.root {
+                    for other_face in &other_root.faces {
+                        if face.shape_id() == other_face.shape_id() {
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                if !found {
+                    result.insert_face(face.clone());
+                }
+            }
+        }
+        result
     }
 
     /// Perform boolean intersection with another BSP tree
     pub fn intersection(&self, other: &BspTree) -> BspTree {
-        // TODO: Implement intersection operation
-        self.clone()
+        // Boolean intersection: keep faces present in both trees
+        let mut result = BspTree::new(self.tolerance);
+        if let Some(ref root) = self.root {
+            if let Some(ref other_root) = other.root {
+                for face in &root.faces {
+                    for other_face in &other_root.faces {
+                        if face.shape_id() == other_face.shape_id() {
+                            result.insert_face(face.clone());
+                        }
+                    }
+                }
+            }
+        }
+        result
     }
 }
 
@@ -253,8 +383,43 @@ impl BspTreeBuilder {
 
     /// Extract faces from a shape
     fn extract_faces(&self, shape: &crate::topology::TopoDsShape) -> Vec<TopoDsFace> {
-        // TODO: Implement face extraction from shape
-        Vec::new()
+        // Recursively extract faces from shape
+        let mut faces = Vec::new();
+        match shape.shape_type() {
+            crate::topology::shape_enum::ShapeType::Face => {
+                if let Some(face) = shape.as_face() {
+                    faces.push(face.clone());
+                }
+            }
+            crate::topology::shape_enum::ShapeType::Shell => {
+                // Downcast to shell and collect faces
+                if let Some(shell) = shape.as_shell() {
+                    for f in shell.faces() {
+                        faces.push(f.as_ref().clone());
+                    }
+                }
+            }
+            crate::topology::shape_enum::ShapeType::Solid => {
+                // Downcast to solid and collect faces from shells
+                if let Some(solid) = shape.as_solid() {
+                    for shell in solid.shells() {
+                        for f in shell.faces() {
+                            faces.push(f.as_ref().clone());
+                        }
+                    }
+                }
+            }
+            crate::topology::shape_enum::ShapeType::Compound => {
+                // Downcast to compound and collect faces from components
+                if let Some(compound) = shape.as_compound() {
+                    for component in compound.components() {
+                        faces.extend(self.extract_faces(component.as_ref()));
+                    }
+                }
+            }
+            _ => {}
+        }
+        faces
     }
 }
 

@@ -499,29 +499,33 @@ impl GpuMemoryCompressor {
     // LZ4 compression (placeholder)
     #[inline]
     fn compress_lz4(&self, data: &[u8]) -> Result<Vec<u8>, String> {
-        // Placeholder: would use real LZ4 library
-        Ok(data.to_vec())
+        // Real LZ4 compression
+        use lz4::block::compress;
+        compress(data, None, false).map_err(|e| e.to_string())
     }
 
     #[inline]
     fn decompress_lz4(&self, compressed: &[u8], original_size: usize) -> Result<Vec<u8>, String> {
-        let _ = original_size;
-        // Placeholder: would use real LZ4 library
-        Ok(compressed.to_vec())
+        // Real LZ4 decompression
+        use lz4::block::decompress;
+        decompress(compressed, Some(original_size)).map_err(|e| e.to_string())
     }
 
     // Zstandard compression (placeholder)
     #[inline]
     fn compress_zstd(&self, data: &[u8]) -> Result<Vec<u8>, String> {
-        // Placeholder: would use real Zstd library
-        Ok(data.to_vec())
+        // Real Zstd compression
+        use zstd::stream::encode_all;
+        use std::io::Cursor;
+        encode_all(Cursor::new(data), 3).map_err(|e| e.to_string())
     }
 
     #[inline]
     fn decompress_zstd(&self, compressed: &[u8], original_size: usize) -> Result<Vec<u8>, String> {
-        let _ = original_size;
-        // Placeholder: would use real Zstd library
-        Ok(compressed.to_vec())
+        // Real Zstd decompression
+        use zstd::stream::decode_all;
+        use std::io::Cursor;
+        decode_all(Cursor::new(compressed)).map_err(|e| e.to_string())
     }
 }
 

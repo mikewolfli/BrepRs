@@ -4,7 +4,7 @@
 //! including Archimedean, logarithmic, helical, and conical spirals.
 
 use crate::geometry::{Point, Vector};
-use crate::topology::{Curve, ParametricCurve};
+use crate::topology::Curve;
 use std::f64::consts::PI;
 
 /// Spiral types
@@ -268,16 +268,30 @@ impl Spiral {
 
     /// Find intersection with another curve
     pub fn intersect(&self, other: &dyn Curve, tolerance: f64) -> Vec<Point> {
-        // Implementation of curve intersection
-        // This is a placeholder implementation
-        Vec::new()
+        // Find intersection points by sampling
+        let mut intersections = Vec::new();
+        let n = 1000;
+        for i in 0..n {
+            let t = i as f64 / n as f64;
+            let p = self.evaluate(t);
+            let q = other.evaluate(t);
+            if (p - q).length() < tolerance {
+                intersections.push(p);
+            }
+        }
+        intersections
     }
 
     /// Convert spiral to BRep curve
     pub fn to_brep(&self) -> Result<TopoDsEdge, String> {
-        // Implementation of BRep conversion
-        // This is a placeholder implementation
-        Err("Not implemented yet".to_string())
+        // Convert spiral to BRep edge by sampling points
+        let n = 100;
+        let mut points = Vec::new();
+        for i in 0..=n {
+            let t = i as f64 / n as f64;
+            points.push(self.evaluate(t));
+        }
+        Ok(TopoDsEdge::from_points(points))
     }
 
     /// Validate spiral parameters
@@ -337,43 +351,6 @@ impl Curve for Spiral {
 
     fn parameter_range(&self) -> (f64, f64) {
         (0.0, 1.0)
-    }
-
-    fn evaluate(&self, t: f64) -> Point {
-        self.evaluate(t)
-    }
-
-    fn tangent(&self, t: f64) -> Vector {
-        self.tangent(t)
-    }
-
-    fn curvature(&self, t: f64) -> f64 {
-        self.curvature(t)
-    }
-
-    fn arc_length(&self, t: f64) -> f64 {
-        self.arc_length(t)
-    }
-
-    fn intersect(&self, other: &dyn Curve, tolerance: f64) -> Vec<Point> {
-        self.intersect(other, tolerance)
-    }
-}
-
-impl ParametricCurve for Spiral {
-    fn parameter_range(&self) -> (f64, f64) {
-        (0.0, 1.0)
-    }
-
-    fn evaluate(&self, t: f64) -> Point {
-        self.evaluate(t)
-    }
-
-    fn derivative(&self, t: f64, order: usize) -> Vector {
-        match order {
-            1 => self.tangent(t),
-            _ => Vector::new(0.0, 0.0, 0.0), // Higher derivatives not implemented
-        }
     }
 }
 

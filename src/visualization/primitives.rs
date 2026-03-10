@@ -709,6 +709,16 @@ pub struct TextLabel {
     pub font_size: f32,
     /// Screen space flag (always face camera)
     pub screen_space: bool,
+    /// Bold style
+    pub bold: bool,
+    /// Italic style
+    pub italic: bool,
+    /// Underline style
+    pub underline: bool,
+    /// Font scale
+    pub font_scale: f32,
+    /// Highlight color
+    pub highlight: Option<Color>,
 }
 
 impl TextLabel {

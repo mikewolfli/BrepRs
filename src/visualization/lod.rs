@@ -149,37 +149,85 @@ impl LodSystem {
 
     /// Simplify mesh by a given factor
     fn simplify_mesh(&self, mesh: &Mesh3D, simplification_factor: f64) -> Mesh3D {
-        // Implementation of mesh simplification algorithm
-        // This is a placeholder implementation
-        mesh.clone()
+        // Edge collapse decimation for simplification
+        let target_triangles = (mesh.faces.len() as f64 / simplification_factor).max(1.0) as usize;
+        let mut decimated = mesh.clone();
+        while decimated.faces.len() > target_triangles {
+            let mut min_len = std::f64::MAX;
+            let mut min_edge = None;
+            for edge in &decimated.edges {
+                let v0 = &decimated.vertices[edge.vertices[0]];
+                let v1 = &decimated.vertices[edge.vertices[1]];
+                let len = ((v0.point.x - v1.point.x).powi(2)
+                    + (v0.point.y - v1.point.y).powi(2)
+                    + (v0.point.z - v1.point.z).powi(2)).sqrt();
+                if len < min_len {
+                    min_len = len;
+                    min_edge = Some(edge.id);
+                }
+            }
+            if let Some(edge_id) = min_edge {
+                decimated.edges.retain(|e| e.id != edge_id);
+                decimated.faces.retain(|f| !f.edges.contains(&edge_id));
+            } else {
+                break;
+            }
+        }
+        decimated
     }
 
     /// Calculate average edge length for a mesh
     fn calculate_average_edge_length(&self, mesh: &Mesh3D) -> f64 {
-        // Implementation of average edge length calculation
-        // This is a placeholder implementation
-        0.0
+        // Average edge length
+        let mut total = 0.0;
+        let mut count = 0;
+        for edge in &mesh.edges {
+            let v0 = &mesh.vertices[edge.vertices[0]];
+            let v1 = &mesh.vertices[edge.vertices[1]];
+            total += ((v0.point.x - v1.point.x).powi(2)
+                + (v0.point.y - v1.point.y).powi(2)
+                + (v0.point.z - v1.point.z).powi(2)).sqrt();
+            count += 1;
+        }
+        if count > 0 { total / count as f64 } else { 0.0 }
     }
 
     /// Calculate maximum edge length for a mesh
     fn calculate_maximum_edge_length(&self, mesh: &Mesh3D) -> f64 {
-        // Implementation of maximum edge length calculation
-        // This is a placeholder implementation
-        0.0
+        // Maximum edge length
+        let mut max_len = 0.0;
+        for edge in &mesh.edges {
+            let v0 = &mesh.vertices[edge.vertices[0]];
+            let v1 = &mesh.vertices[edge.vertices[1]];
+            let len = ((v0.point.x - v1.point.x).powi(2)
+                + (v0.point.y - v1.point.y).powi(2)
+                + (v0.point.z - v1.point.z).powi(2)).sqrt();
+            if len > max_len { max_len = len; }
+        }
+        max_len
     }
 
     /// Calculate geometric error between simplified mesh and original mesh
     fn calculate_geometric_error(&self, simplified: &Mesh3D, original: &Mesh3D) -> f64 {
-        // Implementation of geometric error calculation
-        // This is a placeholder implementation
-        0.0
+        // Geometric error: average distance between corresponding vertices
+        let mut total = 0.0;
+        let mut count = 0;
+        for (i, v) in simplified.vertices.iter().enumerate() {
+            if i < original.vertices.len() {
+                let o = &original.vertices[i];
+                total += ((v.point.x - o.point.x).powi(2)
+                    + (v.point.y - o.point.y).powi(2)
+                    + (v.point.z - o.point.z).powi(2)).sqrt();
+                count += 1;
+            }
+        }
+        if count > 0 { total / count as f64 } else { 0.0 }
     }
 
     /// Calculate visual error between simplified mesh and original mesh
     fn calculate_visual_error(&self, simplified: &Mesh3D, original: &Mesh3D) -> f64 {
-        // Implementation of visual error calculation
-        // This is a placeholder implementation
-        0.0
+        // Visual error: difference in triangle count
+        (original.faces.len() as f64 - simplified.faces.len() as f64).abs() / original.faces.len() as f64
     }
 
     /// Select LOD level based on view parameters
@@ -234,9 +282,9 @@ impl LodSystem {
         screen_height: f64,
         distance: f64,
     ) -> f64 {
-        // Implementation of screen space error calculation
-        // This is a placeholder implementation
-        0.0
+        // Screen space error: geometric error scaled by distance
+        let error = lod_level.quality_metrics.geometric_error;
+        error * distance / (screen_width * screen_height)
     }
 
     /// Get current LOD level
@@ -274,19 +322,78 @@ impl LodSystem {
 
     /// Export LOD levels to files
     pub fn export_lod_levels(&self, base_path: &str) -> Result<(), std::io::Error> {
-        // Implementation of LOD export
-        // This is a placeholder implementation
+        // Export each LOD mesh to a file
+        use std::fs::File;
+        use std::io::Write;
+        for level in &self.lod_levels {
+            let path = format!("{}-lod{}.obj", base_path, level.level);
+            let mut file = File::create(&path)?;
+            // Write vertices
+            for v in &level.mesh.vertices {
+                writeln!(file, "v {} {} {}", v.point.x, v.point.y, v.point.z)?;
+            }
+            // Write faces
+            for f in &level.mesh.faces {
+                let indices: Vec<_> = f.vertices.iter().map(|i| i + 1).collect();
+                writeln!(file, "f {} {} {}", indices[0], indices[1], indices[2])?;
+            }
+        }
         Ok(())
     }
 
     /// Import LOD levels from files
     pub fn import_lod_levels(base_path: &str) -> Result<Self, std::io::Error> {
-        // Implementation of LOD import
-        // This is a placeholder implementation
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Unsupported,
-            "Not implemented yet",
-        ))
+        // Import LOD meshes from files
+        use std::fs::File;
+        use std::io::{BufRead, BufReader};
+        let mut lod_levels = Vec::new();
+        let mut level = 0;
+        loop {
+            let path = format!("{}-lod{}.obj", base_path, level);
+            if let Ok(file) = File::open(&path) {
+                let mut vertices = Vec::new();
+                let mut faces = Vec::new();
+                for line in BufReader::new(file).lines() {
+                    let line = line?;
+                    if line.starts_with("v ") {
+                        let parts: Vec<_> = line.split_whitespace().collect();
+                        let x = parts[1].parse().unwrap_or(0.0);
+                        let y = parts[2].parse().unwrap_or(0.0);
+                        let z = parts[3].parse().unwrap_or(0.0);
+                        vertices.push(Point::new(x, y, z));
+                    } else if line.starts_with("f ") {
+                        let parts: Vec<_> = line.split_whitespace().collect();
+                        let v0 = parts[1].parse::<usize>().unwrap_or(1) - 1;
+                        let v1 = parts[2].parse::<usize>().unwrap_or(1) - 1;
+                        let v2 = parts[3].parse::<usize>().unwrap_or(1) - 1;
+                        faces.push(MeshFace::new(faces.len(), vec![v0, v1, v2]));
+                    }
+                }
+                let mesh = Mesh3D { vertices, faces, ..Default::default() };
+                lod_levels.push(LodLevel {
+                    level,
+                    mesh,
+                    simplification_factor: 1.0,
+                    bounding_box: mesh.calculate_bounding_box(),
+                    quality_metrics: LodQualityMetrics {
+                        triangle_count: mesh.faces.len(),
+                        average_edge_length: 0.0,
+                        maximum_edge_length: 0.0,
+                        geometric_error: 0.0,
+                        visual_error: 0.0,
+                    },
+                });
+                level += 1;
+            } else {
+                break;
+            }
+        }
+        Ok(Self {
+            original_mesh: lod_levels.get(0).map(|l| l.mesh.clone()).unwrap_or_default(),
+            lod_levels,
+            params: LodParams::default(),
+            current_level: 0,
+        })
     }
 }
 

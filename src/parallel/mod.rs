@@ -28,6 +28,10 @@ pub mod mesh_gen;
 pub mod shape_analysis;
 #[cfg(feature = "rayon")]
 pub mod utils;
+#[cfg(feature = "rayon")]
+pub mod task_scheduler;
+#[cfg(feature = "rayon")]
+pub mod geometry_algorithms;
 
 #[cfg(feature = "rayon")]
 pub use boolean_ops::*;
@@ -37,6 +41,10 @@ pub use mesh_gen::*;
 pub use shape_analysis::*;
 #[cfg(feature = "rayon")]
 pub use utils::*;
+#[cfg(feature = "rayon")]
+pub use task_scheduler::*;
+#[cfg(feature = "rayon")]
+pub use geometry_algorithms::*;
 
 use crate::foundation::handle::Handle;
 use crate::topology::{topods_shape::TopoDsShape, topods_solid::TopoDsSolid, ShapeType};
@@ -129,6 +137,11 @@ impl ParallelStats {
     }
 
     pub fn with_threads_used(mut self, count: usize) -> Self {
+        self.threads_used = count;
+        self
+    }
+
+    pub fn with_threads_processed(mut self, count: usize) -> Self {
         self.threads_used = count;
         self
     }

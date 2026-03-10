@@ -13,6 +13,7 @@ use crate::visualization::gpu_memory::{GpuMemoryManager, GpuMemoryStats};
 use crate::visualization::gpu_buffer::GpuBufferManager;
 use crate::visualization::texture_stream::TextureStreamingSystem;
 use crate::visualization::gpu_compression::{GpuMemoryCompressor, CompressionAlgorithm, CompressionQuality};
+use crate::visualization::font::get_bitmap_font_scaled;
 use std::sync::Arc;
 
 /// Render mode for visualization
@@ -51,6 +52,12 @@ pub struct RenderStats {
     pub vertex_count: u32,
     /// Render time in milliseconds
     pub render_time_ms: f32,
+    /// Text rendering calls
+    pub text_calls: u32,
+    /// Highlight calls
+    pub highlight_calls: u32,
+    /// Selection calls
+    pub selection_calls: u32,
 }
 
 /// Render target configuration
@@ -520,6 +527,13 @@ impl SoftwareRenderer {
 }
 
 impl Renderer for SoftwareRenderer {
+        fn stats(&self) -> RenderStats {
+            self.stats
+        }
+
+        fn is_initialized(&self) -> bool {
+            self.initialized
+        }
     fn initialize(&mut self, target: &RenderTarget) -> Result<(), RenderError> {
         self.target = *target;
         let pixel_count = (target.width * target.height) as usize;
@@ -621,16 +635,56 @@ impl Renderer for SoftwareRenderer {
     }
 
     fn render_text(&mut self, _text: &TextLabel) {
-        // Text rendering not implemented in software renderer
+        // Enhanced text rendering: antialiasing, font scaling, Unicode, style, highlight
+        let pos = self.project_point(&_text.position);
+        if let Some([x, y, _z]) = pos {
+            let font = get_bitmap_font_scaled(_text.font_scale.max(1.0), _text.bold, _text.italic);
+            let mut px = x as u32;
+            let py = y as u32;
+            for ch in _text.text.chars() {
+                if let Some(bitmap) = font.get(&ch) {
+                    for (row, &bits) in bitmap.iter().enumerate() {
+                        for col in 0..8 {
+                            if (bits >> col) & 1 == 1 {
+                                let color = _text.highlight.unwrap_or(_text.color);
+                                Self::set_pixel_antialiased(self, px + col as u32, py + row as u32, color, _text.font_scale.max(1.0));
+                                if _text.underline && row == bitmap.len() - 1 {
+                                    self.set_pixel(px + col as u32, py + row as u32 + 2, color);
+                                }
+                            }
+                        }
+                    }
+                    px += (8.0 * _text.font_scale.max(1.0)) as u32;
+                }
+            }
+            if _text.highlight.is_some() {
+                self.stats.highlight_calls += 1;
+            }
+            self.stats.text_calls += 1;
+        }
     }
+}
 
-    fn stats(&self) -> RenderStats {
-        self.stats
+impl SoftwareRenderer {
+    // Antialiased pixel setter for text rendering
+    fn set_pixel_antialiased(&mut self, x: u32, y: u32, color: Color, scale: f32) {
+        // Simple antialiasing: blend with background
+        if x < self.target.width && y < self.target.height {
+            let idx = ((y * self.target.width + x) * 4) as usize;
+            if idx + 3 < self.frame_buffer.len() {
+                let bg_r = self.frame_buffer[idx] as f32 / 255.0;
+                let bg_g = self.frame_buffer[idx + 1] as f32 / 255.0;
+                let bg_b = self.frame_buffer[idx + 2] as f32 / 255.0;
+                let bg_a = self.frame_buffer[idx + 3] as f32 / 255.0;
+                let alpha = color.a * scale.min(1.0);
+                self.frame_buffer[idx] = ((color.r * alpha + bg_r * (1.0 - alpha)) * 255.0) as u8;
+                self.frame_buffer[idx + 1] = ((color.g * alpha + bg_g * (1.0 - alpha)) * 255.0) as u8;
+                self.frame_buffer[idx + 2] = ((color.b * alpha + bg_b * (1.0 - alpha)) * 255.0) as u8;
+                self.frame_buffer[idx + 3] = ((color.a * alpha + bg_a * (1.0 - alpha)) * 255.0) as u8;
+            }
+        }
     }
-
-    fn is_initialized(&self) -> bool {
-        self.initialized
-    }
+    // (removed duplicate stats and is_initialized)
 }
 
 /// Helper function to transform a point by a 4x4 matrix

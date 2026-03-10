@@ -24,14 +24,14 @@ impl Default for MsgPackOptions {
 
 /// Serialize to MessagePack bytes
 pub fn to_msgpack<T: Serialize>(_value: &T) -> Result<Vec<u8>, MsgPackError> {
-    // Placeholder implementation - would use rmp-serde crate in production
-    Err(MsgPackError::NotImplemented)
+    // Real implementation using rmp-serde
+    rmp_serde::to_vec(_value).map_err(|e| MsgPackError::EncodingError(e.to_string()))
 }
 
 /// Deserialize from MessagePack bytes
 pub fn from_msgpack<T: for<'de> Deserialize<'de>>(_bytes: &[u8]) -> Result<T, MsgPackError> {
-    // Placeholder implementation - would use rmp-serde crate in production
-    Err(MsgPackError::NotImplemented)
+    // Real implementation using rmp-serde
+    rmp_serde::from_slice(_bytes).map_err(|e| MsgPackError::DecodingError(e.to_string()))
 }
 
 /// Serialize to MessagePack with custom options
@@ -39,8 +39,22 @@ pub fn to_msgpack_with_options<T: Serialize>(
     _value: &T,
     _options: &MsgPackOptions,
 ) -> Result<Vec<u8>, MsgPackError> {
-    // Placeholder implementation
-    Err(MsgPackError::NotImplemented)
+    // Streaming and compact encoding
+    use rmp_serde::encode::Serializer;
+    use serde::Serialize;
+    let mut buf = Vec::new();
+    let mut serializer = Serializer::new(&mut buf)
+        .with_compact(_options.use_compact_format)
+        .with_struct_map(_options.serialize_enums_as_ints);
+    _value.serialize(&mut serializer).map_err(|e| MsgPackError::EncodingError(e.to_string()))?;
+    Ok(buf)
+}
+
+/// Stream MessagePack serialization
+pub fn stream_msgpack<T: Serialize, W: std::io::Write>(value: &T, writer: W) -> Result<(), MsgPackError> {
+    use rmp_serde::encode::Serializer;
+    let mut serializer = Serializer::new(writer);
+    value.serialize(&mut serializer).map_err(|e| MsgPackError::EncodingError(e.to_string()))
 }
 
 /// MessagePack error types

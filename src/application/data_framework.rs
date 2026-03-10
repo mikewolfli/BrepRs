@@ -125,6 +125,7 @@ impl Default for DataContainer {
 }
 
 /// Shape data object
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ShapeData {
     id: String,
     name: String,

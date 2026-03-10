@@ -1,6 +1,33 @@
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
+/// Doubly-linked list with shared ownership and interior mutability.
+///
+/// # Warning
+/// This implementation uses `Rc`, `RefCell`, and `Weak` pointers for shared ownership and interior mutability.
+/// This can lead to memory leaks if reference cycles are created (e.g., nodes reference each other in a cycle).
+/// The list is **not thread-safe** and is generally more complex than needed for most use cases.
+/// Prefer using `VecDeque` from the standard library unless you specifically need shared ownership and mutation.
+///
+/// # Memory Leaks
+/// If you create cycles (e.g., by inserting nodes in a way that their `next` and `prev` pointers form a loop),
+/// the memory for those nodes will never be freed. Use with caution and avoid creating cycles.
+///
+/// # Alternatives
+/// - Use `VecDeque` for a fast, safe, and simple double-ended queue.
+/// - Use intrusive collections or arena allocation for high-performance needs.
+///
+/// # Debugging
+/// Consider adding cycle detection or leak checks in debug builds if you use this type extensively.
+///
+/// # Example
+/// ```
+/// use breprs::collections::List;
+/// let list = List::new();
+/// list.append(1);
+/// list.append(2);
+/// assert_eq!(list.size(), 2);
+/// ```
 pub struct List<T> {
     head: RefCell<Option<Rc<Node<T>>>>,
     tail: RefCell<Option<Weak<Node<T>>>>,

@@ -7,42 +7,39 @@ pub struct Array1<T> {
 }
 
 impl<T> Array1<T> {
-    pub fn new(lower: usize, upper: usize) -> Self {
+    pub fn new(lower: usize, upper: usize) -> Result<Self> {
         if lower > upper {
-            panic!(
-                "{}",
-                Failure::range_error("Lower bound must be <= upper bound")
-            );
+            return Err(Failure::range_error("Lower bound must be <= upper bound"));
         }
         let length = upper - lower + 1;
-        Self {
+        Ok(Self {
             data: Vec::with_capacity(length),
             lower,
             upper,
-        }
+        })
     }
 
-    pub fn with_capacity(lower: usize, upper: usize, capacity: usize) -> Self {
+    pub fn with_capacity(lower: usize, upper: usize, capacity: usize) -> Result<Self> {
         if lower > upper {
-            panic!(
-                "{}",
-                Failure::range_error("Lower bound must be <= upper bound")
-            );
+            return Err(Failure::range_error("Lower bound must be <= upper bound"));
         }
-        Self {
+        Ok(Self {
             data: Vec::with_capacity(capacity),
             lower,
             upper,
-        }
+        })
     }
 
-    pub fn from_vec(lower: usize, vec: Vec<T>) -> Self {
+    pub fn from_vec(lower: usize, vec: Vec<T>) -> Result<Self> {
+        if vec.is_empty() {
+            return Err(Failure::range_error("Cannot create Array1 from empty Vec"));
+        }
         let upper = lower + vec.len() - 1;
-        Self {
+        Ok(Self {
             data: vec,
             lower,
             upper,
-        }
+        })
     }
 
     pub fn lower(&self) -> usize {
@@ -69,26 +66,19 @@ impl<T> Array1<T> {
         self.data.capacity()
     }
 
-    pub fn resize(&mut self, lower: usize, upper: usize)
+    pub fn resize(&mut self, lower: usize, upper: usize) -> Result<()> 
     where
         T: Clone,
     {
         if lower > upper {
-            panic!(
-                "{}",
-                Failure::range_error("Lower bound must be <= upper bound")
-            );
+            return Err(Failure::range_error("Lower bound must be <= upper bound"));
         }
         self.lower = lower;
         self.upper = upper;
         let new_length = upper - lower + 1;
-        self.data.resize(
-            new_length,
-            self.data
-                .first()
-                .cloned()
-                .unwrap_or_else(|| panic!("Cannot resize empty array")),
-        );
+        let default = self.data.first().cloned().ok_or_else(|| Failure::range_error("Cannot resize empty array"))?;
+        self.data.resize(new_length, default);
+        Ok(())
     }
 
     pub fn clear(&mut self) {
@@ -201,10 +191,18 @@ impl<T> Array1<T> {
 
 impl<T> Default for Array1<T> {
     fn default() -> Self {
-        Self::new(1, 0)
+        // Default returns an empty array with lower > upper
+        Self {
+            data: Vec::new(),
+            lower: 1,
+            upper: 0,
+        }
     }
 }
 
+/// Performs a deep clone of all elements in the array.
+/// This may be expensive for large arrays.
+#[inline]
 impl<T> Clone for Array1<T>
 where
     T: Clone,
@@ -218,21 +216,15 @@ where
     }
 }
 
-impl<T> std::ops::Index<usize> for Array1<T> {
-    type Output = T;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        self.get(index)
-            .unwrap_or_else(|| panic!("{}", Failure::range_error("Index out of bounds")))
+impl<T> Array1<T> {
+    pub fn get_checked(&self, index: usize) -> Result<&T> {
+        self.get(index).ok_or_else(|| Failure::range_error("Index out of bounds"))
+    }
+    pub fn get_checked_mut(&mut self, index: usize) -> Result<&mut T> {
+        self.get_mut(index).ok_or_else(|| Failure::range_error("Index out of bounds"))
     }
 }
 
-impl<T> std::ops::IndexMut<usize> for Array1<T> {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        self.get_mut(index)
-            .unwrap_or_else(|| panic!("{}", Failure::range_error("Index out of bounds")))
-    }
-}
 
 impl<T: std::fmt::Debug> std::fmt::Debug for Array1<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -268,7 +260,7 @@ mod tests {
 
     #[test]
     fn test_array_creation() {
-        let array: Array1<i32> = Array1::new(1, 5);
+        let array: Array1<i32> = Array1::new(1, 5).unwrap();
         assert_eq!(array.lower(), 1);
         assert_eq!(array.upper(), 5);
         assert_eq!(array.length(), 0);
@@ -277,19 +269,19 @@ mod tests {
 
     #[test]
     fn test_array_push() {
-        let mut array = Array1::new(1, 5);
+        let mut array = Array1::new(1, 5).unwrap();
         array.push(10);
         array.push(20);
         array.push(30);
         assert_eq!(array.length(), 3);
-        assert_eq!(array[1], 10);
-        assert_eq!(array[2], 20);
-        assert_eq!(array[3], 30);
+        assert_eq!(*array.get_checked(1).unwrap(), 10);
+        assert_eq!(*array.get_checked(2).unwrap(), 20);
+        assert_eq!(*array.get_checked(3).unwrap(), 30);
     }
 
     #[test]
     fn test_array_pop() {
-        let mut array = Array1::new(1, 5);
+        let mut array = Array1::new(1, 5).unwrap();
         array.push(10);
         array.push(20);
         array.push(30);
@@ -299,7 +291,7 @@ mod tests {
 
     #[test]
     fn test_array_get() {
-        let mut array = Array1::new(1, 5);
+        let mut array = Array1::new(1, 5).unwrap();
         array.push(10);
         array.push(20);
         assert_eq!(array.get(1), Some(&10));
@@ -309,49 +301,49 @@ mod tests {
 
     #[test]
     fn test_array_set() {
-        let mut array = Array1::new(1, 5);
+        let mut array = Array1::new(1, 5).unwrap();
         array.push(10);
         array.push(20);
         assert!(array.set(1, 100).is_ok());
-        assert_eq!(array[1], 100);
+        assert_eq!(*array.get_checked(1).unwrap(), 100);
     }
 
     #[test]
     fn test_array_insert() {
-        let mut array = Array1::new(1, 5);
+        let mut array = Array1::new(1, 5).unwrap();
         array.push(10);
         array.push(30);
         assert!(array.insert(2, 20).is_ok());
-        assert_eq!(array[1], 10);
-        assert_eq!(array[2], 20);
-        assert_eq!(array[3], 30);
+        assert_eq!(*array.get_checked(1).unwrap(), 10);
+        assert_eq!(*array.get_checked(2).unwrap(), 20);
+        assert_eq!(*array.get_checked(3).unwrap(), 30);
     }
 
     #[test]
     fn test_array_remove() {
-        let mut array = Array1::new(1, 5);
+        let mut array = Array1::new(1, 5).unwrap();
         array.push(10);
         array.push(20);
         array.push(30);
         assert_eq!(array.remove(2).unwrap(), 20);
         assert_eq!(array.length(), 2);
-        assert_eq!(array[1], 10);
-        assert_eq!(array[2], 30);
+        assert_eq!(*array.get_checked(1).unwrap(), 10);
+        assert_eq!(*array.get_checked(2).unwrap(), 30);
     }
 
     #[test]
     fn test_array_swap() {
-        let mut array = Array1::new(1, 5);
+        let mut array = Array1::new(1, 5).unwrap();
         array.push(10);
         array.push(20);
         assert!(array.swap(1, 2).is_ok());
-        assert_eq!(array[1], 20);
-        assert_eq!(array[2], 10);
+        assert_eq!(*array.get_checked(1).unwrap(), 20);
+        assert_eq!(*array.get_checked(2).unwrap(), 10);
     }
 
     #[test]
     fn test_array_clear() {
-        let mut array = Array1::new(1, 5);
+        let mut array = Array1::new(1, 5).unwrap();
         array.push(10);
         array.push(20);
         array.clear();
@@ -361,18 +353,18 @@ mod tests {
     #[test]
     fn test_array_from_vec() {
         let vec = vec![10, 20, 30];
-        let array = Array1::from_vec(1, vec);
+        let array = Array1::from_vec(1, vec).unwrap();
         assert_eq!(array.lower(), 1);
         assert_eq!(array.upper(), 3);
         assert_eq!(array.length(), 3);
-        assert_eq!(array[1], 10);
-        assert_eq!(array[2], 20);
-        assert_eq!(array[3], 30);
+        assert_eq!(*array.get_checked(1).unwrap(), 10);
+        assert_eq!(*array.get_checked(2).unwrap(), 20);
+        assert_eq!(*array.get_checked(3).unwrap(), 30);
     }
 
     #[test]
     fn test_array_to_vec() {
-        let mut array = Array1::new(1, 5);
+        let mut array = Array1::new(1, 5).unwrap();
         array.push(10);
         array.push(20);
         array.push(30);
@@ -382,7 +374,7 @@ mod tests {
 
     #[test]
     fn test_array_clone() {
-        let mut array1 = Array1::new(1, 5);
+        let mut array1 = Array1::new(1, 5).unwrap();
         array1.push(10);
         array1.push(20);
         array1.push(30);
@@ -394,7 +386,7 @@ mod tests {
 
     #[test]
     fn test_array_into_iter() {
-        let mut array = Array1::new(1, 5);
+        let mut array = Array1::new(1, 5).unwrap();
         array.push(10);
         array.push(20);
         array.push(30);
@@ -404,7 +396,7 @@ mod tests {
 
     #[test]
     fn test_array_bounds() {
-        let array: Array1<i32> = Array1::new(1, 5);
+        let array: Array1<i32> = Array1::new(1, 5).unwrap();
         assert_eq!(array.lower(), 1);
         assert_eq!(array.upper(), 5);
     }

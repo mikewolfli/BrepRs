@@ -76,11 +76,14 @@ except ImportError:
     def version() -> str:
         return __version__
     
+    _tolerance = 1e-6
+
     def set_tolerance(tol: float) -> None:
-        pass
-    
+        global _tolerance
+        _tolerance = tol
+
     def get_tolerance() -> float:
-        return 1e-6
+        return _tolerance
 
 __all__ = [
     # Version

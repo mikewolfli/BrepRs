@@ -107,6 +107,16 @@ impl TopoDsEdge {
         &self.vertices
     }
 
+    /// Get the start vertex (alias for vertex1)
+    pub fn start_vertex(&self) -> &Handle<TopoDsVertex> {
+        &self.vertices[0]
+    }
+
+    /// Get the end vertex (alias for vertex2)
+    pub fn end_vertex(&self) -> &Handle<TopoDsVertex> {
+        &self.vertices[1]
+    }
+
     /// Get the curve of the edge
     pub fn curve(&self) -> Option<&Handle<dyn Curve>> {
         self.curve.as_ref()
@@ -234,6 +244,14 @@ impl TopoDsEdge {
     /// Set the mutability of the edge
     pub fn set_mutable(&mut self, mutable: bool) {
         self.shape.set_mutable(mutable);
+    }
+
+    /// Get adjacent faces (placeholder - requires face-edge adjacency tracking)
+    pub fn adjacent_faces(&self) -> Vec<Handle<crate::topology::topods_face::TopoDsFace>> {
+        // This is a placeholder implementation
+        // In a full implementation, this would return faces that share this edge
+        // Requires maintaining face-edge adjacency information
+        Vec::new()
     }
 
     /// Check if this edge contains a point

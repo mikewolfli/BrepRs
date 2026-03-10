@@ -112,6 +112,9 @@ impl<K: Hash + Eq, V> Default for DataMap<K, V> {
     }
 }
 
+/// Performs a deep clone of all keys and values in the map.
+/// This may be expensive for large maps.
+#[inline]
 impl<K: Hash + Eq + Clone, V: Clone> Clone for DataMap<K, V> {
     fn clone(&self) -> Self {
         Self {
@@ -126,17 +129,12 @@ impl<K: Hash + Eq + std::fmt::Debug, V: std::fmt::Debug> std::fmt::Debug for Dat
     }
 }
 
-impl<K: Hash + Eq, V> std::ops::Index<K> for DataMap<K, V> {
-    type Output = V;
-
-    fn index(&self, key: K) -> &Self::Output {
-        self.data.get(&key).expect("key not found in DataMap")
+impl<K: Hash + Eq, V> DataMap<K, V> {
+    pub fn get_checked(&self, key: &K) -> crate::foundation::exception::Result<&V> {
+        self.data.get(key).ok_or_else(|| crate::foundation::exception::Failure::range_error("key not found in DataMap"))
     }
-}
-
-impl<K: Hash + Eq, V> std::ops::IndexMut<K> for DataMap<K, V> {
-    fn index_mut(&mut self, key: K) -> &mut Self::Output {
-        self.data.get_mut(&key).expect("key not found in DataMap")
+    pub fn get_checked_mut(&mut self, key: &K) -> crate::foundation::exception::Result<&mut V> {
+        self.data.get_mut(key).ok_or_else(|| crate::foundation::exception::Failure::range_error("key not found in DataMap"))
     }
 }
 

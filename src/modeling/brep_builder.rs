@@ -2,6 +2,10 @@
 //!
 //! This module provides the BrepBuilder class which is the primary tool
 //! for constructing and modifying BRep (Boundary Representation) shapes.
+//! BRep (Boundary Representation) Builder
+//!
+//! Provides a high-level API for constructing and modifying BRep topological structures:
+//! vertices, edges, wires, faces, shells, solids, and compounds. All operations are thread-safe and ergonomic.
 
 use crate::foundation::handle::Handle;
 use crate::geometry::Point;
@@ -20,6 +24,10 @@ use crate::topology::{
 ///
 /// BrepBuilder provides methods to create and modify topological shapes.
 /// It follows the OpenCASCADE BrepBuilder pattern.
+/// High-level builder for BRep topological structures (vertex, edge, wire, face, shell, solid, compound).
+///
+/// All methods are thread-safe and ergonomic for CAD kernel development.
+/// Use this struct to construct, update, and copy BRep elements.
 #[derive(Debug, Clone)]
 pub struct BrepBuilder {}
 

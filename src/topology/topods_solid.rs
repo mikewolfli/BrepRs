@@ -86,6 +86,20 @@ impl TopoDsSolid {
         self.shells.push(shell);
     }
 
+    /// Add a face to the outer shell (creates shell if needed)
+    pub fn add_face(&mut self, face: Handle<crate::topology::topods_face::TopoDsFace>) {
+        if self.shells.is_empty() {
+            let shell = TopoDsShell::new();
+            self.shells.push(Handle::new(std::sync::Arc::new(shell)));
+        }
+        
+        if let Some(shell) = self.shells.first_mut() {
+            if let Some(shell_mut) = Handle::as_mut(shell) {
+                shell_mut.add_face(face);
+            }
+        }
+    }
+
     /// Get the tolerance of the solid
     pub fn tolerance(&self) -> f64 {
         self.tolerance

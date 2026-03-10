@@ -313,6 +313,37 @@ impl Vector {
     pub fn to_dir(&self) -> crate::geometry::Direction {
         crate::geometry::Direction::new(self.x, self.y, self.z)
     }
+
+    /// Get the length of the vector (alias for magnitude)
+    #[inline]
+    pub fn length(&self) -> StandardReal {
+        self.magnitude()
+    }
+
+    /// Rotate the vector around an axis by a given angle
+    /// 
+    /// # Arguments
+    /// * `axis` - The axis to rotate around (as a Vector)
+    /// * `angle` - The angle in radians
+    /// 
+    /// # Returns
+    /// The rotated vector
+    pub fn rotate_around_axis(&self, axis: Vector, angle: StandardReal) -> Vector {
+        let axis = axis.normalized();
+        let cos_a = angle.cos();
+        let sin_a = angle.sin();
+        let dot = axis.x * self.x + axis.y * self.y + axis.z * self.z;
+
+        let cross_x = axis.y * self.z - axis.z * self.y;
+        let cross_y = axis.z * self.x - axis.x * self.z;
+        let cross_z = axis.x * self.y - axis.y * self.x;
+
+        Vector {
+            x: self.x * cos_a + cross_x * sin_a + axis.x * dot * (1.0 - cos_a),
+            y: self.y * cos_a + cross_y * sin_a + axis.y * dot * (1.0 - cos_a),
+            z: self.z * cos_a + cross_z * sin_a + axis.z * dot * (1.0 - cos_a),
+        }
+    }
 }
 
 impl Default for Vector {

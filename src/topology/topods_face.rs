@@ -139,6 +139,13 @@ impl TopoDsFace {
         }
     }
 
+    /// Set a wire at a specific index
+    pub fn set_wire(&mut self, index: usize, wire: Handle<TopoDsWire>) {
+        if index < self.wires.len() {
+            self.wires[index] = wire;
+        }
+    }
+
     /// Get the hole wires (all wires except the first)
     pub fn hole_wires(&self) -> &[Handle<TopoDsWire>] {
         if self.wires.len() <= 1 {
@@ -305,6 +312,15 @@ impl TopoDsFace {
         self.wires.contains(wire)
     }
 
+    /// Get vertices of the face (from outer wire)
+    pub fn vertices(&self) -> Vec<Handle<crate::topology::topods_vertex::TopoDsVertex>> {
+        if let Some(outer_wire) = self.outer_wire() {
+            outer_wire.vertices().to_vec()
+        } else {
+            Vec::new()
+        }
+    }
+
     /// Get the bounding box of the face
     pub fn bounding_box(&self) -> Option<(Point, Point)> {
         if self.wires.is_empty() {
@@ -372,6 +388,11 @@ impl TopoDsFace {
     /// Reverse the orientation of the face
     pub fn reverse(&mut self) {
         self.orientation *= -1;
+    }
+
+    /// Get reference to self (for compatibility with Handle API)
+    pub fn get(&self) -> Option<&Self> {
+        Some(self)
     }
 }
 

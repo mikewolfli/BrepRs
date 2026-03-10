@@ -227,6 +227,21 @@ impl TopoDsShape {
         // Subclasses should override this with proper implementation
         (Point::origin(), Point::origin())
     }
+
+    /// Get faces of the shape
+    /// 
+    /// Default implementation returns empty vector
+    /// Subclasses should override this with proper implementation
+    pub fn faces(&self) -> Vec<crate::topology::topods_face::TopoDsFace> {
+        Vec::new()
+    }
+
+    /// Try to cast to face reference
+    /// 
+    /// Returns None if this shape is not a face
+    pub fn as_face(&self) -> Option<&crate::topology::topods_face::TopoDsFace> {
+        None
+    }
 }
 
 #[cfg(test)]

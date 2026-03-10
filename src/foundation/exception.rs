@@ -5,6 +5,9 @@ use thiserror::Error;
 /// This type alias provides a convenient way to use the Failure enum
 /// as the error type for Result types throughout the codebase.
 pub type Result<T> = std::result::Result<T, Failure>;
+// Ensure Failure is Send + Sync for thread safety
+unsafe impl Send for Failure {}
+unsafe impl Sync for Failure {}
 
 /// Comprehensive error type for CAD kernel operations
 ///
@@ -22,111 +25,102 @@ pub type Result<T> = std::result::Result<T, Failure>;
 /// - Helper macros like `raise_if!` are designed for kernel internal use
 #[derive(Error, Debug)]
 pub enum Failure {
-    #[error("Domain error: {0}")]
-    DomainError(String),
-
-    #[error("Range error: {0}")]
-    RangeError(String),
-
-    #[error("Numeric error: {0}")]
-    NumericError(String),
-
-    #[error("Overflow error: {0}")]
-    OverflowError(String),
-
-    #[error("Underflow error: {0}")]
-    UnderflowError(String),
-
-    #[error("Divide by zero: {0}")]
-    DivideByZeroError(String),
-
-    #[error("Construction error: {0}")]
-    ConstructionError(String),
-
-    #[error("Not implemented: {0}")]
-    NotImplemented(String),
-
-    #[error("Runtime error: {0}")]
-    RuntimeError(String),
-
-    #[error("Unknown error: {0}")]
-    UnknownError(String),
+    #[error("Domain error: {msg}")]
+    DomainError { msg: String },
+    #[error("Range error: {msg}")]
+    RangeError { msg: String },
+    #[error("Numeric error: {msg}")]
+    NumericError { msg: String },
+    #[error("Overflow error: {msg}")]
+    OverflowError { msg: String },
+    #[error("Underflow error: {msg}")]
+    UnderflowError { msg: String },
+    #[error("Divide by zero: {msg}")]
+    DivideByZeroError { msg: String },
+    #[error("Construction error: {msg}")]
+    ConstructionError { msg: String },
+    #[error("Not implemented: {msg}")]
+    NotImplemented { msg: String },
+    #[error("Runtime error: {msg}")]
+    RuntimeError { msg: String },
+    #[error("Unknown error: {msg}")]
+    UnknownError { msg: String },
 }
 
 // Implement From conversions for common error types
 impl From<std::io::Error> for Failure {
     fn from(err: std::io::Error) -> Self {
-        Failure::RuntimeError(err.to_string())
+        Failure::RuntimeError { msg: err.to_string() }
     }
 }
 
 impl From<std::num::TryFromIntError> for Failure {
     fn from(err: std::num::TryFromIntError) -> Self {
-        Failure::NumericError(err.to_string())
+        Failure::NumericError { msg: err.to_string() }
     }
 }
 
 impl From<std::num::ParseIntError> for Failure {
     fn from(err: std::num::ParseIntError) -> Self {
-        Failure::NumericError(err.to_string())
+        Failure::NumericError { msg: err.to_string() }
     }
 }
 
 impl From<std::num::ParseFloatError> for Failure {
     fn from(err: std::num::ParseFloatError) -> Self {
-        Failure::NumericError(err.to_string())
+        Failure::NumericError { msg: err.to_string() }
     }
 }
 
 impl Failure {
     #[inline]
     pub fn domain_error(msg: impl Into<String>) -> Self {
-        Self::DomainError(msg.into())
+        Self::DomainError { msg: msg.into() }
     }
 
     #[inline]
     pub fn range_error(msg: impl Into<String>) -> Self {
-        Self::RangeError(msg.into())
+        Self::RangeError { msg: msg.into() }
     }
 
     #[inline]
     pub fn numeric_error(msg: impl Into<String>) -> Self {
-        Self::NumericError(msg.into())
+        Self::NumericError { msg: msg.into() }
     }
 
     #[inline]
     pub fn overflow_error(msg: impl Into<String>) -> Self {
-        Self::OverflowError(msg.into())
+        Self::OverflowError { msg: msg.into() }
     }
 
     #[inline]
     pub fn underflow_error(msg: impl Into<String>) -> Self {
-        Self::UnderflowError(msg.into())
+        Self::UnderflowError { msg: msg.into() }
     }
 
     #[inline]
     pub fn divide_by_zero(msg: impl Into<String>) -> Self {
-        Self::DivideByZeroError(msg.into())
+        Self::DivideByZeroError { msg: msg.into() }
     }
 
     #[inline]
     pub fn construction_error(msg: impl Into<String>) -> Self {
-        Self::ConstructionError(msg.into())
+        Self::ConstructionError { msg: msg.into() }
     }
 
     #[inline]
     pub fn not_implemented(msg: impl Into<String>) -> Self {
-        Self::NotImplemented(msg.into())
+        Self::NotImplemented { msg: msg.into() }
     }
 
     #[inline]
     pub fn runtime_error(msg: impl Into<String>) -> Self {
-        Self::RuntimeError(msg.into())
+        Self::RuntimeError { msg: msg.into() }
     }
 
     #[inline]
     pub fn unknown_error(msg: impl Into<String>) -> Self {
-        Self::UnknownError(msg.into())
+        Self::UnknownError { msg: msg.into() }
     }
 }
 
@@ -284,36 +278,55 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_failure_send_sync() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<Failure>();
+        assert_send_sync::<Result<i32>>();
+    }
+
+    #[test]
+    fn test_failure_variant_context_source_backtrace() {
+        let domain = Failure::DomainError { msg: "domain".to_string() };
+        assert!(matches!(domain, Failure::DomainError { .. }));
+
+        let numeric = Failure::NumericError { msg: "numeric".to_string() };
+        assert!(matches!(numeric, Failure::NumericError { .. }));
+
+        let not_impl = Failure::NotImplemented { msg: "notimpl".to_string() };
+        assert!(matches!(not_impl, Failure::NotImplemented { .. }));
+    }
+
+    #[test]
     fn test_standard_failure_creation() {
         let err = Failure::domain_error("test error");
-        assert!(matches!(err, Failure::DomainError(_)));
+        assert!(matches!(err, Failure::DomainError { .. }));
 
         let err = Failure::range_error("test");
-        assert!(matches!(err, Failure::RangeError(_)));
+        assert!(matches!(err, Failure::RangeError { .. }));
 
         let err = Failure::numeric_error("test");
-        assert!(matches!(err, Failure::NumericError(_)));
+        assert!(matches!(err, Failure::NumericError { .. }));
 
         let err = Failure::overflow_error("test");
-        assert!(matches!(err, Failure::OverflowError(_)));
+        assert!(matches!(err, Failure::OverflowError { .. }));
 
         let err = Failure::underflow_error("test");
-        assert!(matches!(err, Failure::UnderflowError(_)));
+        assert!(matches!(err, Failure::UnderflowError { .. }));
 
         let err = Failure::divide_by_zero("test");
-        assert!(matches!(err, Failure::DivideByZeroError(_)));
+        assert!(matches!(err, Failure::DivideByZeroError { .. }));
 
         let err = Failure::construction_error("test");
-        assert!(matches!(err, Failure::ConstructionError(_)));
+        assert!(matches!(err, Failure::ConstructionError { .. }));
 
         let err = Failure::not_implemented("test");
-        assert!(matches!(err, Failure::NotImplemented(_)));
+        assert!(matches!(err, Failure::NotImplemented { .. }));
 
         let err = Failure::runtime_error("test");
-        assert!(matches!(err, Failure::RuntimeError(_)));
+        assert!(matches!(err, Failure::RuntimeError { .. }));
 
         let err = Failure::unknown_error("test");
-        assert!(matches!(err, Failure::UnknownError(_)));
+        assert!(matches!(err, Failure::UnknownError { .. }));
     }
 
     #[test]
@@ -357,7 +370,7 @@ mod tests {
     fn test_from_io_error() {
         let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
         let failure: Failure = io_err.into();
-        assert!(matches!(failure, Failure::RuntimeError(_)));
+        assert!(matches!(failure, Failure::RuntimeError { .. }));
         assert!(failure.to_string().contains("file not found"));
     }
 
@@ -367,7 +380,7 @@ mod tests {
         assert!(result.is_err());
         let parse_err = result.unwrap_err();
         let failure: Failure = parse_err.into();
-        assert!(matches!(failure, Failure::NumericError(_)));
+        assert!(matches!(failure, Failure::NumericError { .. }));
     }
 
     #[test]
@@ -376,7 +389,7 @@ mod tests {
         assert!(result.is_err());
         let parse_err = result.unwrap_err();
         let failure: Failure = parse_err.into();
-        assert!(matches!(failure, Failure::NumericError(_)));
+        assert!(matches!(failure, Failure::NumericError { .. }));
     }
 
     #[test]
@@ -385,7 +398,7 @@ mod tests {
         assert!(result.is_err());
         let try_err = result.unwrap_err();
         let failure: Failure = try_err.into();
-        assert!(matches!(failure, Failure::NumericError(_)));
+        assert!(matches!(failure, Failure::NumericError { .. }));
     }
 
     #[test]

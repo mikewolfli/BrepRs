@@ -73,6 +73,36 @@ impl MeshVertex {
     pub fn set_brep_face_id(&mut self, id: i32) {
         self.brep_face_id = Some(id);
     }
+
+    /// Get x coordinate (alias for point.x)
+    pub fn a(&self) -> f64 {
+        self.point.x
+    }
+
+    /// Get y coordinate (alias for point.y)
+    pub fn b(&self) -> f64 {
+        self.point.y
+    }
+
+    /// Get z coordinate (alias for point.z)
+    pub fn c(&self) -> f64 {
+        self.point.z
+    }
+
+    /// Set x coordinate
+    pub fn set_a(&mut self, a: f64) {
+        self.point.x = a;
+    }
+
+    /// Set y coordinate
+    pub fn set_b(&mut self, b: f64) {
+        self.point.y = b;
+    }
+
+    /// Set z coordinate
+    pub fn set_c(&mut self, c: f64) {
+        self.point.z = c;
+    }
 }
 
 /// Mesh edge
@@ -153,6 +183,54 @@ impl MeshFace {
     /// Set BRep face ID
     pub fn set_brep_face_id(&mut self, id: i32) {
         self.brep_face_id = Some(id);
+    }
+
+    /// Get vertex a (first vertex) for triangular faces
+    pub fn a(&self) -> usize {
+        if self.vertices.len() > 0 {
+            self.vertices[0]
+        } else {
+            0
+        }
+    }
+
+    /// Get vertex b (second vertex) for triangular faces
+    pub fn b(&self) -> usize {
+        if self.vertices.len() > 1 {
+            self.vertices[1]
+        } else {
+            0
+        }
+    }
+
+    /// Get vertex c (third vertex) for triangular faces
+    pub fn c(&self) -> usize {
+        if self.vertices.len() > 2 {
+            self.vertices[2]
+        } else {
+            0
+        }
+    }
+
+    /// Set vertex a (first vertex) for triangular faces
+    pub fn set_a(&mut self, a: usize) {
+        if self.vertices.len() > 0 {
+            self.vertices[0] = a;
+        }
+    }
+
+    /// Set vertex b (second vertex) for triangular faces
+    pub fn set_b(&mut self, b: usize) {
+        if self.vertices.len() > 1 {
+            self.vertices[1] = b;
+        }
+    }
+
+    /// Set vertex c (third vertex) for triangular faces
+    pub fn set_c(&mut self, c: usize) {
+        if self.vertices.len() > 2 {
+            self.vertices[2] = c;
+        }
     }
 }
 
@@ -295,14 +373,36 @@ impl Mesh2D {
 
     /// Create mesh from BRep shape
     pub fn from_brep(shape: &crate::topology::topods_shape::TopoDsShape) -> Result<Self, String> {
-        // Implementation will be added in a future update
-        Err("Not implemented yet".to_string())
+        // Convert BRep shape to mesh by extracting points and faces
+        let points = shape.points();
+        let faces = shape.faces();
+        let mut vertices = Vec::new();
+        for p in points {
+            vertices.push(MeshVertex { point: p, normal: None, ..Default::default() });
+        }
+        let mut mesh_faces = Vec::new();
+        for f in faces {
+            mesh_faces.push(MeshFace::new(mesh_faces.len(), f));
+        }
+        Ok(Self {
+            vertices,
+            faces: mesh_faces,
+            edges: Vec::new(),
+            bbox: (Point::default(), Point::default()),
+        })
     }
 
     /// Convert mesh back to BRep shape
     pub fn to_brep(&self) -> Result<crate::topology::topods_shape::TopoDsShape, String> {
-        // Implementation will be added in a future update
-        Err("Not implemented yet".to_string())
+        // Convert mesh to BRep shape
+        let mut shape = crate::topology::topods_shape::TopoDsShape::new();
+        for v in &self.vertices {
+            shape.add_point(v.point.clone());
+        }
+        for f in &self.faces {
+            shape.add_face(f.vertices.clone());
+        }
+        Ok(shape)
     }
 
     /// Update bounding box
@@ -414,6 +514,57 @@ impl Mesh2D {
                 None
             }
         })
+    }
+
+    /// Get vertices slice
+    pub fn vertices(&self) -> &[MeshVertex] {
+        &self.vertices
+    }
+
+    /// Get faces slice
+    pub fn faces(&self) -> &[MeshFace] {
+        &self.faces
+    }
+
+    /// Update a vertex position
+    pub fn update_vertex(&mut self, index: usize, point: Point) {
+        if index < self.vertices.len() {
+            self.vertices[index].point = point;
+            self.update_bbox();
+        }
+    }
+
+    /// Update a face
+    pub fn update_face(&mut self, index: usize, face: MeshFace) {
+        if index < self.faces.len() {
+            self.faces[index] = face;
+        }
+    }
+
+    /// Set faces (replace all faces)
+    pub fn set_faces(&mut self, faces: Vec<MeshFace>) {
+        self.faces = faces;
+    }
+
+    /// Merge another mesh into this one
+    pub fn merge(&mut self, other: &Mesh2D) {
+        let vertex_offset = self.vertices.len();
+        
+        // Add vertices from other mesh
+        for vertex in &other.vertices {
+            self.add_vertex(vertex.point);
+        }
+        
+        // Add faces from other mesh with updated vertex indices
+        for face in &other.faces {
+            let mut new_vertices = Vec::new();
+            for &v in &face.vertices {
+                new_vertices.push(v + vertex_offset);
+            }
+            if new_vertices.len() == 3 {
+                self.add_face(new_vertices[0], new_vertices[1], new_vertices[2]);
+            }
+        }
     }
 }
 
@@ -669,6 +820,27 @@ impl Mesh3D {
         }
 
         self.bbox = (min_point, max_point);
+    }
+
+    /// Calculate and return bounding box
+    pub fn calculate_bounding_box(&self) -> (Point, Point) {
+        if self.vertices.is_empty() {
+            return (Point::origin(), Point::origin());
+        }
+
+        let mut min_point = self.vertices[0].point.clone();
+        let mut max_point = self.vertices[0].point.clone();
+
+        for vertex in &self.vertices {
+            min_point.x = min_point.x.min(vertex.point.x);
+            min_point.y = min_point.y.min(vertex.point.y);
+            min_point.z = min_point.z.min(vertex.point.z);
+            max_point.x = max_point.x.max(vertex.point.x);
+            max_point.y = max_point.y.max(vertex.point.y);
+            max_point.z = max_point.z.max(vertex.point.z);
+        }
+
+        (min_point, max_point)
     }
 
     /// Add metadata

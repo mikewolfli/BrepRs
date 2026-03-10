@@ -299,11 +299,9 @@ impl ChainableBuilder {
     pub fn build_solid(self) -> Option<Handle<TopoDsSolid>> {
         self.shape.and_then(|s| {
             if s.as_ref().map_or(false, |shape| shape.is_solid()) {
-                // SAFETY: We assume the underlying Arc actually contains a TopoDsSolid
                 let arc = s.get().unwrap().clone();
-                // Downcast Arc<TopoDsShape> to Arc<TopoDsSolid> is not possible directly, so return None
-                // Placeholder: return None
-                None
+                // Try downcasting Arc<TopoDsShape> to Arc<TopoDsSolid>
+                arc.downcast::<TopoDsSolid>().ok().map(Handle::new)
             } else {
                 None
             }
@@ -314,11 +312,8 @@ impl ChainableBuilder {
     pub fn build_compound(self) -> Option<Handle<TopoDsCompound>> {
         self.shape.and_then(|s| {
             if s.as_ref().map_or(false, |shape| shape.is_compound()) {
-                // SAFETY: We assume the underlying Arc actually contains a TopoDsCompound
                 let arc = s.get().unwrap().clone();
-                // Downcast Arc<TopoDsShape> to Arc<TopoDsCompound> is not possible directly, so return None
-                // Placeholder: return None
-                None
+                arc.downcast::<TopoDsCompound>().ok().map(Handle::new)
             } else {
                 None
             }

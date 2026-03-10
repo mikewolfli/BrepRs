@@ -129,6 +129,9 @@ impl<T: Hash + Eq> Default for Map<T> {
     }
 }
 
+/// Performs a deep clone of all elements in the map.
+/// This may be expensive for large sets.
+#[inline]
 impl<T: Hash + Eq + Clone> Clone for Map<T> {
     fn clone(&self) -> Self {
         Self {
@@ -158,19 +161,20 @@ impl<'a, T: Hash + Eq> Iterator for Union<'a, T> {
 
 pub struct Difference<'a, T> {
     iter: std::collections::hash_set::Iter<'a, T>,
-    other: &'a HashSet<T>,
+    other: &'a HashSet<T>, // O(1) lookup, efficient
 }
 
 impl<'a, T: Hash + Eq> Iterator for Difference<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            let item = self.iter.next()?;
+        // Efficient: HashSet lookup is O(1)
+        while let Some(item) = self.iter.next() {
             if !self.other.contains(item) {
                 return Some(item);
             }
         }
+        None
     }
 }
 
@@ -183,12 +187,13 @@ impl<'a, T: Hash + Eq> Iterator for Intersection<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            let item = self.iter.next()?;
+        // Efficient: HashSet lookup is O(1)
+        while let Some(item) = self.iter.next() {
             if self.other.contains(item) {
                 return Some(item);
             }
         }
+        None
     }
 }
 
@@ -205,14 +210,15 @@ impl<'a, T: Hash + Eq> Iterator for SymmetricDifference<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            let item = self.iter.next()?;
+        // Efficient: HashSet lookup is O(1)
+        while let Some(item) = self.iter.next() {
             let in_set1 = self.set1.contains(item);
             let in_set2 = self.set2.contains(item);
             if in_set1 ^ in_set2 {
                 return Some(item);
             }
         }
+        None
     }
 }
 
