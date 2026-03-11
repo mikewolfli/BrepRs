@@ -188,7 +188,7 @@ impl FilletChamfer {
             }
             
             // Set the wire for the face
-            face.set_wire(Handle::new(std::sync::Arc::new(wire)));
+            face.set_wire(0, Handle::new(std::sync::Arc::new(wire)));
         }
         
         face
@@ -298,8 +298,13 @@ impl FilletChamfer {
                 // Check if face can be chamfered
                 if self.can_chamfer_face(face) {
                     // Get edges adjacent to this face
-                    let edges = face_ref.edges();
-                    for edge in edges {
+                    let mut edges = Vec::new();
+                    for wire in face_ref.wires() {
+                        if let Some(wire_ref) = wire.get() {
+                            edges.extend(wire_ref.edges().iter().cloned());
+                        }
+                    }
+                    for edge in &edges {
                         // Check if edge can be chamfered
                         if self.can_fillet_edge(&edge) {
                             // Calculate chamfer surface

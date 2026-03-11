@@ -8,6 +8,8 @@
 //! - Memory efficiency
 //! - Incremental compilation support
 
+pub mod traits;
+
 use crate::geometry::Point;
 use crate::mesh::mesh_data::Mesh3D;
 use crate::topology::topods_shape::TopoDsShape;

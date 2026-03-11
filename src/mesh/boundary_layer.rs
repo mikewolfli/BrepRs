@@ -235,11 +235,11 @@ impl BoundaryLayerMesher {
                 for &vertex_id in &face.vertices {
                     if let Some(normal) = self.vertex_normals.get(&vertex_id) {
                         let original_vertex = &mesh.vertices[vertex_id].point;
-                        let offset = normal.scale(*thickness);
+                        let offset = normal.scaled(*thickness);
                         let new_point = Point::new(
-                            original_vertex.x + offset.x,
-                            original_vertex.y + offset.y,
-                            original_vertex.z + offset.z,
+                            original_vertex.x() + offset.x,
+                            original_vertex.y() + offset.y,
+                            original_vertex.z() + offset.z,
                         );
 
                         let new_vertex_id = self.output_mesh.add_vertex(new_point);

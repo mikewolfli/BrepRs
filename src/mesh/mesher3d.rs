@@ -861,8 +861,8 @@ impl Mesher3D {
             ((p4.x - p3.x).powi(2) + (p4.y - p3.y).powi(2) + (p4.z - p3.z).powi(2)).sqrt(),
         ];
 
-        let max_edge = edges.iter().fold(0.0, |max, &e| max.max(e));
-        let min_edge = edges.iter().fold(f64::MAX, |min, &e| min.min(e));
+        let max_edge = edges.iter().fold(0.0, |max, &e| f64::max(max, e));
+        let min_edge = edges.iter().fold(f64::MAX, |min, &e| f64::min(min, e));
 
         if min_edge < 1e-6 {
             return 10.0;

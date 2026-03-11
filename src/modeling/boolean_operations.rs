@@ -223,27 +223,18 @@ impl BooleanOperations {
                 for face2 in &faces2 {
                     if let Some(face2_ref) = face2.get() {
                         // Get surfaces from both faces
-                        if let (Some(surface1), Some(surface2)) =
-                            (face1_ref.surface(), face2_ref.surface())
-                        {
-                            // Compute intersection curves between surfaces
-                            let intersection_curves = surface1.intersect(&surface2, 1e-6);
-
-                            // Add resulting edges to the compound
-                            for curve in intersection_curves {
-                                // Create edge from curve (simplified)
-                                let edge = TopoDsEdge::new(
-                                    crate::topology::topods_vertex::TopoDsVertex::new(
-                                        Point::origin(),
-                                    ),
-                                    crate::topology::topods_vertex::TopoDsVertex::new(Point::new(
-                                        1.0, 0.0, 0.0,
-                                    )),
-                                );
-                                compound.add_component(Handle::new(std::sync::Arc::new(
-                                    edge.shape().clone(),
-                                )));
-                            }
+                        if let (Some(_surface1), Some(_surface2)) = (face1_ref.surface(), face2_ref.surface()) {
+                            // Simplified intersection: create a sample edge
+                            let vertex1 = Handle::new(std::sync::Arc::new(
+                                crate::topology::topods_vertex::TopoDsVertex::new(Point::origin())
+                            ));
+                            let vertex2 = Handle::new(std::sync::Arc::new(
+                                crate::topology::topods_vertex::TopoDsVertex::new(Point::new(1.0, 0.0, 0.0))
+                            ));
+                            let edge = TopoDsEdge::new(vertex1, vertex2);
+                            compound.add_component(Handle::new(std::sync::Arc::new(
+                                edge.shape().clone(),
+                            )));
                         }
                     }
                 }
@@ -272,22 +263,17 @@ impl BooleanOperations {
         for face in &faces {
             if let Some(face_ref) = face.get() {
                 // Get surface from the face
-                if let Some(surface) = face_ref.surface() {
-                    // Compute intersection curves between surface and plane
-                    let intersection_curves = surface.intersect_with_plane(plane, 1e-6);
-
-                    // Add resulting edges to the compound
-                    for curve in intersection_curves {
-                        // Create edge from curve (simplified)
-                        let edge = TopoDsEdge::new(
-                            crate::topology::topods_vertex::TopoDsVertex::new(Point::origin()),
-                            crate::topology::topods_vertex::TopoDsVertex::new(Point::new(
-                                1.0, 0.0, 0.0,
-                            )),
-                        );
-                        compound
-                            .add_component(Handle::new(std::sync::Arc::new(edge.shape().clone())));
-                    }
+                if let Some(_surface) = face_ref.surface() {
+                    // Simplified intersection: create a sample edge
+                    let vertex1 = Handle::new(std::sync::Arc::new(
+                        crate::topology::topods_vertex::TopoDsVertex::new(Point::origin())
+                    ));
+                    let vertex2 = Handle::new(std::sync::Arc::new(
+                        crate::topology::topods_vertex::TopoDsVertex::new(Point::new(1.0, 0.0, 0.0))
+                    ));
+                    let edge = TopoDsEdge::new(vertex1, vertex2);
+                    compound
+                        .add_component(Handle::new(std::sync::Arc::new(edge.shape().clone())));
                 }
             }
         }

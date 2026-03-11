@@ -115,11 +115,9 @@ impl MeshGenerator {
                                 let start_vertex = edge_ref.start_vertex();
                                 let end_vertex = edge_ref.end_vertex();
 
-                                if let (Some(start), Some(end)) =
-                                    (start_vertex.get(), end_vertex.get())
-                                {
-                                    vertices.push(start.point());
-                                    vertices.push(end.point());
+                                if let (Some(start), Some(end)) = (start_vertex.get(), end_vertex.get()) {
+                                    vertices.push(start.point().clone());
+                                    vertices.push(end.point().clone());
                                 }
                             }
                         }
@@ -164,11 +162,9 @@ impl MeshGenerator {
                                             let start_vertex = edge_ref.start_vertex();
                                             let end_vertex = edge_ref.end_vertex();
 
-                                            if let (Some(start), Some(end)) =
-                                                (start_vertex.get(), end_vertex.get())
-                                            {
-                                                vertices.push(start.point());
-                                                vertices.push(end.point());
+                                            if let (Some(start), Some(end)) = (start_vertex.get(), end_vertex.get()) {
+                                                vertices.push(start.point().clone());
+                                                vertices.push(end.point().clone());
                                             }
                                         }
                                     }

@@ -342,6 +342,10 @@ impl Mesher2D {
         // Identify edges that need splitting
         #[cfg(feature = "rayon")]
         {
+            let max_edge_length = self.params.max_edge_length;
+            let input_vertices = &self.input_vertices;
+            let vertex_sizes = &self.vertex_sizes;
+            
             edges_to_split = mesh
                 .edges
                 .par_iter()
@@ -354,23 +358,23 @@ impl Mesher2D {
                     .sqrt();
 
                     // Determine appropriate edge length based on vertices
-                    let mut max_edge_length = self.params.max_edge_length;
+                    let mut current_max_edge_length = max_edge_length;
 
                     // Check if vertices are in the input polygon
-                    for (i, input_vertex) in self.input_vertices.iter().enumerate() {
+                    for (i, input_vertex) in input_vertices.iter().enumerate() {
                         if (input_vertex.x - v0.point.x).abs() < 1e-6
                             && (input_vertex.y - v0.point.y).abs() < 1e-6
                         {
-                            max_edge_length = max_edge_length.min(self.vertex_sizes[i]);
+                            current_max_edge_length = current_max_edge_length.min(vertex_sizes[i]);
                         }
                         if (input_vertex.x - v1.point.x).abs() < 1e-6
                             && (input_vertex.y - v1.point.y).abs() < 1e-6
                         {
-                            max_edge_length = max_edge_length.min(self.vertex_sizes[i]);
+                            current_max_edge_length = current_max_edge_length.min(vertex_sizes[i]);
                         }
                     }
 
-                    if length > max_edge_length {
+                    if length > current_max_edge_length {
                         Some(edge_id)
                     } else {
                         None

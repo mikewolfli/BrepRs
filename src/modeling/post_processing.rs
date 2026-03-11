@@ -7,6 +7,89 @@ use crate::geometry::{Plane, Point};
 use crate::mesh::mesh_data::{Mesh3D, MeshVertex, MeshFace};
 use rand::prelude::*;
 
+/// Check if a point is inside a mesh using ray casting algorithm
+fn point_in_mesh(point: Point, mesh: &Mesh3D) -> bool {
+    // Simple ray casting algorithm
+    let ray_direction = [1.0, 0.0, 0.0]; // Cast ray along x-axis
+    let mut intersections = 0;
+    
+    for face in &mesh.faces {
+        if face.vertices.len() == 3 {
+            let v0 = &mesh.vertices[face.vertices[0]];
+            let v1 = &mesh.vertices[face.vertices[1]];
+            let v2 = &mesh.vertices[face.vertices[2]];
+            
+            // Check if ray intersects the face
+            if let Some(_) = intersect_ray_triangle(
+                point, ray_direction,
+                v0.point, v1.point, v2.point
+            ) {
+                intersections += 1;
+            }
+        }
+    }
+    
+    // Point is inside if number of intersections is odd
+    intersections % 2 == 1
+}
+
+/// Intersect a ray with a triangle
+fn intersect_ray_triangle(
+    ray_origin: Point,
+    ray_dir: [f64; 3],
+    v0: Point,
+    v1: Point,
+    v2: Point
+) -> Option<f64> {
+    // Möller–Trumbore intersection algorithm
+    let edge1 = [v1.x - v0.x, v1.y - v0.y, v1.z - v0.z];
+    let edge2 = [v2.x - v0.x, v2.y - v0.y, v2.z - v0.z];
+    
+    let h = cross(ray_dir, edge2);
+    let a = dot(edge1, h);
+    
+    if a > -1e-6 && a < 1e-6 {
+        return None; // Ray parallel to triangle
+    }
+    
+    let f = 1.0 / a;
+    let s = [ray_origin.x - v0.x, ray_origin.y - v0.y, ray_origin.z - v0.z];
+    let u = f * dot(s, h);
+    
+    if u < 0.0 || u > 1.0 {
+        return None;
+    }
+    
+    let q = cross(s, edge1);
+    let v = f * dot(ray_dir, q);
+    
+    if v < 0.0 || u + v > 1.0 {
+        return None;
+    }
+    
+    let t = f * dot(edge2, q);
+    
+    if t > 1e-6 {
+        Some(t)
+    } else {
+        None
+    }
+}
+
+/// Cross product of two vectors
+fn cross(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0]
+    ]
+}
+
+/// Dot product of two vectors
+fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+}
+
 /// Mesh post-processing utilities
 pub struct PostProcessing {
     // Configuration parameters
@@ -168,14 +251,6 @@ impl PostProcessing {
                 });
                 Ok(difference)
             }
-            BooleanOperation::FilletChamfer => {
-                // Fillet/chamfer: apply to all edges
-                let mut mesh = mesh1.clone();
-                for edge in &mut mesh.edges {
-                    apply_fillet_chamfer(&mut mesh, edge, 0.5);
-                }
-                Ok(mesh)
-            }
         }
     }
 
@@ -264,25 +339,25 @@ impl PostProcessing {
                         // Two above, one below
                         let ai1 = vertex_map_above[&above_indices[0]];
                         let ai2 = vertex_map_above[&above_indices[1]];
-                        above.vertices.push(intersection_points[0].clone());
-                        above.vertices.push(intersection_points[1].clone());
+                        above.vertices.push(MeshVertex::new(above.vertices.len(), intersection_points[0].clone()));
+                        above.vertices.push(MeshVertex::new(above.vertices.len(), intersection_points[1].clone()));
                         above.faces.push(MeshFace::new(above.faces.len(), vec![ai1, ai2, above_ip_idx]));
                         above.faces.push(MeshFace::new(above.faces.len(), vec![ai1, above_ip_idx, above_ip_idx + 1]));
                         let bi = vertex_map_below[&below_indices[0]];
-                        below.vertices.push(intersection_points[0].clone());
-                        below.vertices.push(intersection_points[1].clone());
+                        below.vertices.push(MeshVertex::new(below.vertices.len(), intersection_points[0].clone()));
+                        below.vertices.push(MeshVertex::new(below.vertices.len(), intersection_points[1].clone()));
                         below.faces.push(MeshFace::new(below.faces.len(), vec![bi, below_ip_idx, below_ip_idx + 1]));
                     } else if sides.iter().filter(|&&s| !s).count() == 2 {
                         // Two below, one above
                         let bi1 = vertex_map_below[&below_indices[0]];
                         let bi2 = vertex_map_below[&below_indices[1]];
-                        below.vertices.push(intersection_points[0].clone());
-                        below.vertices.push(intersection_points[1].clone());
+                        below.vertices.push(MeshVertex::new(below.vertices.len(), intersection_points[0].clone()));
+                        below.vertices.push(MeshVertex::new(below.vertices.len(), intersection_points[1].clone()));
                         below.faces.push(MeshFace::new(below.faces.len(), vec![bi1, bi2, below_ip_idx]));
                         below.faces.push(MeshFace::new(below.faces.len(), vec![bi1, below_ip_idx, below_ip_idx + 1]));
                         let ai = vertex_map_above[&above_indices[0]];
-                        above.vertices.push(intersection_points[0].clone());
-                        above.vertices.push(intersection_points[1].clone());
+                        above.vertices.push(MeshVertex::new(above.vertices.len(), intersection_points[0].clone()));
+                        above.vertices.push(MeshVertex::new(above.vertices.len(), intersection_points[1].clone()));
                         above.faces.push(MeshFace::new(above.faces.len(), vec![ai, above_ip_idx, above_ip_idx + 1]));
                     }
                 }
@@ -307,23 +382,6 @@ impl PostProcessing {
 
     /// Thicken mesh (create solid from surface)
     pub fn thicken_mesh(&self, mesh: &Mesh3D, thickness: f64) -> Result<Mesh3D, String> {
-                // Add bridging faces between outer and inner mesh for watertight solid
-                let mut bridges = Vec::new();
-                let outer_count = self.mesh_outer.vertices.len();
-                for (i, v) in mesh.vertices.iter().enumerate() {
-                    let outer_idx = i;
-                    let inner_idx = self.vertex_offset + i;
-                    // For each edge, create a quad bridging outer and inner
-                    for edge in &mesh.edges {
-                        if edge.vertices.contains(&i) {
-                            let vj = if edge.vertices[0] == i { edge.vertices[1] } else { edge.vertices[0] };
-                            let outer_j = vj;
-                            let inner_j = self.vertex_offset + vj;
-                            bridges.push(MeshFace::new(self.thickened.faces.len() + bridges.len(), vec![outer_idx, outer_j, inner_j, inner_idx]));
-                        }
-                    }
-                }
-                self.thickened.faces.extend(bridges);
         // Create two offset meshes using vertex normals and connect them to form a solid
         let mut mesh_outer = mesh.clone();
         let mut mesh_inner = mesh.clone();
