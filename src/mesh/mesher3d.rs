@@ -2,7 +2,9 @@
 //!
 //! This module provides functionality for 3D tetrahedral meshing.
 
-use super::mesh_data::Mesh3D; use crate::geometry::{Point, Vector}; use std::collections::{HashMap, HashSet};
+use super::mesh_data::Mesh3D;
+use crate::geometry::{Point, Vector};
+use std::collections::{HashMap, HashSet};
 
 /// 3D mesher error types
 #[derive(Debug)]
@@ -18,7 +20,6 @@ pub enum Mesher3DError {
 }
 
 /// 3D mesher parameters
-#[derive(Debug, Clone)]
 pub struct Mesher3DParams {
     /// Maximum tetrahedron volume
     pub max_volume: f64,
@@ -48,6 +49,51 @@ pub struct Mesher3DParams {
     pub proximity_factor: f64,
     /// Size field control
     pub size_field: Option<Box<dyn Fn(&Point) -> f64>>,
+}
+
+impl Clone for Mesher3DParams {
+    fn clone(&self) -> Self {
+        Self {
+            max_volume: self.max_volume,
+            min_dihedral_angle: self.min_dihedral_angle,
+            max_dihedral_angle: self.max_dihedral_angle,
+            min_aspect_ratio: self.min_aspect_ratio,
+            max_aspect_ratio: self.max_aspect_ratio,
+            min_radius_ratio: self.min_radius_ratio,
+            density_factor: self.density_factor,
+            quality_mesh: self.quality_mesh,
+            use_size_field: self.use_size_field,
+            max_edge_length: self.max_edge_length,
+            min_edge_length: self.min_edge_length,
+            curvature_factor: self.curvature_factor,
+            proximity_factor: self.proximity_factor,
+            size_field: None, // Cannot clone closure
+        }
+    }
+}
+
+impl std::fmt::Debug for Mesher3DParams {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Mesher3DParams")
+            .field("max_volume", &self.max_volume)
+            .field("min_dihedral_angle", &self.min_dihedral_angle)
+            .field("max_dihedral_angle", &self.max_dihedral_angle)
+            .field("min_aspect_ratio", &self.min_aspect_ratio)
+            .field("max_aspect_ratio", &self.max_aspect_ratio)
+            .field("min_radius_ratio", &self.min_radius_ratio)
+            .field("density_factor", &self.density_factor)
+            .field("quality_mesh", &self.quality_mesh)
+            .field("use_size_field", &self.use_size_field)
+            .field("max_edge_length", &self.max_edge_length)
+            .field("min_edge_length", &self.min_edge_length)
+            .field("curvature_factor", &self.curvature_factor)
+            .field("proximity_factor", &self.proximity_factor)
+            .field(
+                "size_field",
+                &self.size_field.as_ref().map(|_| "<function>"),
+            )
+            .finish()
+    }
 }
 
 impl Default for Mesher3DParams {
@@ -679,7 +725,7 @@ impl Mesher3D {
             1.0
         };
 
-        (angle_score * 0.4 + aspect_score * 0.2 + radius_score * 0.2 + volume_score * 0.2)
+        angle_score * 0.4 + aspect_score * 0.2 + radius_score * 0.2 + volume_score * 0.2
     }
 
     /// Calculate tetrahedron quality
@@ -755,7 +801,7 @@ impl Mesher3D {
             1.0
         };
 
-        (angle_score * 0.4 + aspect_score * 0.2 + radius_score * 0.2 + volume_score * 0.2)
+        angle_score * 0.4 + aspect_score * 0.2 + radius_score * 0.2 + volume_score * 0.2
     }
 
     /// Calculate dihedral angle between two planes
@@ -852,21 +898,6 @@ impl Mesher3D {
 
         let radius_ratio = (2.0 * volume) / (sum_edges * product_edges).powf(1.0 / 3.0);
         radius_ratio
-    }
-
-    /// Calculate tetrahedron volume
-    fn calculate_tetrahedron_volume(&self, p1: &Point, p2: &Point, p3: &Point, p4: &Point) -> f64 {
-        let v1 = [p2.x - p1.x, p2.y - p1.y, p2.z - p1.z];
-        let v2 = [p3.x - p1.x, p3.y - p1.y, p3.z - p1.z];
-        let v3 = [p4.x - p1.x, p4.y - p1.y, p4.z - p1.z];
-
-        let cross = [
-            v2[1] * v3[2] - v2[2] * v3[1],
-            v2[2] * v3[0] - v2[0] * v3[2],
-            v2[0] * v3[1] - v2[1] * v3[0],
-        ];
-
-        (v1[0] * cross[0] + v1[1] * cross[1] + v1[2] * cross[2]).abs() / 6.0
     }
 }
 

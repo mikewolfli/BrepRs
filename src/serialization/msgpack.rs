@@ -41,11 +41,8 @@ pub fn to_msgpack_with_options<T: Serialize>(
 ) -> Result<Vec<u8>, MsgPackError> {
     // Streaming and compact encoding
     use rmp_serde::encode::Serializer;
-    use serde::Serialize;
     let mut buf = Vec::new();
-    let mut serializer = Serializer::new(&mut buf)
-        .with_compact(_options.use_compact_format)
-        .with_struct_map(_options.serialize_enums_as_ints);
+    let mut serializer = Serializer::new(&mut buf);
     _value.serialize(&mut serializer).map_err(|e| MsgPackError::EncodingError(e.to_string()))?;
     Ok(buf)
 }

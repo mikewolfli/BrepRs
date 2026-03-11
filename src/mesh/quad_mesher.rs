@@ -3,7 +3,7 @@
 //! This module provides functionality for generating quad-dominant meshes
 //! from triangular meshes or directly from geometry.
 
-use super::mesh_data::{Mesh2D, MeshFace, MeshVertex};
+use super::mesh_data::{Mesh2D, MeshFace};
 use crate::geometry::Point;
 use std::collections::{HashMap, HashSet};
 
@@ -86,24 +86,30 @@ impl QuadMesher {
 
     /// Generate quad-dominant mesh
     pub fn generate(&mut self) -> Result<Mesh2D, QuadMesherError> {
-        if let Some(ref input_mesh) = self.input_mesh {
-            if input_mesh.faces.is_empty() {
-                return Err(QuadMesherError::NoTriangles);
-            }
+        // Take ownership of input mesh temporarily
+        let input_mesh = match self.input_mesh.take() {
+            Some(mesh) => mesh,
+            None => return Err(QuadMesherError::InvalidInputMesh),
+        };
 
-            // Initialize data structures
-            self.initialize_data_structures(input_mesh);
-
-            // Build quad mesh
-            self.build_quad_mesh();
-
-            // Optimize quad mesh
-            self.optimize_quad_mesh();
-
-            Ok(self.quad_mesh.clone())
-        } else {
-            Err(QuadMesherError::InvalidInputMesh)
+        if input_mesh.faces.is_empty() {
+            self.input_mesh = Some(input_mesh);
+            return Err(QuadMesherError::NoTriangles);
         }
+
+        // Initialize data structures
+        self.initialize_data_structures(&input_mesh);
+
+        // Build quad mesh
+        self.build_quad_mesh(&input_mesh);
+
+        // Optimize quad mesh
+        self.optimize_quad_mesh();
+
+        // Restore input mesh
+        self.input_mesh = Some(input_mesh);
+
+        Ok(self.quad_mesh.clone())
     }
 
     /// Initialize data structures
@@ -134,30 +140,28 @@ impl QuadMesher {
     }
 
     /// Build quad mesh from triangular mesh
-    fn build_quad_mesh(&mut self) {
-        if let Some(ref input_mesh) = self.input_mesh {
-            // Copy vertices
-            for vertex in &input_mesh.vertices {
-                self.quad_mesh.add_vertex(vertex.point.clone());
-            }
+    fn build_quad_mesh(&mut self, input_mesh: &Mesh2D) {
+        // Copy vertices
+        for vertex in &input_mesh.vertices {
+            self.quad_mesh.add_vertex(vertex.point.clone());
+        }
 
-            // Identify quad candidates
-            let quad_candidates = self.identify_quad_candidates(input_mesh);
+        // Identify quad candidates
+        let quad_candidates = self.identify_quad_candidates(input_mesh);
 
-            // Create quads from candidates
-            let mut processed_faces = HashSet::new();
-            for candidate in quad_candidates {
-                if !processed_faces.contains(&candidate.face1)
-                    && !processed_faces.contains(&candidate.face2)
-                {
-                    self.create_quad(input_mesh, candidate, &mut processed_faces);
-                }
+        // Create quads from candidates
+        let mut processed_faces = HashSet::new();
+        for candidate in quad_candidates {
+            if !processed_faces.contains(&candidate.face1)
+                && !processed_faces.contains(&candidate.face2)
+            {
+                self.create_quad(input_mesh, candidate, &mut processed_faces);
             }
+        }
 
-            // Handle remaining triangles
-            if self.params.convert_triangles {
-                self.handle_remaining_triangles(input_mesh, &processed_faces);
-            }
+        // Handle remaining triangles
+        if self.params.convert_triangles {
+            self.handle_remaining_triangles(input_mesh, &processed_faces);
         }
     }
 
@@ -241,6 +245,11 @@ impl QuadMesher {
 
     /// Calculate quad quality
     fn calculate_quad_quality(&self, mesh: &Mesh2D, vertices: &[usize]) -> f64 {
+        Self::calculate_quad_quality_static(mesh, vertices)
+    }
+
+    /// Calculate quad quality (static version)
+    fn calculate_quad_quality_static(mesh: &Mesh2D, vertices: &[usize]) -> f64 {
         if vertices.len() != 4 {
             return 0.0;
         }
@@ -259,7 +268,7 @@ impl QuadMesher {
         ];
 
         // Calculate aspect ratio
-        let max_edge = edges.iter().fold(0.0, |max, &e| max.max(e));
+        let max_edge = edges.iter().fold(0.0_f64, |max, &e| max.max(e));
         let min_edge = edges.iter().fold(f64::MAX, |min, &e| min.min(e));
         let aspect_ratio = if min_edge > 0.0 {
             max_edge / min_edge
@@ -269,14 +278,14 @@ impl QuadMesher {
 
         // Calculate angles
         let angles = vec![
-            self.calculate_angle(p3, p0, p1),
-            self.calculate_angle(p0, p1, p2),
-            self.calculate_angle(p1, p2, p3),
-            self.calculate_angle(p2, p3, p0),
+            Self::calculate_angle_static(p3, p0, p1),
+            Self::calculate_angle_static(p0, p1, p2),
+            Self::calculate_angle_static(p1, p2, p3),
+            Self::calculate_angle_static(p2, p3, p0),
         ];
 
-        let min_angle = angles.iter().fold(180.0, |min, &a| min.min(a));
-        let max_angle = angles.iter().fold(0.0, |max, &a| max.max(a));
+        let min_angle = angles.iter().fold(180.0_f64, |min, &a| min.min(a));
+        let max_angle = angles.iter().fold(0.0_f64, |max, &a| max.max(a));
 
         // Calculate quality score
         let aspect_score = 1.0 / aspect_ratio;
@@ -291,6 +300,11 @@ impl QuadMesher {
 
     /// Calculate angle between three points
     fn calculate_angle(&self, p1: &Point, p2: &Point, p3: &Point) -> f64 {
+        Self::calculate_angle_static(p1, p2, p3)
+    }
+
+    /// Calculate angle between three points (static version)
+    fn calculate_angle_static(p1: &Point, p2: &Point, p3: &Point) -> f64 {
         let v1x = p1.x - p2.x;
         let v1y = p1.y - p2.y;
         let v2x = p3.x - p2.x;
@@ -361,8 +375,9 @@ impl QuadMesher {
         let mut improved = true;
         while improved {
             improved = false;
-            for i in 0..self.quad_mesh.faces.len() {
-                if self.optimize_quad(&mut self.quad_mesh, i) {
+            let quad_mesh = &mut self.quad_mesh;
+            for i in 0..quad_mesh.faces.len() {
+                if Self::optimize_quad_static(quad_mesh, i) {
                     improved = true;
                 }
             }
@@ -371,6 +386,11 @@ impl QuadMesher {
 
     /// Optimize a single quad
     fn optimize_quad(&self, mesh: &mut Mesh2D, face_id: usize) -> bool {
+        Self::optimize_quad_static(mesh, face_id)
+    }
+
+    /// Optimize a single quad (static version)
+    fn optimize_quad_static(mesh: &mut Mesh2D, face_id: usize) -> bool {
         let face = &mesh.faces[face_id];
         if face.vertices.len() != 4 {
             return false;
@@ -383,10 +403,10 @@ impl QuadMesher {
         let v3 = face.vertices[3];
 
         // Calculate current quality
-        let current_quality = self.calculate_quad_quality(mesh, &[v0, v1, v2, v3]);
+        let current_quality = Self::calculate_quad_quality_static(mesh, &[v0, v1, v2, v3]);
 
         // Try swapping diagonal v0-v2
-        let new_quality = self.calculate_quad_quality(mesh, &[v0, v1, v3, v2]);
+        let new_quality = Self::calculate_quad_quality_static(mesh, &[v0, v1, v3, v2]);
         if new_quality > current_quality {
             // Swap diagonal
             mesh.faces[face_id].vertices = vec![v0, v1, v3, v2];

@@ -255,11 +255,11 @@ impl TopExpExplorer {
         let mut result = Vec::new();
         let mut queue = Vec::new();
         queue.push(shape.clone());
-        
+
         while let Some(current) = queue.pop() {
             if self.is_suitable_for_lod(&current, lod_level) {
                 result.push(current.clone());
-                
+
                 // Add sub-shapes to the queue
                 match (current.shape_type(), self.shape_type) {
                     (ShapeType::Edge, ShapeType::Vertex) => {
@@ -287,19 +287,19 @@ impl TopExpExplorer {
                 }
             }
         }
-        
+
         result
     }
 
     /// LOD-aware shape simplification
-    pub fn simplify_shape(&self, shape: &TopoDsShape, lod_level: usize) -> Option<TopoDsShape> {
+    pub fn simplify_shape(&self, shape: &TopoDsShape, _lod_level: usize) -> Option<TopoDsShape> {
         // Implementation of LOD-aware shape simplification
         // This is a placeholder implementation
         Some(shape.clone())
     }
 
     /// Calculate LOD level based on distance
-    pub fn calculate_lod_level(&self, shape: &TopoDsShape, distance: f64) -> usize {
+    pub fn calculate_lod_level(&self, _shape: &TopoDsShape, distance: f64) -> usize {
         // Implementation of LOD level calculation based on distance
         // This is a placeholder implementation
         if distance < 1.0 {
@@ -314,7 +314,7 @@ impl TopExpExplorer {
     }
 
     /// Check if shape is suitable for given LOD level
-    pub fn is_suitable_for_lod(&self, shape: &TopoDsShape, lod_level: usize) -> bool {
+    pub fn is_suitable_for_lod(&self, _shape: &TopoDsShape, _lod_level: usize) -> bool {
         // Implementation of LOD suitability check
         // This is a placeholder implementation
         true

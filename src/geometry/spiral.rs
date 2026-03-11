@@ -3,12 +3,12 @@
 //! This module provides functionality for creating and manipulating spiral curves,
 //! including Archimedean, logarithmic, helical, and conical spirals.
 
+use crate::foundation::handle::Handle;
 use crate::geometry::{Point, Vector};
 use crate::topology::Curve;
 use std::f64::consts::PI;
 
 /// Spiral types
-#[derive(Debug)]
 pub enum SpiralType {
     /// Archimedean spiral (constant pitch)
     Archimedean,
@@ -20,6 +20,18 @@ pub enum SpiralType {
     Conical,
     /// Custom spiral with user-defined pitch function
     Custom(Box<dyn Fn(f64) -> f64 + Send + Sync>),
+}
+
+impl std::fmt::Debug for SpiralType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SpiralType::Archimedean => write!(f, "Archimedean"),
+            SpiralType::Logarithmic => write!(f, "Logarithmic"),
+            SpiralType::Helical => write!(f, "Helical"),
+            SpiralType::Conical => write!(f, "Conical"),
+            SpiralType::Custom(_) => write!(f, "Custom(<function>)"),
+        }
+    }
 }
 
 /// Spiral curve
@@ -124,7 +136,7 @@ impl Spiral {
         base_point: Point,
         axis: Vector,
         initial_direction: Vector,
-        pitch_function: Box<dyn Fn(f64) -> f64>,
+        pitch_function: Box<dyn Fn(f64) -> f64 + Send + Sync>,
     ) -> Self {
         Self {
             spiral_type: SpiralType::Custom(pitch_function),
@@ -274,7 +286,7 @@ impl Spiral {
         for i in 0..n {
             let t = i as f64 / n as f64;
             let p = self.evaluate(t);
-            let q = other.evaluate(t);
+            let q = other.value(t);
             if (p - q).length() < tolerance {
                 intersections.push(p);
             }
@@ -291,13 +303,25 @@ impl Spiral {
             let t = i as f64 / n as f64;
             points.push(self.evaluate(t));
         }
-        Ok(TopoDsEdge::from_points(points))
+        // Create edge from first and last point (simplified)
+        if points.len() >= 2 {
+            Ok(TopoDsEdge::new(
+                Handle::new(std::sync::Arc::new(
+                    crate::topology::topods_vertex::TopoDsVertex::new(points[0]),
+                )),
+                Handle::new(std::sync::Arc::new(
+                    crate::topology::topods_vertex::TopoDsVertex::new(points[points.len() - 1]),
+                )),
+            ))
+        } else {
+            Err("Not enough points to create edge".to_string())
+        }
     }
 
     /// Validate spiral parameters
     pub fn validate(&self) -> Result<(), String> {
         // Check if axis and initial direction are perpendicular
-        let dot_product = self.axis.dot(self.initial_direction);
+        let dot_product = self.axis.dot(&self.initial_direction);
         if dot_product.abs() > 1e-6 {
             return Err("Axis and initial direction must be perpendicular".to_string());
         }

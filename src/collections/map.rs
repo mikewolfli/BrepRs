@@ -131,7 +131,6 @@ impl<T: Hash + Eq> Default for Map<T> {
 
 /// Performs a deep clone of all elements in the map.
 /// This may be expensive for large sets.
-#[inline]
 impl<T: Hash + Eq + Clone> Clone for Map<T> {
     fn clone(&self) -> Self {
         Self {

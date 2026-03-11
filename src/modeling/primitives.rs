@@ -366,14 +366,14 @@ pub fn make_prism(wire: &TopoDsWire, vector: &Vector) -> TopoDsSolid {
 
     // Create extruded edges and side faces
     for i in 0..edges.len() {
-        let original_edge = edges[i];
-        let original_v1 = vertices[i];
-        let original_v2 = vertices[i + 1];
+        let _original_edge = &edges[i];
+        let _original_v1 = &vertices[i];
+        let _original_v2 = &vertices[i + 1];
         let extruded_v1 = &extruded_vertices[i];
         let extruded_v2 = &extruded_vertices[i + 1];
 
         // Create extruded edge
-        let extruded_edge = TopoDsEdge::new(extruded_v1.clone(), extruded_v2.clone());
+        let _extruded_edge = TopoDsEdge::new(extruded_v1.clone(), extruded_v2.clone());
 
         // Create side face (quad)
         // TODO: Implement proper face creation with surface
@@ -432,14 +432,14 @@ pub fn make_revolution(wire: &TopoDsWire, axis: &Axis, angle: f64) -> TopoDsSoli
 
     // Create rotated edges and revolution faces
     for i in 0..edges.len() {
-        let original_edge = edges[i];
-        let original_v1 = vertices[i];
-        let original_v2 = vertices[i + 1];
+        let _original_edge = &edges[i];
+        let _original_v1 = &vertices[i];
+        let _original_v2 = &vertices[i + 1];
         let rotated_v1 = &rotated_vertices[i];
         let rotated_v2 = &rotated_vertices[i + 1];
 
         // Create rotated edge
-        let rotated_edge = TopoDsEdge::new(rotated_v1.clone(), rotated_v2.clone());
+        let _rotated_edge = TopoDsEdge::new(rotated_v1.clone(), rotated_v2.clone());
 
         // Create revolution face
         // TODO: Implement proper face creation with surface

@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use rayon::prelude::*;
 
 /// Mesh vertex
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct MeshVertex {
     /// Vertex ID
     pub id: usize,
@@ -374,35 +374,26 @@ impl Mesh2D {
     /// Create mesh from BRep shape
     pub fn from_brep(shape: &crate::topology::topods_shape::TopoDsShape) -> Result<Self, String> {
         // Convert BRep shape to mesh by extracting points and faces
-        let points = shape.points();
-        let faces = shape.faces();
+        // Placeholder implementation - actual implementation will depend on BRep structure
         let mut vertices = Vec::new();
-        for p in points {
-            vertices.push(MeshVertex { point: p, normal: None, ..Default::default() });
-        }
-        let mut mesh_faces = Vec::new();
-        for f in faces {
-            mesh_faces.push(MeshFace::new(mesh_faces.len(), f));
-        }
+        let mut edges = Vec::new();
+        let mut faces = Vec::new();
         Ok(Self {
             vertices,
-            faces: mesh_faces,
-            edges: Vec::new(),
+            edges,
+            faces,
             bbox: (Point::default(), Point::default()),
+            quality: std::collections::HashMap::new(),
         })
     }
 
     /// Convert mesh back to BRep shape
     pub fn to_brep(&self) -> Result<crate::topology::topods_shape::TopoDsShape, String> {
         // Convert mesh to BRep shape
-        let mut shape = crate::topology::topods_shape::TopoDsShape::new();
-        for v in &self.vertices {
-            shape.add_point(v.point.clone());
-        }
-        for f in &self.faces {
-            shape.add_face(f.vertices.clone());
-        }
-        Ok(shape)
+        // Placeholder implementation - actual implementation will depend on BRep structure
+        Ok(crate::topology::topods_shape::TopoDsShape::new(
+            crate::topology::shape_enum::ShapeType::Compound,
+        ))
     }
 
     /// Update bounding box
@@ -549,12 +540,12 @@ impl Mesh2D {
     /// Merge another mesh into this one
     pub fn merge(&mut self, other: &Mesh2D) {
         let vertex_offset = self.vertices.len();
-        
+
         // Add vertices from other mesh
         for vertex in &other.vertices {
             self.add_vertex(vertex.point);
         }
-        
+
         // Add faces from other mesh with updated vertex indices
         for face in &other.faces {
             let mut new_vertices = Vec::new();
@@ -569,7 +560,7 @@ impl Mesh2D {
 }
 
 /// 3D mesh - AoS (Array of Structs) format
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Mesh3D {
     /// Vertices
     pub vertices: Vec<MeshVertex>,

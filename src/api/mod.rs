@@ -8,14 +8,15 @@
 //! - Memory efficiency
 //! - Incremental compilation support
 
-use crate::geometry::{Plane, Point, Vector};
-use crate::mesh::mesh_data::{Mesh2D, Mesh3D};
+use crate::geometry::Point;
+use crate::mesh::mesh_data::Mesh3D;
 use crate::topology::topods_shape::TopoDsShape;
-use crate::topology::{Curve, Surface};
 
 /// Rust-specific API optimizations
 pub mod optimized {
-    use super::*;
+    use crate::geometry::Point;
+    use crate::mesh::mesh_data::Mesh3D;
+    use crate::topology::TopoDsShape;
 
     /// Optimized point type with zero-cost abstractions
     #[derive(Debug, Clone, Copy, PartialEq)]
@@ -246,19 +247,19 @@ pub mod optimized {
             // Implementation of volume calculation using the divergence theorem
             // Sum over all faces: 1/3 * (cross product of two edges) · centroid
             let mut volume = 0.0;
-            
+
             for i in 0..self.faces.len() / 3 {
                 let (v0, v1, v2) = self.get_face(i);
-                
+
                 let (x0, y0, z0) = self.get_vertex(v0);
                 let (x1, y1, z1) = self.get_vertex(v1);
                 let (x2, y2, z2) = self.get_vertex(v2);
-                
+
                 // Calculate centroid
                 let cx = (x0 + x1 + x2) / 3.0;
                 let cy = (y0 + y1 + y2) / 3.0;
                 let cz = (z0 + z1 + z2) / 3.0;
-                
+
                 // Calculate cross product
                 let ax = x1 - x0;
                 let ay = y1 - y0;
@@ -266,17 +267,17 @@ pub mod optimized {
                 let bx = x2 - x0;
                 let by = y2 - y0;
                 let bz = z2 - z0;
-                
+
                 let cross_x = ay * bz - az * by;
                 let cross_y = az * bx - ax * bz;
                 let cross_z = ax * by - ay * bx;
-                
+
                 // Dot product with centroid
                 let dot = cx * cross_x + cy * cross_y + cz * cross_z;
-                
+
                 volume += dot;
             }
-            
+
             volume.abs() / 6.0
         }
 
@@ -284,14 +285,14 @@ pub mod optimized {
         pub fn calculate_surface_area(&self) -> f64 {
             // Implementation of surface area calculation
             let mut area = 0.0;
-            
+
             for i in 0..self.faces.len() / 3 {
                 let (v0, v1, v2) = self.get_face(i);
-                
+
                 let (x0, y0, z0) = self.get_vertex(v0);
                 let (x1, y1, z1) = self.get_vertex(v1);
                 let (x2, y2, z2) = self.get_vertex(v2);
-                
+
                 // Calculate vectors
                 let ax = x1 - x0;
                 let ay = y1 - y0;
@@ -299,18 +300,18 @@ pub mod optimized {
                 let bx = x2 - x0;
                 let by = y2 - y0;
                 let bz = z2 - z0;
-                
+
                 // Calculate cross product
                 let cross_x = ay * bz - az * by;
                 let cross_y = az * bx - ax * bz;
                 let cross_z = ax * by - ay * bx;
-                
+
                 // Calculate magnitude
                 let magnitude = (cross_x * cross_x + cross_y * cross_y + cross_z * cross_z).sqrt();
-                
+
                 area += magnitude;
             }
-            
+
             area / 2.0
         }
     }
@@ -404,20 +405,20 @@ pub mod optimized {
         fn to_shape(&self) -> TopoDsShape {
             // Implementation of face to shape conversion
             // Build face from edges
-            use crate::topology::topods_vertex::TopoDsVertex;
-            use crate::topology::topods_edge::TopoDsEdge;
-            use crate::topology::topods_wire::TopoDsWire;
-            use crate::topology::topods_face::TopoDsFace;
             use crate::foundation::handle::Handle;
-            
+            use crate::topology::topods_edge::TopoDsEdge;
+            use crate::topology::topods_face::TopoDsFace;
+            use crate::topology::topods_vertex::TopoDsVertex;
+            use crate::topology::topods_wire::TopoDsWire;
+
             if self.edges.is_empty() {
                 return TopoDsShape::new(crate::topology::shape_enum::ShapeType::Face);
             }
-            
+
             // Collect all vertices from edges
             let mut vertices = Vec::new();
             let mut vertex_map = std::collections::HashMap::new();
-            
+
             for edge in &self.edges {
                 if !vertex_map.contains_key(&edge.start.id) {
                     vertex_map.insert(edge.start.id, edge.start.clone());
@@ -428,34 +429,35 @@ pub mod optimized {
                     vertices.push(edge.end.clone());
                 }
             }
-            
+
             // Create TopoDsVertex objects
             let mut topo_vertices = Vec::new();
             for vertex in &vertices {
                 let topo_vertex = TopoDsVertex::new(vertex.point.to_point());
                 topo_vertices.push(Handle::new(std::sync::Arc::new(topo_vertex)));
             }
-            
+
             // Create TopoDsEdge objects
             let mut topo_edges = Vec::new();
             for edge in &self.edges {
                 let start_idx = vertices.iter().position(|v| v.id == edge.start.id).unwrap();
                 let end_idx = vertices.iter().position(|v| v.id == edge.end.id).unwrap();
-                
+
                 let topo_edge = TopoDsEdge::new(
                     topo_vertices[start_idx].clone(),
-                    topo_vertices[end_idx].clone()
+                    topo_vertices[end_idx].clone(),
                 );
                 topo_edges.push(Handle::new(std::sync::Arc::new(topo_edge)));
             }
-            
+
             // Create wire from edges
-            let wire = TopoDsWire::new_from_edges(&topo_edges);
-            
+            let wire = TopoDsWire::with_edges(topo_edges);
+
             // Create face from wire
-            let face = TopoDsFace::new_from_wire(Handle::new(std::sync::Arc::new(wire)));
-            
-            face.shape()
+            let mut face = TopoDsFace::new();
+            face.add_wire(Handle::new(std::sync::Arc::new(wire)));
+
+            face.shape().clone()
         }
     }
 }
@@ -498,24 +500,24 @@ pub mod incremental {
             // Implementation of file watching using std::sync
             use std::path::Path;
             use std::sync::mpsc;
-            
+
             if self.watch_paths.is_empty() {
                 return Err("No paths to watch".to_string());
             }
-            
+
             // Check if all paths exist
             for path in &self.watch_paths {
                 if !Path::new(path).exists() {
                     return Err(format!("Path does not exist: {}", path));
                 }
             }
-            
+
             // Create a channel to receive events
-            let (tx, rx) = mpsc::channel();
-            
+            let (tx, rx): (mpsc::Sender<()>, mpsc::Receiver<()>) = mpsc::channel();
+
             // Store sender for later use
             let _tx = tx;
-            
+
             // In a real implementation, this would use notify crate for file watching
             // For now, return Ok as a placeholder
             Ok(())
@@ -649,7 +651,7 @@ pub mod documentation {
             // Implementation of API documentation generation
             use std::fs;
             use std::path::Path;
-            
+
             // Create output directory if it doesn't exist
             let output_path = Path::new(&self.output_dir);
             if !output_path.exists() {
@@ -657,11 +659,11 @@ pub mod documentation {
                     return Err(format!("Failed to create output directory: {}", e));
                 }
             }
-            
+
             // Generate API documentation
             let api_doc_path = output_path.join("api.md");
             let mut content = String::from("# API Documentation\n\n");
-            
+
             content.push_str("## Optimized Types\n\n");
             content.push_str("### OptimizedPoint\n");
             content.push_str("- `new(x: f64, y: f64, z: f64) -> Self`\n");
@@ -674,26 +676,31 @@ pub mod documentation {
             content.push_str("- `distance(&self, other: &Self) -> f64`\n");
             content.push_str("- `distance_squared(&self, other: &Self) -> f64`\n");
             content.push_str("- `approx_eq(&self, other: &Self, epsilon: f64) -> bool`\n\n");
-            
+
             content.push_str("### OptimizedMesh\n");
             content.push_str("- `new() -> Self`\n");
             content.push_str("- `add_vertex(&mut self, x: f64, y: f64, z: f64) -> usize`\n");
             content.push_str("- `add_face(&mut self, v1: usize, v2: usize, v3: usize)`\n");
             content.push_str("- `enable_normals(&mut self)`\n");
-            content.push_str("- `set_normal(&mut self, vertex_id: usize, nx: f64, ny: f64, nz: f64)`\n");
+            content.push_str(
+                "- `set_normal(&mut self, vertex_id: usize, nx: f64, ny: f64, nz: f64)`\n",
+            );
             content.push_str("- `get_vertex(&self, vertex_id: usize) -> (f64, f64, f64)`\n");
             content.push_str("- `get_face(&self, face_id: usize) -> (usize, usize, usize)`\n");
-            content.push_str("- `get_normal(&self, vertex_id: usize) -> Option<(f64, f64, f64)>`\n");
+            content
+                .push_str("- `get_normal(&self, vertex_id: usize) -> Option<(f64, f64, f64)>`\n");
             content.push_str("- `to_mesh(&self) -> Mesh3D`\n");
             content.push_str("- `from_mesh(mesh: &Mesh3D) -> Self`\n");
-            content.push_str("- `calculate_bounding_box(&self) -> Option<(f64, f64, f64, f64, f64, f64)>`\n");
+            content.push_str(
+                "- `calculate_bounding_box(&self) -> Option<(f64, f64, f64, f64, f64, f64)>`\n",
+            );
             content.push_str("- `calculate_volume(&self) -> f64`\n");
             content.push_str("- `calculate_surface_area(&self) -> f64`\n\n");
-            
+
             if let Err(e) = fs::write(api_doc_path, content) {
                 return Err(format!("Failed to write API documentation: {}", e));
             }
-            
+
             Ok(())
         }
 
@@ -702,10 +709,10 @@ pub mod documentation {
             // Implementation of user guide generation
             use std::fs;
             use std::path::Path;
-            
+
             let output_path = Path::new(&self.output_dir);
             let guide_path = output_path.join("user_guide.md");
-            
+
             let mut content = String::from("# User Guide\n\n");
             content.push_str("## Getting Started\n\n");
             content.push_str("### Basic Usage\n\n");
@@ -722,11 +729,11 @@ pub mod documentation {
             content.push_str("let volume = mesh.calculate_volume();\n");
             content.push_str("let area = mesh.calculate_surface_area();\n");
             content.push_str("```\n\n");
-            
+
             if let Err(e) = fs::write(guide_path, content) {
                 return Err(format!("Failed to write user guide: {}", e));
             }
-            
+
             Ok(())
         }
 
@@ -735,17 +742,17 @@ pub mod documentation {
             // Implementation of examples generation
             use std::fs;
             use std::path::Path;
-            
+
             let output_path = Path::new(&self.output_dir);
             let examples_path = output_path.join("examples");
-            
+
             // Create examples directory
             if !examples_path.exists() {
                 if let Err(e) = fs::create_dir_all(&examples_path) {
                     return Err(format!("Failed to create examples directory: {}", e));
                 }
             }
-            
+
             // Create basic example
             let basic_example = examples_path.join("basic.rs");
             let mut content = String::from("// Basic example of using the optimized API\n");
@@ -773,11 +780,11 @@ pub mod documentation {
             content.push_str("    println!(\"Volume: {:.3}\", volume);\n");
             content.push_str("    println!(\"Surface Area: {:.3}\", surface_area);\n");
             content.push_str("}\n");
-            
+
             if let Err(e) = fs::write(basic_example, content) {
                 return Err(format!("Failed to write example: {}", e));
             }
-            
+
             Ok(())
         }
     }

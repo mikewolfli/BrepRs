@@ -1,9 +1,9 @@
 //! Hexahedral mesh generation
-//! 
+//!
 //! This module provides functionality for generating structured hexahedral meshes
 //! for regular geometries like boxes, cylinders, and other parametric shapes.
 
-use super::mesh_data::{Mesh3D, MeshVertex, MeshHexahedron};
+use super::mesh_data::{Mesh3D, MeshHexahedron};
 use crate::geometry::Point;
 
 /// Hexahedral mesher error types
@@ -103,15 +103,16 @@ impl HexMesher {
     pub fn generate(&mut self) -> Result<Mesh3D, HexMesherError> {
         match &self.input_geometry {
             HexGeometry::Box { min, max } => self.generate_box_mesh(min, max),
-            HexGeometry::Cylinder { bottom_center, top_center, radius } => {
-                self.generate_cylinder_mesh(bottom_center, top_center, *radius)
-            }
-            HexGeometry::Sphere { center, radius } => {
-                self.generate_sphere_mesh(center, *radius)
-            }
-            HexGeometry::Custom { vertices, hexahedrons } => {
-                self.generate_custom_mesh(vertices, hexahedrons)
-            }
+            HexGeometry::Cylinder {
+                bottom_center,
+                top_center,
+                radius,
+            } => self.generate_cylinder_mesh(bottom_center, top_center, *radius),
+            HexGeometry::Sphere { center, radius } => self.generate_sphere_mesh(center, *radius),
+            HexGeometry::Custom {
+                vertices,
+                hexahedrons,
+            } => self.generate_custom_mesh(vertices, hexahedrons),
         }
     }
 
@@ -143,7 +144,9 @@ impl HexMesher {
             for j in 0..self.params.ny {
                 for i in 0..self.params.nx {
                     // Calculate vertex indices for this hexahedron
-                    let v0 = k * (self.params.nx + 1) * (self.params.ny + 1) + j * (self.params.nx + 1) + i;
+                    let v0 = k * (self.params.nx + 1) * (self.params.ny + 1)
+                        + j * (self.params.nx + 1)
+                        + i;
                     let v1 = v0 + 1;
                     let v2 = v0 + (self.params.nx + 1);
                     let v3 = v2 + 1;
@@ -176,14 +179,20 @@ impl HexMesher {
     }
 
     /// Generate cylinder mesh
-    fn generate_cylinder_mesh(&self, bottom_center: &Point, top_center: &Point, radius: f64) -> Result<Mesh3D, HexMesherError> {
+    fn generate_cylinder_mesh(
+        &self,
+        bottom_center: &Point,
+        top_center: &Point,
+        radius: f64,
+    ) -> Result<Mesh3D, HexMesherError> {
         let mut mesh = Mesh3D::new();
 
         // Calculate cylinder properties
-        let height = ((top_center.x - bottom_center.x).powi(2) +
-                     (top_center.y - bottom_center.y).powi(2) +
-                     (top_center.z - bottom_center.z).powi(2)).sqrt();
-        
+        let height = ((top_center.x - bottom_center.x).powi(2)
+            + (top_center.y - bottom_center.y).powi(2)
+            + (top_center.z - bottom_center.z).powi(2))
+        .sqrt();
+
         let axis = Point::new(
             top_center.x - bottom_center.x,
             top_center.y - bottom_center.y,
@@ -192,12 +201,12 @@ impl HexMesher {
 
         // Generate vertices
         let mut vertices = Vec::new();
-        
+
         // Generate bottom and top circles
         for k in 0..=self.params.nz {
             let t = k as f64 / self.params.nz as f64;
             let z = bottom_center.z + t * height;
-            
+
             for i in 0..=self.params.nx {
                 let angle = 2.0 * std::f64::consts::PI * i as f64 / self.params.nx as f64;
                 let x = bottom_center.x + radius * angle.cos();
@@ -247,12 +256,12 @@ impl HexMesher {
 
         // Generate vertices using spherical coordinates
         let mut vertices = Vec::new();
-        
+
         for k in 0..=self.params.nz {
             let theta = std::f64::consts::PI * k as f64 / self.params.nz as f64;
             let z = center.z + radius * theta.cos();
             let r = radius * theta.sin();
-            
+
             for i in 0..=self.params.nx {
                 let phi = 2.0 * std::f64::consts::PI * i as f64 / self.params.nx as f64;
                 let x = center.x + r * phi.cos();
@@ -297,7 +306,11 @@ impl HexMesher {
     }
 
     /// Generate custom mesh
-    fn generate_custom_mesh(&self, vertices: &[Point], hexahedrons: &[[usize; 8]]) -> Result<Mesh3D, HexMesherError> {
+    fn generate_custom_mesh(
+        &self,
+        vertices: &[Point],
+        hexahedrons: &[[usize; 8]],
+    ) -> Result<Mesh3D, HexMesherError> {
         let mut mesh = Mesh3D::new();
 
         // Add vertices
@@ -341,7 +354,7 @@ impl HexMesher {
     fn optimize_vertex_position(&self, mesh: &mut Mesh3D, vertex_id: usize) {
         // Get adjacent hexahedrons
         let adjacent_hexes = self.get_adjacent_hexahedrons(mesh, vertex_id);
-        
+
         if adjacent_hexes.is_empty() {
             return;
         }
@@ -350,7 +363,7 @@ impl HexMesher {
         let mut avg_x = 0.0;
         let mut avg_y = 0.0;
         let mut avg_z = 0.0;
-        
+
         for hex_id in &adjacent_hexes {
             let hex = &mesh.hexahedrons[*hex_id];
             let center = self.calculate_hex_center(mesh, hex);
@@ -358,7 +371,7 @@ impl HexMesher {
             avg_y += center.y;
             avg_z += center.z;
         }
-        
+
         let count = adjacent_hexes.len() as f64;
         avg_x /= count;
         avg_y /= count;
@@ -376,13 +389,13 @@ impl HexMesher {
     /// Get adjacent hexahedrons for a vertex
     fn get_adjacent_hexahedrons(&self, mesh: &Mesh3D, vertex_id: usize) -> Vec<usize> {
         let mut adjacent_hexes = Vec::new();
-        
+
         for (hex_id, hex) in mesh.hexahedrons.iter().enumerate() {
             if hex.vertices.contains(&vertex_id) {
                 adjacent_hexes.push(hex_id);
             }
         }
-        
+
         adjacent_hexes
     }
 
@@ -391,14 +404,14 @@ impl HexMesher {
         let mut sum_x = 0.0;
         let mut sum_y = 0.0;
         let mut sum_z = 0.0;
-        
+
         for &vertex_id in &hex.vertices {
             let vertex = &mesh.vertices[vertex_id];
             sum_x += vertex.point.x;
             sum_y += vertex.point.y;
             sum_z += vertex.point.z;
         }
-        
+
         Point::new(sum_x / 8.0, sum_y / 8.0, sum_z / 8.0)
     }
 
@@ -419,27 +432,32 @@ impl HexMesher {
             (hex.vertices[2], hex.vertices[6]),
             (hex.vertices[3], hex.vertices[7]),
         ];
-        
+
         let mut edge_lengths = Vec::new();
         for (v0, v1) in edges {
             let p0 = &mesh.vertices[v0].point;
             let p1 = &mesh.vertices[v1].point;
-            let length = ((p1.x - p0.x).powi(2) + (p1.y - p0.y).powi(2) + (p1.z - p0.z).powi(2)).sqrt();
+            let length =
+                ((p1.x - p0.x).powi(2) + (p1.y - p0.y).powi(2) + (p1.z - p0.z).powi(2)).sqrt();
             edge_lengths.push(length);
         }
-        
+
         // Calculate aspect ratio
-        let max_edge = edge_lengths.iter().fold(0.0, |max, &e| max.max(e));
+        let max_edge = edge_lengths.iter().fold(0.0_f64, |max, &e| max.max(e));
         let min_edge = edge_lengths.iter().fold(f64::MAX, |min, &e| min.min(e));
-        let aspect_ratio = if min_edge > 0.0 { max_edge / min_edge } else { 10.0 };
-        
+        let aspect_ratio = if min_edge > 0.0 {
+            max_edge / min_edge
+        } else {
+            10.0
+        };
+
         // Calculate quality score
         let aspect_score = if aspect_ratio < self.params.max_aspect_ratio {
             1.0
         } else {
             1.0 / (aspect_ratio / self.params.max_aspect_ratio)
         };
-        
+
         aspect_score
     }
 }
@@ -463,16 +481,21 @@ mod tests {
     #[test]
     fn test_generate_box_mesh() {
         let mut mesher = HexMesher::new(
-            HexMesherParams { nx: 2, ny: 2, nz: 2, ..Default::default() },
+            HexMesherParams {
+                nx: 2,
+                ny: 2,
+                nz: 2,
+                ..Default::default()
+            },
             HexGeometry::Box {
                 min: Point::new(0.0, 0.0, 0.0),
                 max: Point::new(1.0, 1.0, 1.0),
-            }
+            },
         );
-        
+
         let result = mesher.generate();
         assert!(result.is_ok());
-        
+
         let mesh = result.unwrap();
         assert!(!mesh.vertices.is_empty());
         assert!(!mesh.hexahedrons.is_empty());
@@ -481,17 +504,22 @@ mod tests {
     #[test]
     fn test_generate_cylinder_mesh() {
         let mut mesher = HexMesher::new(
-            HexMesherParams { nx: 8, ny: 1, nz: 2, ..Default::default() },
+            HexMesherParams {
+                nx: 8,
+                ny: 1,
+                nz: 2,
+                ..Default::default()
+            },
             HexGeometry::Cylinder {
                 bottom_center: Point::new(0.0, 0.0, 0.0),
                 top_center: Point::new(0.0, 0.0, 1.0),
                 radius: 0.5,
-            }
+            },
         );
-        
+
         let result = mesher.generate();
         assert!(result.is_ok());
-        
+
         let mesh = result.unwrap();
         assert!(!mesh.vertices.is_empty());
         assert!(!mesh.hexahedrons.is_empty());
@@ -500,16 +528,21 @@ mod tests {
     #[test]
     fn test_generate_sphere_mesh() {
         let mut mesher = HexMesher::new(
-            HexMesherParams { nx: 8, ny: 1, nz: 4, ..Default::default() },
+            HexMesherParams {
+                nx: 8,
+                ny: 1,
+                nz: 4,
+                ..Default::default()
+            },
             HexGeometry::Sphere {
                 center: Point::new(0.0, 0.0, 0.0),
                 radius: 1.0,
-            }
+            },
         );
-        
+
         let result = mesher.generate();
         assert!(result.is_ok());
-        
+
         let mesh = result.unwrap();
         assert!(!mesh.vertices.is_empty());
         assert!(!mesh.hexahedrons.is_empty());

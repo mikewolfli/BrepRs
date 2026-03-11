@@ -3,7 +3,6 @@
 //! This module provides utility functions for file format validation,
 //! conversion, and metadata extraction.
 
-use std::collections::HashMap;
 use std::path::Path;
 
 use crate::data_exchange::{

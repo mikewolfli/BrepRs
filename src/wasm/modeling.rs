@@ -137,7 +137,7 @@ impl WasmBooleanOperations {
         } else {
             Handle::null()
         };
-        let result = self.inner.cut(&shape1, &shape2);
+        let _result = self.inner.cut(&shape1, &shape2);
         WasmSolid {
             inner: Handle::new(std::sync::Arc::new(TopoDsSolid::new())),
         }
@@ -156,7 +156,7 @@ impl WasmBooleanOperations {
         } else {
             Handle::null()
         };
-        let result = self.inner.common(&shape1, &shape2);
+        let _result = self.inner.common(&shape1, &shape2);
         WasmSolid {
             inner: Handle::new(std::sync::Arc::new(TopoDsSolid::new())),
         }

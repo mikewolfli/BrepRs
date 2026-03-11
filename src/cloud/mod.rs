@@ -1,5 +1,5 @@
 //! Cloud-native Design
-//! 
+//!
 //! This module provides cloud-native functionality, including:
 //! - WebRTC streaming for remote visualization
 //! - Cloud storage integration
@@ -29,15 +29,18 @@ impl WebRtcStreamer {
     pub async fn start_streaming(&mut self, mesh: &Mesh3D) -> Result<(), String> {
         // Implementation of WebRTC streaming
         use std::time::Duration;
-        
+
         // Simulate WebRTC connection setup
-        println!("Setting up WebRTC stream for mesh with {} vertices", mesh.vertices.len());
+        println!(
+            "Setting up WebRTC stream for mesh with {} vertices",
+            mesh.vertices.len()
+        );
         println!("Using ICE servers: {:?}", self.ice_servers);
-        
+
         // Simulate streaming process
         tokio::time::sleep(Duration::from_millis(500)).await;
         println!("WebRTC stream started with ID: {}", self.stream_id);
-        
+
         Ok(())
     }
 
@@ -45,11 +48,11 @@ impl WebRtcStreamer {
     pub async fn stop_streaming(&mut self) -> Result<(), String> {
         // Implementation of stopping streaming
         println!("Stopping WebRTC stream with ID: {}", self.stream_id);
-        
+
         // Simulate stream cleanup
         tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
         println!("WebRTC stream stopped");
-        
+
         Ok(())
     }
 
@@ -63,10 +66,10 @@ impl WebRtcStreamer {
         // Implementation of peer connection setup
         println!("Setting up peer connection with remote SDP");
         println!("Remote SDP length: {}", remote_sdp.len());
-        
+
         // Simulate SDP exchange
         tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
-        
+
         // Generate local SDP
         let local_sdp = concat!(
             "v=0\r\n",
@@ -83,8 +86,9 @@ impl WebRtcStreamer {
             "a=mid:video\r\n",
             "a=sendonly\r\n",
             "a=rtcp-mux\r\n"
-        ).to_string();
-        
+        )
+        .to_string();
+
         Ok(local_sdp)
     }
 }
@@ -111,18 +115,22 @@ impl CloudStorage {
     pub async fn upload_mesh(&self, mesh: &Mesh3D, file_name: &str) -> Result<String, String> {
         // Implementation of mesh upload
         use std::time::Duration;
-        
+
         println!("Uploading mesh to {} storage", self.provider);
         println!("Bucket: {}", self.bucket_name);
         println!("File: {}", file_name);
-        println!("Mesh: {} vertices, {} faces", mesh.vertices.len(), mesh.faces.len());
-        
+        println!(
+            "Mesh: {} vertices, {} faces",
+            mesh.vertices.len(),
+            mesh.faces.len()
+        );
+
         // Simulate upload process
         tokio::time::sleep(Duration::from_millis(1000)).await;
-        
+
         let file_path = format!("{}/{}", self.bucket_name, file_name);
         println!("Mesh uploaded successfully to: {}", file_path);
-        
+
         Ok(file_path)
     }
 
@@ -130,16 +138,16 @@ impl CloudStorage {
     pub async fn download_mesh(&self, file_path: &str) -> Result<Mesh3D, String> {
         // Implementation of mesh download
         use std::time::Duration;
-        
+
         println!("Downloading mesh from {} storage", self.provider);
         println!("File: {}", file_path);
-        
+
         // Simulate download process
         tokio::time::sleep(Duration::from_millis(1000)).await;
-        
+
         // Create a simple mesh for demonstration
         let mut mesh = Mesh3D::new();
-        
+
         // Add vertices for a cube
         let v0 = mesh.add_vertex(Point::new(0.0, 0.0, 0.0));
         let v1 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0));
@@ -149,7 +157,7 @@ impl CloudStorage {
         let v5 = mesh.add_vertex(Point::new(1.0, 0.0, 1.0));
         let v6 = mesh.add_vertex(Point::new(1.0, 1.0, 1.0));
         let v7 = mesh.add_vertex(Point::new(0.0, 1.0, 1.0));
-        
+
         // Add faces
         mesh.add_face(vec![v0, v1, v2, v3]);
         mesh.add_face(vec![v1, v5, v6, v2]);
@@ -157,9 +165,9 @@ impl CloudStorage {
         mesh.add_face(vec![v4, v0, v3, v7]);
         mesh.add_face(vec![v3, v2, v6, v7]);
         mesh.add_face(vec![v4, v5, v1, v0]);
-        
+
         println!("Mesh downloaded successfully");
-        
+
         Ok(mesh)
     }
 
@@ -167,14 +175,14 @@ impl CloudStorage {
     pub async fn list_files(&self, prefix: &str) -> Result<Vec<String>, String> {
         // Implementation of file listing
         use std::time::Duration;
-        
+
         println!("Listing files in {} storage", self.provider);
         println!("Bucket: {}", self.bucket_name);
         println!("Prefix: {}", prefix);
-        
+
         // Simulate listing process
         tokio::time::sleep(Duration::from_millis(500)).await;
-        
+
         // Return sample files
         let files = vec![
             format!("{}/mesh1.obj", self.bucket_name),
@@ -182,12 +190,12 @@ impl CloudStorage {
             format!("{}/mesh3.glb", self.bucket_name),
             format!("{}/models/mesh4.step", self.bucket_name),
         ];
-        
+
         println!("Found {} files", files.len());
         for file in &files {
             println!("- {}", file);
         }
-        
+
         Ok(files)
     }
 
@@ -195,15 +203,15 @@ impl CloudStorage {
     pub async fn delete_file(&self, file_path: &str) -> Result<(), String> {
         // Implementation of file deletion
         use std::time::Duration;
-        
+
         println!("Deleting file from {} storage", self.provider);
         println!("File: {}", file_path);
-        
+
         // Simulate deletion process
         tokio::time::sleep(Duration::from_millis(300)).await;
-        
+
         println!("File deleted successfully");
-        
+
         Ok(())
     }
 }
@@ -239,12 +247,12 @@ impl CrdtManager {
         // Implementation of shape update
         println!("Updating shape: {}", shape_id);
         println!("Shape type: {:?}", shape.shape_type());
-        
+
         // In a real CRDT implementation, we would:
         // 1. Create an operation with a timestamp
         // 2. Apply it to the local state
         // 3. Broadcast it to other replicas
-        
+
         Ok(())
     }
 
@@ -252,12 +260,12 @@ impl CrdtManager {
     pub fn delete_shape(&mut self, shape_id: &str) -> Result<(), String> {
         // Implementation of shape deletion
         println!("Deleting shape: {}", shape_id);
-        
+
         // In a real CRDT implementation, we would:
         // 1. Create a delete operation with a timestamp
         // 2. Apply it to the local state
         // 3. Broadcast it to other replicas
-        
+
         Ok(())
     }
 
@@ -268,12 +276,12 @@ impl CrdtManager {
         println!("Local document ID: {}", self.document_id);
         println!("Remote document ID: {}", other.document_id);
         println!("Remote replicas: {:?}", other.replicas);
-        
+
         // In a real CRDT implementation, we would:
         // 1. Compare timestamps of operations
         // 2. Resolve conflicts using CRDT rules
         // 3. Update the local state
-        
+
         // Add any new replicas from the other manager
         for replica in &other.replicas {
             if !self.replicas.contains(replica) {
@@ -281,7 +289,7 @@ impl CrdtManager {
                 println!("Added new replica: {}", replica);
             }
         }
-        
+
         Ok(())
     }
 
@@ -310,12 +318,13 @@ impl CloudDocument {
     /// Create a new cloud document
     pub fn new(name: String, storage: Option<CloudStorage>) -> Self {
         let id = uuid::Uuid::new_v4().to_string();
+        let crdt_id = id.clone();
         Self {
             id,
             name,
             version: 0,
             storage,
-            crdt: CrdtManager::new(id.clone()),
+            crdt: CrdtManager::new(crdt_id),
         }
     }
 
@@ -324,26 +333,26 @@ impl CloudDocument {
         // Implementation of document saving
         println!("Saving document: {}", self.name);
         println!("Current version: {}", self.version);
-        
+
         // Increment version
         self.version += 1;
         println!("New version: {}", self.version);
-        
+
         // Save to cloud storage if available
         if let Some(storage) = &self.storage {
             println!("Saving to cloud storage: {}", storage.bucket_name);
-            
+
             // In a real implementation, we would:
             // 1. Serialize the document
             // 2. Upload it to cloud storage
             // 3. Update metadata
-            
+
             // Simulate cloud storage save
             use std::time::Duration;
             tokio::time::sleep(Duration::from_millis(500)).await;
             println!("Document saved to cloud storage");
         }
-        
+
         Ok(())
     }
 
@@ -351,29 +360,29 @@ impl CloudDocument {
     pub async fn load(&mut self, document_id: &str) -> Result<(), String> {
         // Implementation of document loading
         println!("Loading document with ID: {}", document_id);
-        
+
         // Load from cloud storage if available
         if let Some(storage) = &self.storage {
             println!("Loading from cloud storage: {}", storage.bucket_name);
-            
+
             // In a real implementation, we would:
             // 1. Download the document from cloud storage
             // 2. Deserialize it
             // 3. Update the local state
-            
+
             // Simulate cloud storage load
             use std::time::Duration;
             tokio::time::sleep(Duration::from_millis(1000)).await;
             println!("Document loaded from cloud storage");
         }
-        
+
         // Update document ID
         self.id = document_id.to_string();
         // Reset version to 1
         self.version = 1;
-        
+
         println!("Document loaded successfully");
-        
+
         Ok(())
     }
 
@@ -383,15 +392,15 @@ impl CloudDocument {
         let shape_id = uuid::Uuid::new_v4().to_string();
         println!("Adding shape with ID: {}", shape_id);
         println!("Shape type: {:?}", shape.shape_type());
-        
+
         // Update CRDT
         self.crdt.update_shape(&shape_id, &shape)?;
-        
+
         // In a real implementation, we would:
         // 1. Store the shape in the document
         // 2. Update the CRDT
         // 3. Notify other replicas
-        
+
         Ok(shape_id)
     }
 
@@ -399,15 +408,15 @@ impl CloudDocument {
     pub fn remove_shape(&mut self, shape_id: &str) -> Result<(), String> {
         // Implementation of shape removal
         println!("Removing shape with ID: {}", shape_id);
-        
+
         // Update CRDT
         self.crdt.delete_shape(shape_id)?;
-        
+
         // In a real implementation, we would:
         // 1. Remove the shape from the document
         // 2. Update the CRDT
         // 3. Notify other replicas
-        
+
         Ok(())
     }
 

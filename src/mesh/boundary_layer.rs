@@ -1,10 +1,10 @@
 //! Boundary layer mesh generation
-//! 
+//!
 //! This module provides functionality for generating boundary layer meshes
 //! (prism layers) for CFD simulations, which are essential for resolving
 //! flow near solid walls.
 
-use super::mesh_data::{Mesh3D, MeshVertex, MeshPrism};
+use super::mesh_data::{Mesh3D, MeshPrism, MeshVertex};
 use crate::geometry::{Point, Vector};
 use std::collections::{HashMap, HashSet};
 
@@ -84,53 +84,56 @@ impl BoundaryLayerMesher {
 
     /// Generate boundary layer mesh
     pub fn generate(&mut self) -> Result<Mesh3D, BoundaryLayerMesherError> {
-        if let Some(ref input_mesh) = self.input_mesh {
-            if input_mesh.faces.is_empty() {
-                return Err(BoundaryLayerMesherError::InvalidInputMesh);
-            }
+        let input_mesh = self
+            .input_mesh
+            .take()
+            .ok_or(BoundaryLayerMesherError::InvalidInputMesh)?;
 
-            // Identify boundary faces
-            let boundary_faces = self.identify_boundary_faces(input_mesh);
-            if boundary_faces.is_empty() {
-                return Err(BoundaryLayerMesherError::NoBoundaryFaces);
-            }
-
-            // Calculate boundary normals
-            self.calculate_boundary_normals(input_mesh, &boundary_faces);
-
-            // Calculate vertex normals
-            self.calculate_vertex_normals(input_mesh, &boundary_faces);
-
-            // Generate boundary layers
-            self.generate_boundary_layers(input_mesh, &boundary_faces);
-
-            // Add original mesh elements
-            self.add_original_mesh_elements(input_mesh);
-
-            Ok(self.output_mesh.clone())
-        } else {
-            Err(BoundaryLayerMesherError::InvalidInputMesh)
+        if input_mesh.faces.is_empty() {
+            return Err(BoundaryLayerMesherError::InvalidInputMesh);
         }
+
+        // Identify boundary faces
+        let boundary_faces = self.identify_boundary_faces(&input_mesh);
+        if boundary_faces.is_empty() {
+            return Err(BoundaryLayerMesherError::NoBoundaryFaces);
+        }
+
+        // Calculate boundary normals
+        self.calculate_boundary_normals(&input_mesh, &boundary_faces);
+
+        // Calculate vertex normals
+        self.calculate_vertex_normals(&input_mesh, &boundary_faces);
+
+        // Generate boundary layers
+        self.generate_boundary_layers(&input_mesh, &boundary_faces);
+
+        // Add original mesh elements
+        self.add_original_mesh_elements(&input_mesh);
+
+        // Restore input mesh
+        self.input_mesh = Some(input_mesh);
+
+        Ok(self.output_mesh.clone())
     }
 
     /// Identify boundary faces
     fn identify_boundary_faces(&self, mesh: &Mesh3D) -> HashSet<usize> {
         let mut face_adjacency = HashMap::new();
-        
+
         // Count face adjacencies
         for (face_id, face) in mesh.faces.iter().enumerate() {
             for i in 0..face.vertices.len() {
                 let v0 = face.vertices[i];
                 let v1 = face.vertices[(i + 1) % face.vertices.len()];
-                let edge = if v0 < v1 {
-                    (v0, v1)
-                } else {
-                    (v1, v0)
-                };
-                face_adjacency.entry(edge).or_insert(Vec::new()).push(face_id);
+                let edge = if v0 < v1 { (v0, v1) } else { (v1, v0) };
+                face_adjacency
+                    .entry(edge)
+                    .or_insert(Vec::new())
+                    .push(face_id);
             }
         }
-        
+
         // Identify boundary faces (faces with at least one edge that's only in one face)
         let mut boundary_faces = HashSet::new();
         for (edge, faces) in face_adjacency {
@@ -138,12 +141,15 @@ impl BoundaryLayerMesher {
                 boundary_faces.insert(faces[0]);
             }
         }
-        
+
         // Apply boundary face filter if specified
         if let Some(ref boundary_face_ids) = self.params.boundary_face_ids {
-            boundary_faces = boundary_faces.intersection(boundary_face_ids).cloned().collect();
+            boundary_faces = boundary_faces
+                .intersection(boundary_face_ids)
+                .cloned()
+                .collect();
         }
-        
+
         boundary_faces
     }
 
@@ -152,7 +158,8 @@ impl BoundaryLayerMesher {
         for &face_id in boundary_faces {
             let face = &mesh.faces[face_id];
             if let Some(normal) = face.normal {
-                self.boundary_normals.insert(face_id, Vector::new(normal[0], normal[1], normal[2]));
+                self.boundary_normals
+                    .insert(face_id, Vector::new(normal[0], normal[1], normal[2]));
             } else {
                 // Calculate normal if not provided
                 let normal = self.calculate_face_normal(mesh, face);
@@ -162,20 +169,24 @@ impl BoundaryLayerMesher {
     }
 
     /// Calculate face normal
-    fn calculate_face_normal(&self, mesh: &Mesh3D, face: &crate::mesh::mesh_data::MeshFace) -> Vector {
+    fn calculate_face_normal(
+        &self,
+        mesh: &Mesh3D,
+        face: &crate::mesh::mesh_data::MeshFace,
+    ) -> Vector {
         if face.vertices.len() < 3 {
             return Vector::new(0.0, 0.0, 1.0);
         }
-        
+
         let v0 = &mesh.vertices[face.vertices[0]].point;
         let v1 = &mesh.vertices[face.vertices[1]].point;
         let v2 = &mesh.vertices[face.vertices[2]].point;
-        
+
         let v1v0 = Vector::new(v1.x - v0.x, v1.y - v0.y, v1.z - v0.z);
         let v2v0 = Vector::new(v2.x - v0.x, v2.y - v0.y, v2.z - v0.z);
         let normal = v1v0.cross(&v2v0);
-        
-        normal.normalize()
+
+        normal.normalized()
     }
 
     /// Calculate vertex normals
@@ -184,16 +195,19 @@ impl BoundaryLayerMesher {
         for &face_id in boundary_faces {
             let face = &mesh.faces[face_id];
             let normal = self.boundary_normals[&face_id];
-            
+
             for &vertex_id in &face.vertices {
-                let entry = self.vertex_normals.entry(vertex_id).or_insert(Vector::new(0.0, 0.0, 0.0));
+                let entry = self
+                    .vertex_normals
+                    .entry(vertex_id)
+                    .or_insert(Vector::new(0.0, 0.0, 0.0));
                 *entry = entry.add(&normal);
             }
         }
-        
+
         // Normalize vertex normals
         for (vertex_id, normal) in &mut self.vertex_normals {
-            normal.normalize();
+            *normal = normal.normalized();
         }
     }
 
@@ -205,19 +219,19 @@ impl BoundaryLayerMesher {
             let new_vertex_id = self.output_mesh.add_vertex(vertex.point.clone());
             vertex_map.insert(idx, new_vertex_id);
         }
-        
+
         // Generate prism layers
         let layer_thicknesses = self.calculate_layer_thicknesses();
-        
+
         // Create vertex layers
         let mut layer_vertices = vec![vertex_map.clone()];
-        
+
         for (layer_idx, thickness) in layer_thicknesses.iter().enumerate() {
             let mut current_layer = HashMap::new();
-            
+
             for &face_id in boundary_faces {
                 let face = &mesh.faces[face_id];
-                
+
                 for &vertex_id in &face.vertices {
                     if let Some(normal) = self.vertex_normals.get(&vertex_id) {
                         let original_vertex = &mesh.vertices[vertex_id].point;
@@ -227,39 +241,39 @@ impl BoundaryLayerMesher {
                             original_vertex.y + offset.y,
                             original_vertex.z + offset.z,
                         );
-                        
+
                         let new_vertex_id = self.output_mesh.add_vertex(new_point);
                         current_layer.insert(vertex_id, new_vertex_id);
                     }
                 }
             }
-            
+
             layer_vertices.push(current_layer);
         }
-        
+
         // Create prism elements
         for &face_id in boundary_faces {
             let face = &mesh.faces[face_id];
-            
+
             for layer_idx in 0..self.params.num_layers {
                 let layer1 = &layer_vertices[layer_idx];
                 let layer2 = &layer_vertices[layer_idx + 1];
-                
+
                 // Create prism for each face
                 let mut prism_vertices = Vec::new();
-                
+
                 for &vertex_id in &face.vertices {
                     if let Some(&v1) = layer1.get(&vertex_id) {
                         prism_vertices.push(v1);
                     }
                 }
-                
+
                 for &vertex_id in face.vertices.iter().rev() {
                     if let Some(&v2) = layer2.get(&vertex_id) {
                         prism_vertices.push(v2);
                     }
                 }
-                
+
                 if prism_vertices.len() == 6 {
                     self.output_mesh.add_prism(
                         prism_vertices[0],
@@ -278,14 +292,15 @@ impl BoundaryLayerMesher {
     fn calculate_layer_thicknesses(&self) -> Vec<f64> {
         let mut thicknesses = Vec::new();
         let mut current_thickness = 0.0;
-        
+
         for i in 0..self.params.num_layers {
-            let layer_thickness = self.params.first_layer_thickness * (self.params.growth_rate.powi(i as i32));
+            let layer_thickness =
+                self.params.first_layer_thickness * (self.params.growth_rate.powi(i as i32));
             let clamped_thickness = layer_thickness.min(self.params.max_layer_thickness);
             current_thickness += clamped_thickness;
             thicknesses.push(current_thickness);
         }
-        
+
         thicknesses
     }
 
@@ -293,19 +308,15 @@ impl BoundaryLayerMesher {
     fn add_original_mesh_elements(&mut self, mesh: &Mesh3D) {
         // Add original edges
         for edge in &mesh.edges {
-            self.output_mesh.add_edge(edge.vertices[0], edge.vertices[1]);
+            self.output_mesh
+                .add_edge(edge.vertices[0], edge.vertices[1]);
         }
-        
+
         // Add original faces
         for face in &mesh.faces {
-            self.output_mesh.add_face_with_normal(
-                face.vertices[0],
-                face.vertices[1],
-                face.vertices[2],
-                face.normal,
-            );
+            self.output_mesh.add_face(face.vertices.clone());
         }
-        
+
         // Add original tetrahedrons
         for tetra in &mesh.tetrahedrons {
             self.output_mesh.add_tetrahedron(
@@ -315,7 +326,7 @@ impl BoundaryLayerMesher {
                 tetra.vertices[3],
             );
         }
-        
+
         // Add original hexahedrons
         for hex in &mesh.hexahedrons {
             self.output_mesh.add_hexahedron(
@@ -373,21 +384,21 @@ mod tests {
         let v5 = input_mesh.add_vertex(Point::new(1.0, 0.0, 1.0));
         let v6 = input_mesh.add_vertex(Point::new(1.0, 1.0, 1.0));
         let v7 = input_mesh.add_vertex(Point::new(0.0, 1.0, 1.0));
-        
+
         // Add faces (bottom face)
-        input_mesh.add_face(v0, v1, v2);
-        input_mesh.add_face(v0, v2, v3);
-        
+        input_mesh.add_face(vec![v0, v1, v2]);
+        input_mesh.add_face(vec![v0, v2, v3]);
+
         let mut mesher = BoundaryLayerMesher::new(BoundaryLayerParams {
             num_layers: 2,
             first_layer_thickness: 0.01,
             ..Default::default()
         });
         mesher.set_input_mesh(input_mesh);
-        
+
         let result = mesher.generate();
         assert!(result.is_ok());
-        
+
         let mesh = result.unwrap();
         assert!(!mesh.vertices.is_empty());
         assert!(!mesh.prisms.is_empty());

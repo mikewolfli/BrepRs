@@ -66,7 +66,7 @@ impl<T> Array1<T> {
         self.data.capacity()
     }
 
-    pub fn resize(&mut self, lower: usize, upper: usize) -> Result<()> 
+    pub fn resize(&mut self, lower: usize, upper: usize) -> Result<()>
     where
         T: Clone,
     {
@@ -76,7 +76,11 @@ impl<T> Array1<T> {
         self.lower = lower;
         self.upper = upper;
         let new_length = upper - lower + 1;
-        let default = self.data.first().cloned().ok_or_else(|| Failure::range_error("Cannot resize empty array"))?;
+        let default = self
+            .data
+            .first()
+            .cloned()
+            .ok_or_else(|| Failure::range_error("Cannot resize empty array"))?;
         self.data.resize(new_length, default);
         Ok(())
     }
@@ -202,7 +206,6 @@ impl<T> Default for Array1<T> {
 
 /// Performs a deep clone of all elements in the array.
 /// This may be expensive for large arrays.
-#[inline]
 impl<T> Clone for Array1<T>
 where
     T: Clone,
@@ -218,13 +221,14 @@ where
 
 impl<T> Array1<T> {
     pub fn get_checked(&self, index: usize) -> Result<&T> {
-        self.get(index).ok_or_else(|| Failure::range_error("Index out of bounds"))
+        self.get(index)
+            .ok_or_else(|| Failure::range_error("Index out of bounds"))
     }
     pub fn get_checked_mut(&mut self, index: usize) -> Result<&mut T> {
-        self.get_mut(index).ok_or_else(|| Failure::range_error("Index out of bounds"))
+        self.get_mut(index)
+            .ok_or_else(|| Failure::range_error("Index out of bounds"))
     }
 }
-
 
 impl<T: std::fmt::Debug> std::fmt::Debug for Array1<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

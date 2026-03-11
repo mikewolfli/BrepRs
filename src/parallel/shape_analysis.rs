@@ -165,7 +165,7 @@ impl ParallelShapeAnalyzer {
     pub fn count_sub_shapes(
         &self,
         shapes: &[Handle<TopoDsShape>],
-        shape_type: ShapeType,
+        _shape_type: ShapeType,
     ) -> ParallelResult<Vec<usize>> {
         use std::time::Instant;
 
@@ -174,12 +174,12 @@ impl ParallelShapeAnalyzer {
         let results: Vec<usize> = if shapes.len() >= self.config.min_parallel_size {
             shapes
                 .par_iter()
-                .map(|shape| shape.as_ref().map_or(0, |s| 0))
+                .map(|shape| shape.as_ref().map_or(0, |_s| 0))
                 .collect()
         } else {
             shapes
                 .iter()
-                .map(|shape| shape.as_ref().map_or(0, |s| 0))
+                .map(|shape| shape.as_ref().map_or(0, |_s| 0))
                 .collect()
         };
 
@@ -314,7 +314,7 @@ impl ParallelShapeAnalyzer {
         // - Surface curvature
         // - Edge count, etc.
 
-        let sub_shape_count = shape.as_ref().map_or(0.0, |s| 0.0);
+        let sub_shape_count = shape.as_ref().map_or(0.0, |_s| 0.0);
         let volume = 1.0;
 
         if volume > 0.0 {

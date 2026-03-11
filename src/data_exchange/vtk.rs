@@ -2,8 +2,7 @@
 //! 
 //! This module provides functionality to import and export VTK files.
 
-use crate::mesh::mesh_data::{Mesh2D, Mesh3D};
-use crate::geometry::Point;
+use crate::mesh::mesh_data::Mesh3D;
 use std::fs::File;
 use std::io::Write;
 

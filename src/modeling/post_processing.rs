@@ -309,21 +309,21 @@ impl PostProcessing {
     pub fn thicken_mesh(&self, mesh: &Mesh3D, thickness: f64) -> Result<Mesh3D, String> {
                 // Add bridging faces between outer and inner mesh for watertight solid
                 let mut bridges = Vec::new();
-                let outer_count = mesh_outer.vertices.len();
+                let outer_count = self.mesh_outer.vertices.len();
                 for (i, v) in mesh.vertices.iter().enumerate() {
                     let outer_idx = i;
-                    let inner_idx = vertex_offset + i;
+                    let inner_idx = self.vertex_offset + i;
                     // For each edge, create a quad bridging outer and inner
                     for edge in &mesh.edges {
                         if edge.vertices.contains(&i) {
                             let vj = if edge.vertices[0] == i { edge.vertices[1] } else { edge.vertices[0] };
                             let outer_j = vj;
-                            let inner_j = vertex_offset + vj;
-                            bridges.push(MeshFace::new(thickened.faces.len() + bridges.len(), vec![outer_idx, outer_j, inner_j, inner_idx]));
+                            let inner_j = self.vertex_offset + vj;
+                            bridges.push(MeshFace::new(self.thickened.faces.len() + bridges.len(), vec![outer_idx, outer_j, inner_j, inner_idx]));
                         }
                     }
                 }
-                thickened.faces.extend(bridges);
+                self.thickened.faces.extend(bridges);
         // Create two offset meshes using vertex normals and connect them to form a solid
         let mut mesh_outer = mesh.clone();
         let mut mesh_inner = mesh.clone();
@@ -483,7 +483,7 @@ impl MeshSubdivider {
         match self.scheme {
             SubdivisionScheme::CatmullClark => {
                 // Use Catmull-Clark subdivision (reuse subdivide logic above)
-                let mut subdivided = mesh.clone();
+                let subdivided = mesh.clone();
                 // ...existing Catmull-Clark logic...
                 subdivided
             }

@@ -289,6 +289,74 @@ impl Default for Cone {
     }
 }
 
+impl crate::topology::topods_face::Surface for Cone {
+    fn value(&self, u: f64, v: f64) -> Point {
+        let height = v * self.radius / self.angle.tan();
+        let radius_at_height = self.radius - v * self.radius;
+        
+        let cos_u = u.cos();
+        let sin_u = u.sin();
+        
+        let x_vec = crate::geometry::Vector::new(
+            self.x_direction.x,
+            self.x_direction.y,
+            self.x_direction.z,
+        );
+        let y_vec = crate::geometry::Vector::new(
+            self.y_direction.x,
+            self.y_direction.y,
+            self.y_direction.z,
+        );
+        let dir_vec = crate::geometry::Vector::new(
+            self.direction.x,
+            self.direction.y,
+            self.direction.z,
+        );
+        
+        let point = self.location
+            + dir_vec * height
+            + x_vec * (radius_at_height * cos_u)
+            + y_vec * (radius_at_height * sin_u);
+        
+        point
+    }
+
+    fn normal(&self, u: f64, v: f64) -> crate::geometry::Vector {
+        let height = v * self.radius / self.angle.tan();
+        let radius_at_height = self.radius - v * self.radius;
+        
+        let cos_u = u.cos();
+        let sin_u = u.sin();
+        
+        let x_vec = crate::geometry::Vector::new(
+            self.x_direction.x,
+            self.x_direction.y,
+            self.x_direction.z,
+        );
+        let y_vec = crate::geometry::Vector::new(
+            self.y_direction.x,
+            self.y_direction.y,
+            self.y_direction.z,
+        );
+        let dir_vec = crate::geometry::Vector::new(
+            self.direction.x,
+            self.direction.y,
+            self.direction.z,
+        );
+        
+        // Calculate normal vector
+        let tangent_u = x_vec * (-radius_at_height * sin_u) + y_vec * (radius_at_height * cos_u);
+        let tangent_v = dir_vec * (self.radius / self.angle.tan()) - (x_vec * cos_u + y_vec * sin_u) * self.radius;
+        
+        let normal = tangent_u.cross(&tangent_v).normalized();
+        normal
+    }
+
+    fn parameter_range(&self) -> ((f64, f64), (f64, f64)) {
+        ((0.0, 2.0 * std::f64::consts::PI), (0.0, 1.0))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

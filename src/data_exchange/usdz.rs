@@ -7,14 +7,13 @@
 //! and editing 3D data, facilitating the use of multiple digital content
 //! creation applications.
 
-use std::collections::HashMap;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::Path;
 use zip;
 
-use crate::data_exchange::{DataExchangeError, DataExchangeResult};
+use crate::data_exchange::DataExchangeResult;
 use crate::foundation::handle::Handle;
-use crate::geometry::{Point, Vector};
+use crate::geometry::Point;
 use crate::mesh::Mesh;
 use crate::topology::topods_shape::TopoDsShape;
 

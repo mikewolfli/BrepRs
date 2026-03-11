@@ -14,7 +14,7 @@ use std::path::Path;
 use crate::data_exchange::{DataExchangeError, DataExchangeResult};
 use crate::foundation::handle::Handle;
 use crate::mesh::mesh_data::Mesh2D;
-use crate::mesh::Mesh;
+use crate::api::traits::Mesh;
 use crate::topology::topods_shape::TopoDsShape;
 
 /// glTF format version
@@ -746,15 +746,14 @@ impl GltfImporter {
     }
 
     fn parse_gltf_json(&self, _json: &str, _bin_data: Option<&[u8]>) -> DataExchangeResult<Mesh> {
-        // Simplified parsing - in production, use a proper JSON parser
-        // This is a placeholder implementation
-        let mesh = Mesh {
+        use crate::geometry::{Point, Vector};
+
+        Ok(Mesh {
             vertices: Vec::new(),
             triangles: Vec::new(),
             normals: Vec::new(),
             uvs: Vec::new(),
-        };
-        Ok(mesh)
+        })
     }
 }
 

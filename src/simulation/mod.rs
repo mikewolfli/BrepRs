@@ -275,15 +275,34 @@ impl SimulationExporter {
             let faces: Vec<Vec<usize>> = vec![
                 vec![prism.vertices[0], prism.vertices[1], prism.vertices[2]],
                 vec![prism.vertices[3], prism.vertices[4], prism.vertices[5]],
-                vec![prism.vertices[0], prism.vertices[1], prism.vertices[4], prism.vertices[3]],
-                vec![prism.vertices[1], prism.vertices[2], prism.vertices[5], prism.vertices[4]],
-                vec![prism.vertices[2], prism.vertices[0], prism.vertices[3], prism.vertices[5]],
+                vec![
+                    prism.vertices[0],
+                    prism.vertices[1],
+                    prism.vertices[4],
+                    prism.vertices[3],
+                ],
+                vec![
+                    prism.vertices[1],
+                    prism.vertices[2],
+                    prism.vertices[5],
+                    prism.vertices[4],
+                ],
+                vec![
+                    prism.vertices[2],
+                    prism.vertices[0],
+                    prism.vertices[3],
+                    prism.vertices[5],
+                ],
             ];
 
             for face in &faces {
                 match face.len() {
                     3 => writeln!(faces_file, "(3 {} {} {})", face[0], face[1], face[2])?,
-                    4 => writeln!(faces_file, "(4 {} {} {} {})", face[0], face[1], face[2], face[3])?,
+                    4 => writeln!(
+                        faces_file,
+                        "(4 {} {} {} {})",
+                        face[0], face[1], face[2], face[3]
+                    )?,
                     _ => writeln!(faces_file, "({} {:?})", face.len(), face)?,
                 }
             }
@@ -380,9 +399,9 @@ impl SimulationExporter {
     /// Export field data to visualization format
     pub fn export_field_data(
         &self,
-        mesh: &Mesh3D,
-        field_name: &str,
-        file_path: &str,
+        _mesh: &Mesh3D,
+        _field_name: &str,
+        _file_path: &str,
     ) -> Result<(), std::io::Error> {
         // This is a placeholder implementation
         // In a real implementation, this would export field data to a visualization format

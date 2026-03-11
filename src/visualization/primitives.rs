@@ -730,6 +730,11 @@ impl TextLabel {
             color,
             font_size,
             screen_space: true,
+            bold: false,
+            italic: false,
+            underline: false,
+            font_scale: 1.0,
+            highlight: None,
         }
     }
 

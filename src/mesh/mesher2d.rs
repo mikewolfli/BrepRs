@@ -2,7 +2,11 @@
 //!
 //! This module provides functionality for 2D triangle meshing.
 
-use super::mesh_data::{Mesh2D, MeshVertex}; use crate::geometry::{Point, Vector};
+use super::mesh_data::{Mesh2D, MeshVertex};
+use crate::geometry::{Point, Vector};
+
+#[cfg(feature = "rayon")]
+use rayon::prelude::*;
 
 /// 2D mesher error types
 #[derive(Debug)]
@@ -18,7 +22,6 @@ pub enum Mesher2DError {
 }
 
 /// 2D mesher parameters
-#[derive(Debug, Clone)]
 pub struct Mesher2DParams {
     /// Maximum triangle area
     pub max_area: f64,
@@ -38,6 +41,41 @@ pub struct Mesher2DParams {
     pub max_edge_length: f64,
     /// Minimum edge length
     pub min_edge_length: f64,
+}
+
+impl Clone for Mesher2DParams {
+    fn clone(&self) -> Self {
+        Self {
+            max_area: self.max_area,
+            min_angle: self.min_angle,
+            density_factor: self.density_factor,
+            quality_mesh: self.quality_mesh,
+            curvature_factor: self.curvature_factor,
+            proximity_factor: self.proximity_factor,
+            size_field: None, // Cannot clone closure
+            max_edge_length: self.max_edge_length,
+            min_edge_length: self.min_edge_length,
+        }
+    }
+}
+
+impl std::fmt::Debug for Mesher2DParams {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Mesher2DParams")
+            .field("max_area", &self.max_area)
+            .field("min_angle", &self.min_angle)
+            .field("density_factor", &self.density_factor)
+            .field("quality_mesh", &self.quality_mesh)
+            .field("curvature_factor", &self.curvature_factor)
+            .field("proximity_factor", &self.proximity_factor)
+            .field(
+                "size_field",
+                &self.size_field.as_ref().map(|_| "<function>"),
+            )
+            .field("max_edge_length", &self.max_edge_length)
+            .field("min_edge_length", &self.min_edge_length)
+            .finish()
+    }
 }
 
 impl Default for Mesher2DParams {
@@ -304,35 +342,41 @@ impl Mesher2D {
         // Identify edges that need splitting
         #[cfg(feature = "rayon")]
         {
-            edges_to_split = mesh.edges.par_iter().enumerate().filter_map(|(edge_id, edge)| {
-                let v0 = &mesh.vertices[edge.vertices[0]];
-                let v1 = &mesh.vertices[edge.vertices[1]];
-                let length =
-                    ((v1.point.x - v0.point.x).powi(2) + (v1.point.y - v0.point.y).powi(2)).sqrt();
+            edges_to_split = mesh
+                .edges
+                .par_iter()
+                .enumerate()
+                .filter_map(|(edge_id, edge)| {
+                    let v0 = &mesh.vertices[edge.vertices[0]];
+                    let v1 = &mesh.vertices[edge.vertices[1]];
+                    let length = ((v1.point.x - v0.point.x).powi(2)
+                        + (v1.point.y - v0.point.y).powi(2))
+                    .sqrt();
 
-                // Determine appropriate edge length based on vertices
-                let mut max_edge_length = self.params.max_edge_length;
+                    // Determine appropriate edge length based on vertices
+                    let mut max_edge_length = self.params.max_edge_length;
 
-                // Check if vertices are in the input polygon
-                for (i, input_vertex) in self.input_vertices.iter().enumerate() {
-                    if (input_vertex.x - v0.point.x).abs() < 1e-6
-                        && (input_vertex.y - v0.point.y).abs() < 1e-6
-                    {
-                        max_edge_length = max_edge_length.min(self.vertex_sizes[i]);
+                    // Check if vertices are in the input polygon
+                    for (i, input_vertex) in self.input_vertices.iter().enumerate() {
+                        if (input_vertex.x - v0.point.x).abs() < 1e-6
+                            && (input_vertex.y - v0.point.y).abs() < 1e-6
+                        {
+                            max_edge_length = max_edge_length.min(self.vertex_sizes[i]);
+                        }
+                        if (input_vertex.x - v1.point.x).abs() < 1e-6
+                            && (input_vertex.y - v1.point.y).abs() < 1e-6
+                        {
+                            max_edge_length = max_edge_length.min(self.vertex_sizes[i]);
+                        }
                     }
-                    if (input_vertex.x - v1.point.x).abs() < 1e-6
-                        && (input_vertex.y - v1.point.y).abs() < 1e-6
-                    {
-                        max_edge_length = max_edge_length.min(self.vertex_sizes[i]);
-                    }
-                }
 
-                if length > max_edge_length {
-                    Some(edge_id)
-                } else {
-                    None
-                }
-            }).collect();
+                    if length > max_edge_length {
+                        Some(edge_id)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
         }
 
         #[cfg(not(feature = "rayon"))]

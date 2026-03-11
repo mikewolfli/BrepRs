@@ -5,8 +5,7 @@
 //! LOD selection.
 
 use crate::geometry::{Point, Vector};
-use crate::mesh::mesh_data::{Mesh2D, Mesh3D};
-use std::collections::HashMap;
+use crate::mesh::mesh_data::Mesh3D;
 
 /// LOD level definition
 pub struct LodLevel {
@@ -17,7 +16,7 @@ pub struct LodLevel {
     /// Simplification factor (relative to highest detail)
     simplification_factor: f64,
     /// Bounding box for this level
-    bounding_box: BoundingBox,
+    bounding_box: crate::geometry::BoundingBox,
     /// Quality metrics
     quality_metrics: LodQualityMetrics,
 }
@@ -103,7 +102,8 @@ impl LodSystem {
     /// Generate LOD levels
     fn generate_lod_levels(&mut self) {
         // Add original mesh as level 0 (highest detail)
-        let original_bbox = self.original_mesh.calculate_bounding_box();
+        let (min_point, max_point) = self.original_mesh.calculate_bounding_box();
+        let original_bbox = crate::geometry::BoundingBox::new(min_point, max_point);
         let original_metrics = LodQualityMetrics {
             triangle_count: self.original_mesh.faces.len(),
             average_edge_length: self.calculate_average_edge_length(&self.original_mesh),
@@ -127,7 +127,8 @@ impl LodSystem {
 
             // Simplify mesh
             let simplified_mesh = self.simplify_mesh(&prev_level.mesh, simplification_factor);
-            let bbox = simplified_mesh.calculate_bounding_box();
+            let (min_point, max_point) = simplified_mesh.calculate_bounding_box();
+            let bbox = crate::geometry::BoundingBox::new(min_point, max_point);
             let metrics = LodQualityMetrics {
                 triangle_count: simplified_mesh.faces.len(),
                 average_edge_length: self.calculate_average_edge_length(&simplified_mesh),
@@ -160,7 +161,8 @@ impl LodSystem {
                 let v1 = &decimated.vertices[edge.vertices[1]];
                 let len = ((v0.point.x - v1.point.x).powi(2)
                     + (v0.point.y - v1.point.y).powi(2)
-                    + (v0.point.z - v1.point.z).powi(2)).sqrt();
+                    + (v0.point.z - v1.point.z).powi(2))
+                .sqrt();
                 if len < min_len {
                     min_len = len;
                     min_edge = Some(edge.id);
@@ -186,10 +188,15 @@ impl LodSystem {
             let v1 = &mesh.vertices[edge.vertices[1]];
             total += ((v0.point.x - v1.point.x).powi(2)
                 + (v0.point.y - v1.point.y).powi(2)
-                + (v0.point.z - v1.point.z).powi(2)).sqrt();
+                + (v0.point.z - v1.point.z).powi(2))
+            .sqrt();
             count += 1;
         }
-        if count > 0 { total / count as f64 } else { 0.0 }
+        if count > 0 {
+            total / count as f64
+        } else {
+            0.0
+        }
     }
 
     /// Calculate maximum edge length for a mesh
@@ -201,8 +208,11 @@ impl LodSystem {
             let v1 = &mesh.vertices[edge.vertices[1]];
             let len = ((v0.point.x - v1.point.x).powi(2)
                 + (v0.point.y - v1.point.y).powi(2)
-                + (v0.point.z - v1.point.z).powi(2)).sqrt();
-            if len > max_len { max_len = len; }
+                + (v0.point.z - v1.point.z).powi(2))
+            .sqrt();
+            if len > max_len {
+                max_len = len;
+            }
         }
         max_len
     }
@@ -217,17 +227,23 @@ impl LodSystem {
                 let o = &original.vertices[i];
                 total += ((v.point.x - o.point.x).powi(2)
                     + (v.point.y - o.point.y).powi(2)
-                    + (v.point.z - o.point.z).powi(2)).sqrt();
+                    + (v.point.z - o.point.z).powi(2))
+                .sqrt();
                 count += 1;
             }
         }
-        if count > 0 { total / count as f64 } else { 0.0 }
+        if count > 0 {
+            total / count as f64
+        } else {
+            0.0
+        }
     }
 
     /// Calculate visual error between simplified mesh and original mesh
     fn calculate_visual_error(&self, simplified: &Mesh3D, original: &Mesh3D) -> f64 {
         // Visual error: difference in triangle count
-        (original.faces.len() as f64 - simplified.faces.len() as f64).abs() / original.faces.len() as f64
+        (original.faces.len() as f64 - simplified.faces.len() as f64).abs()
+            / original.faces.len() as f64
     }
 
     /// Select LOD level based on view parameters
@@ -245,7 +261,7 @@ impl LodSystem {
 
         // Calculate distance from camera to mesh
         let mesh_center = self.lod_levels[0].bounding_box.center();
-        let distance = (camera_position - mesh_center).length();
+        let distance = camera_position.distance(&mesh_center);
 
         // Calculate screen space error for each LOD level
         let mut best_level = 0;
@@ -276,8 +292,8 @@ impl LodSystem {
     fn calculate_screen_space_error(
         &self,
         lod_level: &LodLevel,
-        camera_position: Point,
-        camera_direction: Vector,
+        _camera_position: Point,
+        _camera_direction: Vector,
         screen_width: f64,
         screen_height: f64,
         distance: f64,
@@ -360,23 +376,35 @@ impl LodSystem {
                         let x = parts[1].parse().unwrap_or(0.0);
                         let y = parts[2].parse().unwrap_or(0.0);
                         let z = parts[3].parse().unwrap_or(0.0);
-                        vertices.push(Point::new(x, y, z));
+                        vertices.push(crate::mesh::mesh_data::MeshVertex::new(
+                            vertices.len(),
+                            Point::new(x, y, z),
+                        ));
                     } else if line.starts_with("f ") {
                         let parts: Vec<_> = line.split_whitespace().collect();
                         let v0 = parts[1].parse::<usize>().unwrap_or(1) - 1;
                         let v1 = parts[2].parse::<usize>().unwrap_or(1) - 1;
                         let v2 = parts[3].parse::<usize>().unwrap_or(1) - 1;
-                        faces.push(MeshFace::new(faces.len(), vec![v0, v1, v2]));
+                        faces.push(crate::mesh::mesh_data::MeshFace::new(
+                            faces.len(),
+                            vec![v0, v1, v2],
+                        ));
                     }
                 }
-                let mesh = Mesh3D { vertices, faces, ..Default::default() };
+                let mesh = Mesh3D {
+                    vertices,
+                    faces,
+                    ..Default::default()
+                };
+                let (min_point, max_point) = mesh.calculate_bounding_box();
+                let triangle_count = mesh.faces.len();
                 lod_levels.push(LodLevel {
                     level,
                     mesh,
                     simplification_factor: 1.0,
-                    bounding_box: mesh.calculate_bounding_box(),
+                    bounding_box: crate::geometry::BoundingBox::new(min_point, max_point),
                     quality_metrics: LodQualityMetrics {
-                        triangle_count: mesh.faces.len(),
+                        triangle_count,
                         average_edge_length: 0.0,
                         maximum_edge_length: 0.0,
                         geometric_error: 0.0,
@@ -389,7 +417,10 @@ impl LodSystem {
             }
         }
         Ok(Self {
-            original_mesh: lod_levels.get(0).map(|l| l.mesh.clone()).unwrap_or_default(),
+            original_mesh: lod_levels
+                .get(0)
+                .map(|l| l.mesh.clone())
+                .unwrap_or_default(),
             lod_levels,
             params: LodParams::default(),
             current_level: 0,
@@ -448,8 +479,10 @@ impl LodTransitionManager {
 
     /// Update transition progress
     pub fn update_transition(&mut self) -> bool {
+        // Get current time first to avoid borrowing conflicts
+        let current_time = self.get_current_time();
+
         if let Some(transition) = &mut self.current_transition {
-            let current_time = self.get_current_time();
             let elapsed = current_time - transition.start_time;
             transition.progress = (elapsed / self.params.duration).clamp(0.0, 1.0);
 
@@ -502,21 +535,21 @@ impl LodCollisionDetector {
     }
 
     /// Check collision with a point
-    pub fn check_point_collision(&self, point: Point) -> bool {
+    pub fn check_point_collision(&self, _point: Point) -> bool {
         // Implementation of point collision detection
         // This is a placeholder implementation
         false
     }
 
     /// Check collision with a ray
-    pub fn check_ray_collision(&self, origin: Point, direction: Vector) -> Option<Point> {
+    pub fn check_ray_collision(&self, _origin: Point, _direction: Vector) -> Option<Point> {
         // Implementation of ray collision detection
         // This is a placeholder implementation
         None
     }
 
     /// Check collision with another mesh
-    pub fn check_mesh_collision(&self, other_mesh: &Mesh3D) -> bool {
+    pub fn check_mesh_collision(&self, _other_mesh: &Mesh3D) -> bool {
         // Implementation of mesh collision detection
         // This is a placeholder implementation
         false

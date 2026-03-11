@@ -121,14 +121,14 @@ impl ParallelBooleanOps {
             );
         }
 
-        if shapes.len() == 1 {
+        if shapes.len() <= 1 {
             let mut compound = TopoDsCompound::new();
             compound.add_component(shapes[0].clone());
             return ParallelResult::new(compound, ParallelStats::new().with_items_processed(1));
         }
 
         let start = Instant::now();
-        let ops = self.boolean_ops.clone();
+        let _ops = self.boolean_ops.clone();
 
         // Use parallel reduction to fuse all shapes
         let result: TopoDsCompound = if shapes.len() >= self.config.min_parallel_size {

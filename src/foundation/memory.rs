@@ -345,7 +345,8 @@ impl Default for LodMemoryManager {
 }
 
 /// Global LOD memory manager instance
-pub static LOD_MEMORY_MANAGER: LodMemoryManager = LodMemoryManager::new(5, 1024 * 1024 * 1024);
+pub static LOD_MEMORY_MANAGER: std::sync::LazyLock<LodMemoryManager> =
+    std::sync::LazyLock::new(|| LodMemoryManager::new(5, 1024 * 1024 * 1024));
 
 #[macro_export]
 macro_rules! track_allocation {

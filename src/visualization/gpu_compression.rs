@@ -43,8 +43,8 @@ impl CompressionAlgorithm {
             CompressionAlgorithm::Bc5 => 4.0,
             CompressionAlgorithm::Bc6 => 6.0,
             CompressionAlgorithm::Bc7 => 6.0,
-            CompressionAlgorithm::Rle => 2.0, // Average
-            CompressionAlgorithm::Lz4 => 2.5, // Average
+            CompressionAlgorithm::Rle => 2.0,  // Average
+            CompressionAlgorithm::Lz4 => 2.5,  // Average
             CompressionAlgorithm::Zstd => 3.0, // Average
         }
     }
@@ -176,10 +176,7 @@ impl GpuMemoryCompressor {
     /// Create a new compressor with specified algorithm
     #[inline]
     pub fn new(algorithm: CompressionAlgorithm, quality: CompressionQuality) -> Self {
-        Self {
-            algorithm,
-            quality,
-        }
+        Self { algorithm, quality }
     }
 
     /// Create compressor for texture format
@@ -258,23 +255,23 @@ impl GpuMemoryCompressor {
         // BC1 compresses 4x4 RGBA blocks to 8 bytes
         // This is a simplified implementation
         // Real implementation would use proper BC1 encoding
-        
+
         let block_size = 16; // 4x4 pixels * 4 bytes
         let compressed_block_size = 8;
-        
+
         if data.len() % block_size != 0 {
             return Err("Data size must be multiple of 16 bytes".to_string());
         }
-        
+
         let num_blocks = data.len() / block_size;
         let mut compressed = Vec::with_capacity(num_blocks * compressed_block_size);
-        
+
         for block in data.chunks_exact(block_size) {
             // Simplified: just copy first 8 bytes
             // Real implementation would encode properly
             compressed.extend_from_slice(&block[..compressed_block_size]);
         }
-        
+
         Ok(compressed)
     }
 
@@ -283,20 +280,20 @@ impl GpuMemoryCompressor {
         // Simplified decompression
         const BLOCK_SIZE: usize = 16;
         const COMPRESSED_BLOCK_SIZE: usize = 8;
-        
+
         if compressed.len() % COMPRESSED_BLOCK_SIZE != 0 {
             return Err("Compressed data size invalid".to_string());
         }
-        
+
         let mut decompressed = Vec::with_capacity(original_size);
-        
+
         for block in compressed.chunks_exact(COMPRESSED_BLOCK_SIZE) {
             // Simplified: expand to 16 bytes
             let mut expanded = vec![0u8; BLOCK_SIZE];
             expanded[..COMPRESSED_BLOCK_SIZE].copy_from_slice(block);
             decompressed.extend_from_slice(&expanded);
         }
-        
+
         Ok(decompressed)
     }
 
@@ -306,19 +303,19 @@ impl GpuMemoryCompressor {
         // BC3 compresses 4x4 RGBA blocks to 16 bytes
         let block_size = 16;
         let compressed_block_size = 16;
-        
+
         if data.len() % block_size != 0 {
             return Err("Data size must be multiple of 16 bytes".to_string());
         }
-        
+
         let num_blocks = data.len() / block_size;
         let mut compressed = Vec::with_capacity(num_blocks * compressed_block_size);
-        
+
         for block in data.chunks_exact(block_size) {
             // Simplified: copy all 16 bytes
             compressed.extend_from_slice(block);
         }
-        
+
         Ok(compressed)
     }
 
@@ -334,19 +331,19 @@ impl GpuMemoryCompressor {
         // BC4 compresses 4x4 grayscale blocks to 8 bytes
         let block_size = 16;
         let compressed_block_size = 8;
-        
+
         if data.len() % block_size != 0 {
             return Err("Data size must be multiple of 16 bytes".to_string());
         }
-        
+
         let num_blocks = data.len() / block_size;
         let mut compressed = Vec::with_capacity(num_blocks * compressed_block_size);
-        
+
         for block in data.chunks_exact(block_size) {
             // Simplified: copy first 8 bytes
             compressed.extend_from_slice(&block[..compressed_block_size]);
         }
-        
+
         Ok(compressed)
     }
 
@@ -354,15 +351,15 @@ impl GpuMemoryCompressor {
     fn decompress_bc4(&self, compressed: &[u8], original_size: usize) -> Result<Vec<u8>, String> {
         const BLOCK_SIZE: usize = 16;
         const COMPRESSED_BLOCK_SIZE: usize = 8;
-        
+
         let mut decompressed = Vec::with_capacity(original_size);
-        
+
         for block in compressed.chunks_exact(COMPRESSED_BLOCK_SIZE) {
             let mut expanded = vec![0u8; BLOCK_SIZE];
             expanded[..COMPRESSED_BLOCK_SIZE].copy_from_slice(block);
             decompressed.extend_from_slice(&expanded);
         }
-        
+
         Ok(decompressed)
     }
 
@@ -372,18 +369,18 @@ impl GpuMemoryCompressor {
         // BC5 compresses 4x4 2-channel blocks to 16 bytes
         let block_size = 16;
         let compressed_block_size = 16;
-        
+
         if data.len() % block_size != 0 {
             return Err("Data size must be multiple of 16 bytes".to_string());
         }
-        
+
         let num_blocks = data.len() / block_size;
         let mut compressed = Vec::with_capacity(num_blocks * compressed_block_size);
-        
+
         for block in data.chunks_exact(block_size) {
             compressed.extend_from_slice(block);
         }
-        
+
         Ok(compressed)
     }
 
@@ -399,18 +396,18 @@ impl GpuMemoryCompressor {
         // BC6 compresses 4x4 float blocks to 16 bytes
         let block_size = 16;
         let compressed_block_size = 16;
-        
+
         if data.len() % block_size != 0 {
             return Err("Data size must be multiple of 16 bytes".to_string());
         }
-        
+
         let num_blocks = data.len() / block_size;
         let mut compressed = Vec::with_capacity(num_blocks * compressed_block_size);
-        
+
         for block in data.chunks_exact(block_size) {
             compressed.extend_from_slice(block);
         }
-        
+
         Ok(compressed)
     }
 
@@ -426,18 +423,18 @@ impl GpuMemoryCompressor {
         // BC7 compresses 4x4 float blocks to 16 bytes
         let block_size = 16;
         let compressed_block_size = 16;
-        
+
         if data.len() % block_size != 0 {
             return Err("Data size must be multiple of 16 bytes".to_string());
         }
-        
+
         let num_blocks = data.len() / block_size;
         let mut compressed = Vec::with_capacity(num_blocks * compressed_block_size);
-        
+
         for block in data.chunks_exact(block_size) {
             compressed.extend_from_slice(block);
         }
-        
+
         Ok(compressed)
     }
 
@@ -453,11 +450,11 @@ impl GpuMemoryCompressor {
         let mut compressed = Vec::new();
         let mut i = 0;
         let data_len = data.len();
-        
+
         while i < data_len {
             let byte = data[i];
             let mut count = 1u8;
-            
+
             loop {
                 let count_usize = count as usize;
                 if i + count_usize >= data_len || count >= 255 {
@@ -468,12 +465,12 @@ impl GpuMemoryCompressor {
                 }
                 count = count.saturating_add(1);
             }
-            
+
             compressed.push(count);
             compressed.push(byte);
             i += count as usize;
         }
-        
+
         Ok(compressed)
     }
 
@@ -481,18 +478,18 @@ impl GpuMemoryCompressor {
     fn decompress_rle(&self, compressed: &[u8], original_size: usize) -> Result<Vec<u8>, String> {
         let mut decompressed = Vec::with_capacity(original_size);
         let mut i = 0;
-        
+
         while i + 1 < compressed.len() {
             let count = compressed[i] as usize;
             let byte = compressed[i + 1];
-            
+
             for _ in 0..count {
                 decompressed.push(byte);
             }
-            
+
             i += 2;
         }
-        
+
         Ok(decompressed)
     }
 
@@ -508,23 +505,23 @@ impl GpuMemoryCompressor {
     fn decompress_lz4(&self, compressed: &[u8], original_size: usize) -> Result<Vec<u8>, String> {
         // Real LZ4 decompression
         use lz4::block::decompress;
-        decompress(compressed, Some(original_size)).map_err(|e| e.to_string())
+        decompress(compressed, Some(original_size.try_into().unwrap())).map_err(|e| e.to_string())
     }
 
     // Zstandard compression (placeholder)
     #[inline]
     fn compress_zstd(&self, data: &[u8]) -> Result<Vec<u8>, String> {
         // Real Zstd compression
-        use zstd::stream::encode_all;
         use std::io::Cursor;
+        use zstd::stream::encode_all;
         encode_all(Cursor::new(data), 3).map_err(|e| e.to_string())
     }
 
     #[inline]
-    fn decompress_zstd(&self, compressed: &[u8], original_size: usize) -> Result<Vec<u8>, String> {
+    fn decompress_zstd(&self, compressed: &[u8], _original_size: usize) -> Result<Vec<u8>, String> {
         // Real Zstd decompression
-        use zstd::stream::decode_all;
         use std::io::Cursor;
+        use zstd::stream::decode_all;
         decode_all(Cursor::new(compressed)).map_err(|e| e.to_string())
     }
 }
@@ -554,10 +551,8 @@ mod tests {
 
     #[test]
     fn test_compressor_creation() {
-        let compressor = GpuMemoryCompressor::new(
-            CompressionAlgorithm::Bc3,
-            CompressionQuality::Balanced,
-        );
+        let compressor =
+            GpuMemoryCompressor::new(CompressionAlgorithm::Bc3, CompressionQuality::Balanced);
 
         assert_eq!(compressor.algorithm, CompressionAlgorithm::Bc3);
         assert_eq!(compressor.quality, CompressionQuality::Balanced);
@@ -565,20 +560,16 @@ mod tests {
 
     #[test]
     fn test_compressor_for_format() {
-        let compressor = GpuMemoryCompressor::for_format(
-            TextureFormat::Rgba8,
-            CompressionQuality::Balanced,
-        );
+        let compressor =
+            GpuMemoryCompressor::for_format(TextureFormat::Rgba8, CompressionQuality::Balanced);
 
         assert_eq!(compressor.algorithm, CompressionAlgorithm::Bc3);
     }
 
     #[test]
     fn test_rle_compression() {
-        let compressor = GpuMemoryCompressor::new(
-            CompressionAlgorithm::Rle,
-            CompressionQuality::Balanced,
-        );
+        let compressor =
+            GpuMemoryCompressor::new(CompressionAlgorithm::Rle, CompressionQuality::Balanced);
 
         let data = vec![1u8, 1, 1, 2, 2, 2, 2, 3];
         let compressed = compressor.compress(&data).unwrap();
@@ -589,10 +580,8 @@ mod tests {
 
     #[test]
     fn test_bc1_compression() {
-        let compressor = GpuMemoryCompressor::new(
-            CompressionAlgorithm::Bc1,
-            CompressionQuality::Balanced,
-        );
+        let compressor =
+            GpuMemoryCompressor::new(CompressionAlgorithm::Bc1, CompressionQuality::Balanced);
 
         // Create 4x4 block (16 bytes)
         let data = vec![255u8; 16];
@@ -616,10 +605,8 @@ mod tests {
 
     #[test]
     fn test_compress_with_stats() {
-        let compressor = GpuMemoryCompressor::new(
-            CompressionAlgorithm::Rle,
-            CompressionQuality::Balanced,
-        );
+        let compressor =
+            GpuMemoryCompressor::new(CompressionAlgorithm::Rle, CompressionQuality::Balanced);
 
         let data = vec![1u8, 1, 1, 2, 2, 2, 2, 3];
         let (compressed, stats) = compressor.compress_with_stats(&data).unwrap();
