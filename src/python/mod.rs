@@ -18,9 +18,8 @@
 //! filleted.to_stl("output.stl")
 //! ```
 
-use pyo3::exceptions::{PyRuntimeError, PyValueError};
+use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList, PyTuple};
 
 pub mod geometry;
 pub mod modeling;

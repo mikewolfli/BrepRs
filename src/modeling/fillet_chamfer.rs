@@ -195,7 +195,7 @@ impl FilletChamfer {
     }
     
     /// Trim adjacent faces for fillet
-    fn trim_adjacent_faces(&self, solid: &mut TopoDsSolid, edge: &Handle<TopoDsEdge>, adjacent_faces: &[Handle<TopoDsFace>], radius: f64) {
+    fn trim_adjacent_faces(&self, _solid: &mut TopoDsSolid, edge: &Handle<TopoDsEdge>, adjacent_faces: &[Handle<TopoDsFace>], _radius: f64) {
         // Trim the adjacent faces to make room for the fillet
         // This is a simplified implementation
         for face in adjacent_faces {
@@ -430,7 +430,7 @@ impl FilletChamfer {
                     if length > 1e-6 {
                         let unit_dx = dx / length;
                         let unit_dy = dy / length;
-                        let unit_dz = dz / length;
+                        let _unit_dz = dz / length;
                         
                         // Generate points along the fillet surface
                         // For simplicity, we'll generate points around the edge
@@ -510,7 +510,7 @@ impl FilletChamfer {
                     if length > 1e-6 {
                         let unit_dx = dx / length;
                         let unit_dy = dy / length;
-                        let unit_dz = dz / length;
+                        let _unit_dz = dz / length;
                         
                         // Generate points along the chamfer surface
                         for i in 0..20 {

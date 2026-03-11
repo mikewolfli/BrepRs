@@ -1,6 +1,6 @@
 //! Python bindings for primitive creation
 
-use super::geometry::{PyPoint, PyVector};
+use super::geometry::PyPoint;
 use super::topology::PySolid;
 use crate::foundation::handle::Handle;
 use crate::modeling::primitives;

@@ -131,7 +131,7 @@ impl QuadMesher {
 
         // Build face adjacency
         self.face_adjacency.resize(mesh.faces.len(), Vec::new());
-        for (edge, faces) in &self.edge_to_faces {
+        for (_edge, faces) in &self.edge_to_faces {
             if faces.len() == 2 {
                 self.face_adjacency[faces[0]].push(faces[1]);
                 self.face_adjacency[faces[1]].push(faces[0]);
@@ -338,7 +338,7 @@ impl QuadMesher {
         let p0 = &mesh.vertices[v0].point;
         let p1 = &mesh.vertices[v1].point;
         let p2 = &mesh.vertices[v2].point;
-        let p3 = &mesh.vertices[v3].point;
+        let _p3 = &mesh.vertices[v3].point;
 
         let v1 = [p1.x - p0.x, p1.y - p0.y, 0.0];
         let v2 = [p2.x - p0.x, p2.y - p0.y, 0.0];

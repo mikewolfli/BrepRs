@@ -28,10 +28,6 @@ pub mod topology;
 pub mod primitives;
 pub mod modeling;
 
-use geometry::*;
-use topology::*;
-use primitives::*;
-use modeling::*;
 
 /// Initialize the WebAssembly module
 #[wasm_bindgen(start)]

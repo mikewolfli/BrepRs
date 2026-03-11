@@ -193,7 +193,7 @@ impl HexMesher {
             + (top_center.z - bottom_center.z).powi(2))
         .sqrt();
 
-        let axis = Point::new(
+        let _axis = Point::new(
             top_center.x - bottom_center.x,
             top_center.y - bottom_center.y,
             top_center.z - bottom_center.z,

@@ -320,6 +320,7 @@ impl PlyWriter {
 }
 
 /// PLY file format reader
+#[allow(dead_code)]
 pub struct PlyReader {
     reader: BufReader<File>,
     binary: bool,

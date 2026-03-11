@@ -334,7 +334,7 @@ impl StepWriter {
     fn write_solid_representation(
         &self,
         writer: &mut BufWriter<File>,
-        shape: &TopoDsShape,
+        _shape: &TopoDsShape,
         base_id: usize,
     ) -> Result<(), StepError> {
         writeln!(
@@ -348,80 +348,80 @@ impl StepWriter {
             "#{}=CLOSED_SHELL('',(#{}));",
             base_id + 1,
             base_id + 2
-        );
+        )?;
 
         // Write faces
-        let mut face_id = base_id + 3;
+        let face_id = base_id + 3;
         writeln!(
             writer,
             "#{}=ADVANCED_FACE('',(#{}),#{},.T.);",
             face_id,
             face_id + 1,
             face_id + 2
-        );
+        )?;
         writeln!(
             writer,
             "#{}=FACE_OUTER_BOUND('',#{},.T.);",
             face_id + 1,
             face_id + 3
-        );
-        writeln!(writer, "#{}=POLY_LOOP('',(#{}));", face_id + 3, face_id + 4);
+        )?;
+        writeln!(writer, "#{}=POLY_LOOP('',(#{}));", face_id + 3, face_id + 4)?;
 
         // Write vertices
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", face_id + 4);
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,0.,0.));", face_id + 5);
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,1.,0.));", face_id + 6);
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", face_id + 4)?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,0.,0.));", face_id + 5)?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,1.,0.));", face_id + 6)?;
 
-        writeln!(writer, "#{}=PLANE('',#{});", face_id + 2, face_id + 7);
+        writeln!(writer, "#{}=PLANE('',#{});", face_id + 2, face_id + 7)?;
         writeln!(
             writer,
             "#{}=AXIS2_PLACEMENT_3D('',#{},#2,#3);",
             face_id + 7,
             face_id + 8
-        );
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", face_id + 8);
+        )?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", face_id + 8)?;
 
         writeln!(
             writer,
             "#{}=SHAPE_REPRESENTATION('',(#{}),#14);",
             base_id + 100,
             base_id + 101
-        );
+        )?;
         writeln!(
             writer,
             "#{}=PRODUCT_DEFINITION_SHAPE('',' ',#10);",
             base_id + 101
-        );
+        )?;
         writeln!(
             writer,
             "#{}=ADVANCED_BREP_SHAPE_REPRESENTATION('',(#{}),#14);",
             base_id + 102,
             base_id + 103
-        );
+        )?;
         writeln!(
             writer,
             "#{}=MAPPED_ITEM('',#{},#{});",
             base_id + 103,
             base_id + 104,
             base_id + 105
-        );
+        )?;
         writeln!(
             writer,
             "#{}=REPRESENTATION_MAP('',#{},#{});",
             base_id + 104,
             base_id + 106,
             base_id + 107
-        );
+        )?;
         writeln!(
             writer,
             "#{}=AXIS2_PLACEMENT_3D('',#1,#2,#3);",
             base_id + 106
-        );
+        )?;
         writeln!(
             writer,
             "#{}=AXIS2_PLACEMENT_3D('',#1,#2,#3);",
             base_id + 107
-        );
+        )?;
 
         Ok(())
     }
@@ -439,25 +439,25 @@ impl StepWriter {
             base_id,
             base_id + 1,
             base_id + 2
-        );
+        )?;
         writeln!(
             writer,
             "#{}=FACE_OUTER_BOUND('',#{},.T.);",
             base_id + 1,
             base_id + 3
-        );
-        writeln!(writer, "#{}=POLY_LOOP('',(#{}));", base_id + 3, base_id + 4);
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 4);
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,0.,0.));", base_id + 5);
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,1.,0.));", base_id + 6);
-        writeln!(writer, "#{}=PLANE('',#{});", base_id + 2, base_id + 7);
+        )?;
+        writeln!(writer, "#{}=POLY_LOOP('',(#{}));", base_id + 3, base_id + 4)?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 4)?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,0.,0.));", base_id + 5)?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,1.,0.));", base_id + 6)?;
+        writeln!(writer, "#{}=PLANE('',#{});", base_id + 2, base_id + 7)?;
         writeln!(
             writer,
             "#{}=AXIS2_PLACEMENT_3D('',#{},#2,#3);",
             base_id + 7,
             base_id + 8
-        );
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 8);
+        )?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 8)?;
 
         Ok(())
     }
@@ -469,15 +469,15 @@ impl StepWriter {
         _shape: &TopoDsShape,
         base_id: usize,
     ) -> Result<(), StepError> {
-        writeln!(writer, "#{}=VERTEX_POINT('',#{});", base_id, base_id + 1);
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 1);
+        writeln!(writer, "#{}=VERTEX_POINT('',#{});", base_id, base_id + 1)?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 1)?;
         writeln!(
             writer,
             "#{}=VERTEX_POINT('',#{});",
             base_id + 2,
             base_id + 3
-        );
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,0.,0.));", base_id + 3);
+        )?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,0.,0.));", base_id + 3)?;
         writeln!(
             writer,
             "#{}=EDGE_CURVE('',#{},#{},#{},.T.);",
@@ -485,9 +485,9 @@ impl StepWriter {
             base_id,
             base_id + 2,
             base_id + 5
-        );
-        writeln!(writer, "#{}=LINE('',#{});", base_id + 5, base_id + 6);
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 6);
+        )?;
+        writeln!(writer, "#{}=LINE('',#{});", base_id + 5, base_id + 6)?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 6)?;
 
         Ok(())
     }
@@ -499,14 +499,14 @@ impl StepWriter {
         _shape: &TopoDsShape,
         base_id: usize,
     ) -> Result<(), StepError> {
-        writeln!(writer, "#{}=OPEN_SHELL('',(#{}));", base_id, base_id + 1);
-        writeln!(writer, "#{}=EDGE_LOOP('',(#{}));", base_id + 1, base_id + 2);
+        writeln!(writer, "#{}=OPEN_SHELL('',(#{}));", base_id, base_id + 1)?;
+        writeln!(writer, "#{}=EDGE_LOOP('',(#{}));", base_id + 1, base_id + 2)?;
         writeln!(
             writer,
             "#{}=ORIENTED_EDGE('',*,*,#{},.T.);",
             base_id + 2,
             base_id + 3
-        );
+        )?;
         writeln!(
             writer,
             "#{}=EDGE_CURVE('',#{},#{},#{},.T.);",
@@ -514,23 +514,23 @@ impl StepWriter {
             base_id + 4,
             base_id + 5,
             base_id + 6
-        );
+        )?;
         writeln!(
             writer,
             "#{}=VERTEX_POINT('',#{});",
             base_id + 4,
             base_id + 7
-        );
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 7);
+        )?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 7)?;
         writeln!(
             writer,
             "#{}=VERTEX_POINT('',#{});",
             base_id + 5,
             base_id + 8
-        );
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,0.,0.));", base_id + 8);
-        writeln!(writer, "#{}=LINE('',#{});", base_id + 6, base_id + 9);
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 9);
+        )?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,0.,0.));", base_id + 8)?;
+        writeln!(writer, "#{}=LINE('',#{});", base_id + 6, base_id + 9)?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 9)?;
 
         Ok(())
     }
@@ -547,38 +547,38 @@ impl StepWriter {
             "#{}=MANIFOLD_SOLID_BREP('',#{});",
             base_id,
             base_id + 1
-        );
+        )?;
         writeln!(
             writer,
             "#{}=CLOSED_SHELL('',(#{}));",
             base_id + 1,
             base_id + 2
-        );
+        )?;
         writeln!(
             writer,
             "#{}=ADVANCED_FACE('',(#{}),#{},.T.);",
             base_id + 2,
             base_id + 3,
             base_id + 4
-        );
+        )?;
         writeln!(
             writer,
             "#{}=FACE_OUTER_BOUND('',#{},.T.);",
             base_id + 3,
             base_id + 5
-        );
-        writeln!(writer, "#{}=POLY_LOOP('',(#{}));", base_id + 5, base_id + 6);
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 6);
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,0.,0.));", base_id + 7);
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,1.,0.));", base_id + 8);
-        writeln!(writer, "#{}=PLANE('',#{});", base_id + 4, base_id + 9);
+        )?;
+        writeln!(writer, "#{}=POLY_LOOP('',(#{}));", base_id + 5, base_id + 6)?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 6)?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,0.,0.));", base_id + 7)?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,1.,0.));", base_id + 8)?;
+        writeln!(writer, "#{}=PLANE('',#{});", base_id + 4, base_id + 9)?;
         writeln!(
             writer,
             "#{}=AXIS2_PLACEMENT_3D('',#{},#2,#3);",
             base_id + 9,
             base_id + 10
-        );
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 10);
+        )?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 10)?;
 
         Ok(())
     }
@@ -590,32 +590,32 @@ impl StepWriter {
         _shape: &TopoDsShape,
         base_id: usize,
     ) -> Result<(), StepError> {
-        writeln!(writer, "#{}=CLOSED_SHELL('',(#{}));", base_id, base_id + 1);
+        writeln!(writer, "#{}=CLOSED_SHELL('',(#{}));", base_id, base_id + 1)?;
         writeln!(
             writer,
             "#{}=ADVANCED_FACE('',(#{}),#{},.T.);",
             base_id + 1,
             base_id + 2,
             base_id + 3
-        );
+        )?;
         writeln!(
             writer,
             "#{}=FACE_OUTER_BOUND('',#{},.T.);",
             base_id + 2,
             base_id + 4
-        );
-        writeln!(writer, "#{}=POLY_LOOP('',(#{}));", base_id + 4, base_id + 5);
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 5);
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,0.,0.));", base_id + 6);
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,1.,0.));", base_id + 7);
-        writeln!(writer, "#{}=PLANE('',#{});", base_id + 3, base_id + 8);
+        )?;
+        writeln!(writer, "#{}=POLY_LOOP('',(#{}));", base_id + 4, base_id + 5)?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 5)?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,0.,0.));", base_id + 6)?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(1.,1.,0.));", base_id + 7)?;
+        writeln!(writer, "#{}=PLANE('',#{});", base_id + 3, base_id + 8)?;
         writeln!(
             writer,
             "#{}=AXIS2_PLACEMENT_3D('',#{},#2,#3);",
             base_id + 8,
             base_id + 9
-        );
-        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 9);
+        )?;
+        writeln!(writer, "#{}=CARTESIAN_POINT('',(0.,0.,0.));", base_id + 9)?;
 
         Ok(())
     }

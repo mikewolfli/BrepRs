@@ -253,7 +253,7 @@ impl BooleanOperations {
     /// # Returns
     /// A new compound that contains the intersection curves
     #[inline]
-    pub fn section_with_plane(&self, shape: &Handle<TopoDsShape>, plane: &Plane) -> TopoDsCompound {
+    pub fn section_with_plane(&self, shape: &Handle<TopoDsShape>, _plane: &Plane) -> TopoDsCompound {
         let mut compound = TopoDsCompound::new();
 
         // Extract all faces from the shape
@@ -366,7 +366,7 @@ impl BooleanOperations {
     /// Reconstruct shapes from BSP tree
     fn reconstruct_shapes_from_tree(
         &self,
-        tree: &crate::modeling::bsp_tree::BspTree,
+        _tree: &crate::modeling::bsp_tree::BspTree,
         compound: &mut TopoDsCompound,
     ) {
         // Simplified implementation: just create a box

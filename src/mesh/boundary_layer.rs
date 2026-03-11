@@ -4,7 +4,7 @@
 //! (prism layers) for CFD simulations, which are essential for resolving
 //! flow near solid walls.
 
-use super::mesh_data::{Mesh3D, MeshPrism, MeshVertex};
+use super::mesh_data::Mesh3D;
 use crate::geometry::{Point, Vector};
 use std::collections::{HashMap, HashSet};
 
@@ -136,7 +136,7 @@ impl BoundaryLayerMesher {
 
         // Identify boundary faces (faces with at least one edge that's only in one face)
         let mut boundary_faces = HashSet::new();
-        for (edge, faces) in face_adjacency {
+        for (_edge, faces) in face_adjacency {
             if faces.len() == 1 {
                 boundary_faces.insert(faces[0]);
             }
@@ -206,7 +206,7 @@ impl BoundaryLayerMesher {
         }
 
         // Normalize vertex normals
-        for (vertex_id, normal) in &mut self.vertex_normals {
+        for (_vertex_id, normal) in &mut self.vertex_normals {
             *normal = normal.normalized();
         }
     }
@@ -226,7 +226,7 @@ impl BoundaryLayerMesher {
         // Create vertex layers
         let mut layer_vertices = vec![vertex_map.clone()];
 
-        for (layer_idx, thickness) in layer_thicknesses.iter().enumerate() {
+        for (_layer_idx, thickness) in layer_thicknesses.iter().enumerate() {
             let mut current_layer = HashMap::new();
 
             for &face_id in boundary_faces {

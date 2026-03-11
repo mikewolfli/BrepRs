@@ -2,8 +2,6 @@ use crate::foundation::handle::Handle;
 use crate::geometry::{Plane, Point};
 use crate::topology::{TopoDsFace, TopoDsShape};
 use rayon::prelude::*;
-use std::fs::File;
-use std::io::{BufReader, BufWriter};
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -169,7 +167,7 @@ impl BspTreeBuilder {
     /// Build BSP tree from a shape
     pub fn build_from_shape(&self, _shape: &Handle<TopoDsShape>) -> BspTree {
         // Placeholder implementation
-        let mut tree = BspTree::new(self.tolerance);
+        let tree = BspTree::new(self.tolerance);
         // In a real implementation, we would extract faces from the shape
         // and build the BSP tree
         tree

@@ -6,7 +6,7 @@
 //! - Real-time collaborative editing using CRDTs
 
 use crate::geometry::Point;
-use crate::mesh::mesh_data::{Mesh2D, Mesh3D};
+use crate::mesh::mesh_data::Mesh3D;
 use crate::topology::topods_shape::TopoDsShape;
 
 /// WebRTC streaming for remote visualization
@@ -94,6 +94,7 @@ impl WebRtcStreamer {
 }
 
 /// Cloud storage integration
+#[allow(dead_code)]
 pub struct CloudStorage {
     // Cloud storage configuration
     provider: String,

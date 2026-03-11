@@ -322,7 +322,7 @@ impl crate::topology::topods_face::Surface for Cone {
     }
 
     fn normal(&self, u: f64, v: f64) -> crate::geometry::Vector {
-        let height = v * self.radius / self.angle.tan();
+        let _height = v * self.radius / self.angle.tan();
         let radius_at_height = self.radius - v * self.radius;
         
         let cos_u = u.cos();

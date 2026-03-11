@@ -1,6 +1,6 @@
 //! WebAssembly bindings for primitive creation
 
-use super::geometry::{WasmPoint, WasmVector};
+use super::geometry::WasmPoint;
 use super::topology::WasmSolid;
 use crate::foundation::handle::Handle;
 use crate::modeling::primitives;

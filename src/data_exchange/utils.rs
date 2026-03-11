@@ -368,7 +368,7 @@ impl FormatConverter {
             }
             FileFormat::GLTF | FileFormat::GLB => {
                 let importer = GltfImporter::new();
-                let mesh = importer.import_mesh(path)?;
+                let _mesh = importer.import_mesh(path)?;
                 // Convert mesh to shape
                 Ok(Handle::new(std::sync::Arc::new(TopoDsShape::new(
                     crate::topology::shape_enum::ShapeType::Compound,
@@ -376,14 +376,14 @@ impl FormatConverter {
             }
             FileFormat::USDA | FileFormat::USDC | FileFormat::USDZ => {
                 let importer = UsdImporter::new();
-                let mesh = importer.import_mesh(path)?;
+                let _mesh = importer.import_mesh(path)?;
                 Ok(Handle::new(std::sync::Arc::new(TopoDsShape::new(
                     crate::topology::shape_enum::ShapeType::Compound,
                 ))))
             }
             FileFormat::ThreeMF => {
                 let importer = ThreeMfImporter::new();
-                let mesh = importer.import_mesh(path)?;
+                let _mesh = importer.import_mesh(path)?;
                 Ok(Handle::new(std::sync::Arc::new(TopoDsShape::new(
                     crate::topology::shape_enum::ShapeType::Compound,
                 ))))

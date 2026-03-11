@@ -372,12 +372,12 @@ impl Mesh2D {
     }
 
     /// Create mesh from BRep shape
-    pub fn from_brep(shape: &crate::topology::topods_shape::TopoDsShape) -> Result<Self, String> {
+    pub fn from_brep(_shape: &crate::topology::topods_shape::TopoDsShape) -> Result<Self, String> {
         // Convert BRep shape to mesh by extracting points and faces
         // Placeholder implementation - actual implementation will depend on BRep structure
-        let mut vertices = Vec::new();
-        let mut edges = Vec::new();
-        let mut faces = Vec::new();
+        let vertices = Vec::new();
+        let edges = Vec::new();
+        let faces = Vec::new();
         Ok(Self {
             vertices,
             edges,
@@ -781,7 +781,7 @@ impl Mesh3D {
     }
 
     /// Create mesh from BRep shape
-    pub fn from_brep(shape: &crate::topology::topods_shape::TopoDsShape) -> Result<Self, String> {
+    pub fn from_brep(_shape: &crate::topology::topods_shape::TopoDsShape) -> Result<Self, String> {
         // Implementation will be added in a future update
         Err("Not implemented yet".to_string())
     }

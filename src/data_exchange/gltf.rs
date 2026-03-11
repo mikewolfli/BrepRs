@@ -113,6 +113,7 @@ impl Default for GltfImportOptions {
 }
 
 /// glTF exporter
+#[allow(dead_code)]
 pub struct GltfExporter {
     options: GltfExportOptions,
 }
@@ -637,6 +638,7 @@ impl Default for GltfExporter {
 }
 
 /// glTF importer
+#[allow(dead_code)]
 pub struct GltfImporter {
     options: GltfImportOptions,
 }
@@ -746,7 +748,7 @@ impl GltfImporter {
     }
 
     fn parse_gltf_json(&self, _json: &str, _bin_data: Option<&[u8]>) -> DataExchangeResult<Mesh> {
-        use crate::geometry::{Point, Vector};
+        
 
         Ok(Mesh {
             vertices: Vec::new(),
@@ -821,6 +823,7 @@ impl GltfDocument {
 }
 
 #[derive(Debug, Default)]
+#[allow(dead_code)]
 struct Asset {
     version: String,
     generator: Option<String>,
@@ -846,6 +849,7 @@ struct GltfMesh {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct Primitive {
     attributes: HashMap<String, usize>,
     indices: Option<usize>,
@@ -854,6 +858,7 @@ struct Primitive {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 enum PrimitiveMode {
     Points = 0,
     Lines = 1,
@@ -865,6 +870,7 @@ enum PrimitiveMode {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct Buffer {
     uri: Option<String>,
     byte_length: usize,
@@ -872,6 +878,7 @@ struct Buffer {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct BufferView {
     buffer: usize,
     byte_offset: usize,
@@ -886,6 +893,7 @@ enum BufferTarget {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct Accessor {
     buffer_view: usize,
     byte_offset: usize,
@@ -897,6 +905,7 @@ struct Accessor {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 enum ComponentType {
     Byte = 5120,
     UnsignedByte = 5121,
@@ -907,6 +916,7 @@ enum ComponentType {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 enum AccessorType {
     Scalar,
     Vec2,

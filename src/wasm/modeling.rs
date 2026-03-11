@@ -1,13 +1,13 @@
 //! WebAssembly bindings for modeling operations
 
-use super::geometry::{WasmDirection, WasmPoint, WasmVector};
+use super::geometry::WasmPoint;
 use super::topology::{WasmEdge, WasmFace, WasmShell, WasmSolid, WasmVertex, WasmWire};
 use crate::foundation::handle::Handle;
 use crate::modeling::{
     boolean_operations::BooleanOperations, brep_builder::BrepBuilder,
     fillet_chamfer::FilletChamfer, offset_operations::OffsetOperations,
 };
-use crate::topology::{topods_shape::TopoDsShape, topods_solid::TopoDsSolid};
+use crate::topology::topods_solid::TopoDsSolid;
 use wasm_bindgen::prelude::*;
 
 /// WebAssembly wrapper for BRep Builder

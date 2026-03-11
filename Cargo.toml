@@ -19,6 +19,8 @@ python = ["dep:pyo3"]
 wasm = ["dep:wasm-bindgen", "dep:js-sys", "dep:web-sys"]
 rayon = ["dep:rayon"]
 gpu = ["dep:wgpu", "dep:pollster"]
+pytorch = []
+tensorflow = []
 
 [dependencies]
 thiserror = "1.0"

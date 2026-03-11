@@ -25,9 +25,7 @@ impl Mesh {
 use crate::foundation::handle::Handle;
 use crate::geometry::{Axis, Direction, Point, Vector};
 use crate::topology::{
-    topods_compound::TopoDsCompound, topods_edge::TopoDsEdge, topods_face::TopoDsFace,
-    topods_shape::TopoDsShape, topods_shell::TopoDsShell, topods_solid::TopoDsSolid,
-    topods_vertex::TopoDsVertex, topods_wire::TopoDsWire, ShapeType,
+    topods_shape::TopoDsShape, ShapeType,
 };
 
 /// Trait for types that can be transformed (moved, rotated, scaled)

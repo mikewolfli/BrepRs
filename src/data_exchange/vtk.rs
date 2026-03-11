@@ -252,7 +252,7 @@ pub struct VtkReader {
 
 impl VtkReader {
     /// Create a new VTK reader
-    pub fn new(file_path: &str) -> Result<Self, std::io::Error> {
+    pub fn new(_file_path: &str) -> Result<Self, std::io::Error> {
         Ok(Self {})
     }
 

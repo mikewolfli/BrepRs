@@ -141,7 +141,6 @@ impl<K: Hash + Eq, V> DataMap<K, V> {
     }
 }
 
-use std::borrow::Borrow;
 use std::ops::{Index, IndexMut};
 
 impl<K: Hash + Eq, V> Index<K> for DataMap<K, V> {

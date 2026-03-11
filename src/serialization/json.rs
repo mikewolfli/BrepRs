@@ -92,7 +92,7 @@ impl<W: std::io::Write> JsonStreamSerializer<W> {
     }
 
     pub fn begin_object(&mut self) -> std::io::Result<()> {
-        self.writer.write_all(b"{");
+        self.writer.write_all(b"{")?;
         self.first = true;
         Ok(())
     }

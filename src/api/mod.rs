@@ -11,8 +11,6 @@
 pub mod traits;
 
 use crate::geometry::Point;
-use crate::mesh::mesh_data::Mesh3D;
-use crate::topology::topods_shape::TopoDsShape;
 
 /// Rust-specific API optimizations
 pub mod optimized {
@@ -515,7 +513,7 @@ pub mod incremental {
             }
 
             // Create a channel to receive events
-            let (tx, rx): (mpsc::Sender<()>, mpsc::Receiver<()>) = mpsc::channel();
+            let (tx, _rx) = mpsc::channel::<()>();
 
             // Store sender for later use
             let _tx = tx;
@@ -625,7 +623,7 @@ pub mod incremental {
 
 /// API documentation utilities
 pub mod documentation {
-    use super::*;
+    
 
     /// API documentation generator
     pub struct ApiDocGenerator {

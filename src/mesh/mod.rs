@@ -98,7 +98,7 @@ impl MeshGenerator {
 
         if let Some(face_ref) = face.get() {
             // Get face geometry
-            if let Some(surface) = face_ref.surface() {
+            if let Some(_surface) = face_ref.surface() {
                 // Get face wires
                 let wires = face_ref.wires();
 
@@ -358,9 +358,9 @@ impl MeshGenerator {
         let delta = dx.max(dy) * 10.0;
 
         // Create super triangle vertices
-        let v1 = crate::geometry::Point::new(min_x - delta, max_y + delta, 0.0);
-        let v2 = crate::geometry::Point::new(max_x + delta, max_y + delta, 0.0);
-        let v3 = crate::geometry::Point::new((min_x + max_x) / 2.0, min_y - delta, 0.0);
+        let _v1 = crate::geometry::Point::new(min_x - delta, max_y + delta, 0.0);
+        let _v2 = crate::geometry::Point::new(max_x + delta, max_y + delta, 0.0);
+        let _v3 = crate::geometry::Point::new((min_x + max_x) / 2.0, min_y - delta, 0.0);
 
         // Return indices (these will be added to the vertices list)
         (vertices.len(), vertices.len() + 1, vertices.len() + 2)
@@ -559,10 +559,10 @@ impl MeshGenerator {
             (min_z + max_z) / 2.0,
         );
 
-        let v1 = crate::geometry::Point::new(center.x - delta, center.y - delta, center.z - delta);
-        let v2 = crate::geometry::Point::new(center.x + delta, center.y + delta, center.z - delta);
-        let v3 = crate::geometry::Point::new(center.x + delta, center.y - delta, center.z + delta);
-        let v4 = crate::geometry::Point::new(center.x - delta, center.y + delta, center.z + delta);
+        let _v1 = crate::geometry::Point::new(center.x - delta, center.y - delta, center.z - delta);
+        let _v2 = crate::geometry::Point::new(center.x + delta, center.y + delta, center.z - delta);
+        let _v3 = crate::geometry::Point::new(center.x + delta, center.y - delta, center.z + delta);
+        let _v4 = crate::geometry::Point::new(center.x - delta, center.y + delta, center.z + delta);
 
         // Return indices (these will be added to the vertices list)
         (
@@ -731,7 +731,7 @@ impl MeshGenerator {
     fn improve_element_quality(&self, mesh: &mut mesh_data::Mesh2D) {
         // Edge flipping algorithm to improve triangle quality
         let mut edges_to_flip = Vec::new();
-        let vertices = mesh.vertices().to_vec();
+        let _vertices = mesh.vertices().to_vec();
 
         // Find edges that could be flipped to improve quality
         for i in 0..mesh.faces().len() {
@@ -849,7 +849,7 @@ impl MeshGenerator {
         let s = (a + b + c) / 2.0;
 
         // Calculate area using Heron's formula
-        let area = (s * (s - a) * (s - b) * (s - c)).sqrt();
+        let _area = (s * (s - a) * (s - b) * (s - c)).sqrt();
 
         // Calculate aspect ratio (ideal is 1.0 for equilateral triangle)
         let max_side = a.max(b).max(c);

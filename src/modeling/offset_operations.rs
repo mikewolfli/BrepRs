@@ -165,9 +165,9 @@ impl OffsetOperations {
     }
 
     /// Offset an edge by a specified distance
-    fn offset_edge(&self, edge: &TopoDsEdge, distance: f64) -> TopoDsEdge {
+    fn offset_edge(&self, edge: &TopoDsEdge, _distance: f64) -> TopoDsEdge {
         // Create a copy of the edge
-        let mut result = edge.clone();
+        let result = edge.clone();
 
         // Get the edge's curve
         if let Some(_curve) = result.curve() {

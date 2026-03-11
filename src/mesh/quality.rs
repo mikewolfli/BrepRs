@@ -1013,7 +1013,7 @@ impl MeshQualityRepairer {
         let mut area = 0.0;
         let mut vertices = Vec::new();
 
-        for &(v0, v1) in hole {
+        for &(v0, _v1) in hole {
             vertices.push(&mesh.vertices[v0].point);
         }
 
@@ -1033,7 +1033,7 @@ impl MeshQualityRepairer {
 
         // Collect hole vertices
         let mut hole_vertices = Vec::new();
-        for &(v0, v1) in hole {
+        for &(v0, _v1) in hole {
             if !hole_vertices.contains(&v0) {
                 hole_vertices.push(v0);
             }
@@ -1184,7 +1184,7 @@ impl MeshQualityRepairer {
     }
 
     /// Remove overlapping elements in 3D mesh
-    fn remove_overlapping_elements_3d(&self, mesh: &mut Mesh3D) {
+    fn remove_overlapping_elements_3d(&self, _mesh: &mut Mesh3D) {
         // This is a simplified implementation
         // In a real implementation, we would check for overlapping tetrahedrons
     }
@@ -1252,7 +1252,7 @@ impl MeshQualityRepairer {
     }
 
     /// Fix normal consistency in 3D mesh
-    fn fix_normal_consistency_3d(&self, mesh: &mut Mesh3D) {
+    fn fix_normal_consistency_3d(&self, _mesh: &mut Mesh3D) {
         // This is a simplified implementation
         // In a real implementation, we would check and fix normal consistency for faces
     }
