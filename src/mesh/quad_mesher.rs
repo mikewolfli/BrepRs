@@ -299,12 +299,12 @@ impl QuadMesher {
     }
 
     /// Calculate angle between three points
-    fn calculate_angle(&self, p1: &Point, p2: &Point, p3: &Point) -> f64 {
+    pub fn calculate_angle(&self, p1: &Point, p2: &Point, p3: &Point) -> f64 {
         Self::calculate_angle_static(p1, p2, p3)
     }
 
     /// Calculate angle between three points (static version)
-    fn calculate_angle_static(p1: &Point, p2: &Point, p3: &Point) -> f64 {
+    pub fn calculate_angle_static(p1: &Point, p2: &Point, p3: &Point) -> f64 {
         let v1x = p1.x - p2.x;
         let v1y = p1.y - p2.y;
         let v2x = p3.x - p2.x;
@@ -385,12 +385,12 @@ impl QuadMesher {
     }
 
     /// Optimize a single quad
-    fn optimize_quad(&self, mesh: &mut Mesh2D, face_id: usize) -> bool {
+    pub fn optimize_quad(&self, mesh: &mut Mesh2D, face_id: usize) -> bool {
         Self::optimize_quad_static(mesh, face_id)
     }
 
     /// Optimize a single quad (static version)
-    fn optimize_quad_static(mesh: &mut Mesh2D, face_id: usize) -> bool {
+    pub fn optimize_quad_static(mesh: &mut Mesh2D, face_id: usize) -> bool {
         let face = &mesh.faces[face_id];
         if face.vertices.len() != 4 {
             return false;

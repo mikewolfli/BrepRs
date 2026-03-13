@@ -16,11 +16,14 @@
 //! ```
 
 use crate::foundation::handle::Handle;
-use crate::geometry::{Axis, Direction, Point, Vector};
+use crate::geometry::{Axis, Direction, Matrix, Point, Transform, Vector};
 use crate::modeling::boolean_operations::BooleanOperations;
+use crate::modeling::fillet_chamfer::FilletChamfer;
+use crate::modeling::offset_operations::OffsetOperations;
 use crate::modeling::primitives;
 use crate::topology::{
-    topods_compound::TopoDsCompound, topods_shape::TopoDsShape, topods_solid::TopoDsSolid,
+    topods_compound::TopoDsCompound, topods_edge::TopoDsEdge, topods_face::TopoDsFace,
+    topods_shape::TopoDsShape, topods_shell::TopoDsShell, topods_solid::TopoDsSolid,
     topods_wire::TopoDsWire,
 };
 
@@ -205,18 +208,40 @@ impl ChainableBuilder {
 
     /// Apply fillet to all edges
     pub fn fillet(mut self, radius: f64) -> Self {
-        if let Some(ref _shape) = self.shape {
-            // Note: This is a simplified implementation
-            self.operations.push(format!("fillet({})", radius));
+        if let Some(ref shape) = self.shape {
+            if let Some(shape_ref) = shape.get() {
+                if shape_ref.is_solid() {
+                    let arc = shape.get().unwrap().clone();
+                    if let Ok(solid) = arc.downcast::<TopoDsSolid>() {
+                        let solid_ref = solid.as_ref();
+                        let edges = solid_ref.edges();
+                        let fillet_ops = FilletChamfer::with_radius(radius);
+                        let result = fillet_ops.fillet_edges(solid_ref, &edges, radius);
+                        self.shape = Some(Handle::new(std::sync::Arc::new(result.shape().clone())));
+                        self.operations.push(format!("fillet({})", radius));
+                    }
+                }
+            }
         }
         self
     }
 
     /// Apply chamfer to all edges
     pub fn chamfer(mut self, distance: f64) -> Self {
-        if let Some(ref _shape) = self.shape {
-            // Note: This is a simplified implementation
-            self.operations.push(format!("chamfer({})", distance));
+        if let Some(ref shape) = self.shape {
+            if let Some(shape_ref) = shape.get() {
+                if shape_ref.is_solid() {
+                    let arc = shape.get().unwrap().clone();
+                    if let Ok(solid) = arc.downcast::<TopoDsSolid>() {
+                        let solid_ref = solid.as_ref();
+                        let faces = solid_ref.faces();
+                        let chamfer_ops = FilletChamfer::with_chamfer_distance(distance);
+                        let result = chamfer_ops.chamfer_faces(solid_ref, &faces, distance);
+                        self.shape = Some(Handle::new(std::sync::Arc::new(result.shape().clone())));
+                        self.operations.push(format!("chamfer({})", distance));
+                    }
+                }
+            }
         }
         self
     }
@@ -227,18 +252,67 @@ impl ChainableBuilder {
 
     /// Offset the shape by a distance
     pub fn offset(mut self, distance: f64) -> Self {
-        if let Some(ref _shape) = self.shape {
-            // Note: This is a simplified implementation
-            self.operations.push(format!("offset({})", distance));
+        if let Some(ref shape) = self.shape {
+            if let Some(shape_ref) = shape.get() {
+                let arc = shape.get().unwrap().clone();
+                if shape_ref.is_solid() {
+                    if let Ok(solid) = arc.downcast::<TopoDsSolid>() {
+                        let solid_ref = solid.as_ref();
+                        let offset_ops = OffsetOperations::with_offset_distance(distance);
+                        if let Some(shell) = solid_ref.shells().first() {
+                            if let Some(shell_ref) = shell.get() {
+                                let result = offset_ops.offset_shell(shell_ref, distance);
+                                let mut new_solid = TopoDsSolid::new();
+                                new_solid.add_shell(Handle::new(std::sync::Arc::new(result)));
+                                self.shape = Some(Handle::new(std::sync::Arc::new(
+                                    new_solid.shape().clone(),
+                                )));
+                                self.operations.push(format!("offset({})", distance));
+                            }
+                        }
+                    }
+                } else if shape_ref.is_face() {
+                    if let Ok(face) = arc.downcast::<TopoDsFace>() {
+                        let face_ref = face.as_ref();
+                        let offset_ops = OffsetOperations::with_offset_distance(distance);
+                        let result = offset_ops.offset_face(face_ref, distance);
+                        self.shape = Some(Handle::new(std::sync::Arc::new(result.shape().clone())));
+                        self.operations.push(format!("offset({})", distance));
+                    }
+                }
+            }
         }
         self
     }
 
     /// Thicken the shape
     pub fn thicken(mut self, thickness: f64) -> Self {
-        if let Some(ref _shape) = self.shape {
-            // Note: This is a simplified implementation
-            self.operations.push(format!("thicken({})", thickness));
+        if let Some(ref shape) = self.shape {
+            if let Some(shape_ref) = shape.get() {
+                let arc = shape.get().unwrap().clone();
+                if shape_ref.is_solid() {
+                    if let Ok(solid) = arc.downcast::<TopoDsSolid>() {
+                        let solid_ref = solid.as_ref();
+                        let offset_ops = OffsetOperations::with_offset_distance(thickness);
+                        if let Some(shell) = solid_ref.shells().first() {
+                            if let Some(shell_ref) = shell.get() {
+                                let result = offset_ops.make_thick_solid(shell_ref, thickness, 1.0);
+                                self.shape =
+                                    Some(Handle::new(std::sync::Arc::new(result.shape().clone())));
+                                self.operations.push(format!("thicken({})", thickness));
+                            }
+                        }
+                    }
+                } else if shape_ref.is_face() {
+                    if let Ok(face) = arc.downcast::<TopoDsFace>() {
+                        let face_ref = face.as_ref();
+                        let offset_ops = OffsetOperations::with_offset_distance(thickness);
+                        let result = offset_ops.make_thick_from_face(face_ref, thickness, 1.0);
+                        self.shape = Some(Handle::new(std::sync::Arc::new(result.shape().clone())));
+                        self.operations.push(format!("thicken({})", thickness));
+                    }
+                }
+            }
         }
         self
     }
@@ -249,40 +323,77 @@ impl ChainableBuilder {
 
     /// Translate the shape
     pub fn translate(mut self, vector: Vector) -> Self {
-        // Note: This is a simplified implementation
-        // In a real implementation, we would apply the transformation
-        self.operations.push(format!("translate({:?})", vector));
+        if let Some(ref shape) = self.shape {
+            if let Some(shape_ref) = shape.get() {
+                let mut new_shape = shape_ref.clone();
+                let transform = Transform::from_translation(&vector);
+                new_shape.transform(&transform);
+                self.shape = Some(Handle::new(std::sync::Arc::new(new_shape)));
+                self.operations.push(format!("translate({:?})", vector));
+            }
+        }
         self
     }
 
     /// Rotate the shape
     pub fn rotate(mut self, axis: Axis, angle: f64) -> Self {
-        // Note: This is a simplified implementation
-        self.operations
-            .push(format!("rotate({:?}, {})", axis, angle));
+        if let Some(ref shape) = self.shape {
+            if let Some(shape_ref) = shape.get() {
+                let mut new_shape = shape_ref.clone();
+                let transform = Transform::from_rotation(&axis, angle);
+                new_shape.transform(&transform);
+                self.shape = Some(Handle::new(std::sync::Arc::new(new_shape)));
+                self.operations
+                    .push(format!("rotate({:?}, {})", axis, angle));
+            }
+        }
         self
     }
 
     /// Scale the shape uniformly
     pub fn scale(mut self, factor: f64) -> Self {
-        // Note: This is a simplified implementation
-        self.operations.push(format!("scale({})", factor));
+        if let Some(ref shape) = self.shape {
+            if let Some(shape_ref) = shape.get() {
+                let mut new_shape = shape_ref.clone();
+                let transform = Transform::from_scale(factor);
+                new_shape.transform(&transform);
+                self.shape = Some(Handle::new(std::sync::Arc::new(new_shape)));
+                self.operations.push(format!("scale({})", factor));
+            }
+        }
         self
     }
 
     /// Scale the shape non-uniformly
     pub fn scale_xyz(mut self, sx: f64, sy: f64, sz: f64) -> Self {
-        // Note: This is a simplified implementation
-        self.operations
-            .push(format!("scale_xyz({}, {}, {})", sx, sy, sz));
+        if let Some(ref shape) = self.shape {
+            if let Some(shape_ref) = shape.get() {
+                let mut new_shape = shape_ref.clone();
+                let scaling_matrix =
+                    Matrix::from_column_major([sx, 0.0, 0.0], [0.0, sy, 0.0], [0.0, 0.0, sz]);
+                let transform = Transform::from_matrix(&scaling_matrix);
+                new_shape.transform(&transform);
+                self.shape = Some(Handle::new(std::sync::Arc::new(new_shape)));
+                self.operations
+                    .push(format!("scale_xyz({}, {}, {})", sx, sy, sz));
+            }
+        }
         self
     }
 
     /// Mirror the shape
     pub fn mirror(mut self, point: Point, normal: Direction) -> Self {
-        // Note: This is a simplified implementation
-        self.operations
-            .push(format!("mirror({:?}, {:?})", point, normal));
+        if let Some(ref shape) = self.shape {
+            if let Some(shape_ref) = shape.get() {
+                let mut new_shape = shape_ref.clone();
+                let axis = Axis::new(point, normal);
+                let transform = Transform::from_axis_mirror(&axis);
+                new_shape.transform(&transform);
+                self.shape = Some(Handle::new(std::sync::Arc::new(new_shape)));
+                self.operations
+                    .push(format!("mirror({:?}, {:?})", point, normal));
+            }
+        }
         self
     }
 

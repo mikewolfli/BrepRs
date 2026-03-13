@@ -249,6 +249,29 @@ impl<T> List<T> {
             current: self.head.borrow().clone(),
         }
     }
+
+    /// 检查是否存在循环引用（仅debug模式）
+    #[cfg(debug_assertions)]
+    pub fn check_cycles(&self) -> bool {
+        let mut slow = self.head.borrow().clone();
+        let mut fast = self.head.borrow().clone();
+        while let (Some(s), Some(f)) = (slow.clone(), fast.clone()) {
+            slow = s.next.borrow().clone();
+            fast = f.next.borrow().clone();
+            if let Some(f_next) = fast.clone() {
+                fast = f_next.next.borrow().clone();
+            } else {
+                break;
+            }
+            if slow.is_some()
+                && fast.is_some()
+                && Rc::ptr_eq(slow.as_ref().unwrap(), fast.as_ref().unwrap())
+            {
+                return true;
+            }
+        }
+        false
+    }
 }
 
 impl<T> Default for List<T> {
@@ -296,6 +319,24 @@ mod tests {
         let list: List<i32> = List::new();
         assert!(list.is_empty());
         assert_eq!(list.size(), 0);
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    fn test_cycle_detection() {
+        let list = List::new();
+        list.append(1);
+        list.append(2);
+        list.append(3);
+        // 正常无循环
+        assert!(!list.check_cycles());
+        // 构造循环（仅测试用，实际API不暴露）
+        if let Some(head) = list.head.borrow().clone() {
+            if let Some(tail) = list.tail.borrow().as_ref().and_then(|w| w.upgrade()) {
+                *tail.next.borrow_mut() = Some(head.clone());
+            }
+        }
+        assert!(list.check_cycles());
     }
 
     #[test]

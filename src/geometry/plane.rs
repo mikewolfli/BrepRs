@@ -1,3 +1,15 @@
+use crate::geometry::traits::{GetCoord, SetCoord};
+impl GetCoord for Plane {
+    fn coord(&self) -> (f64, f64, f64) {
+        self.location.coord()
+    }
+}
+
+impl SetCoord for Plane {
+    fn set_coord(&mut self, x: f64, y: f64, z: f64) {
+        self.location.set_coord(x, y, z);
+    }
+}
 impl Plane {
     /// Create a plane from three points
     pub fn from_points(p1: Point, p2: Point, p3: Point) -> Option<Self> {

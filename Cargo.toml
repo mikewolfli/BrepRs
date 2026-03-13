@@ -13,9 +13,8 @@ name = "breprs"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["python", "wasm", "serde", "rayon"]
+default = ["wasm", "serde", "rayon"]
 serde = ["dep:serde", "dep:serde_json"]
-python = ["dep:pyo3"]
 wasm = ["dep:wasm-bindgen", "dep:js-sys", "dep:web-sys"]
 rayon = ["dep:rayon"]
 gpu = ["dep:wgpu", "dep:pollster"]
@@ -33,8 +32,7 @@ zip = "0.6"
 quick-xml = "0.31"
 log = "0.4"
 
-# Python bindings
-pyo3 = { version = "0.20", features = ["extension-module"], optional = true }
+
 
 # WebAssembly support
 wasm-bindgen = { version = "0.2", optional = true }

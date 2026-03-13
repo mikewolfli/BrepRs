@@ -137,6 +137,16 @@ impl<T: ParallelTask> WorkStealingScheduler<T> {
         self.queue.submit_batch(tasks)
     }
 
+    /// Get the parallel configuration
+    pub fn config(&self) -> &ParallelConfig {
+        &self.config
+    }
+
+    /// Get the worker count
+    pub fn worker_count(&self) -> usize {
+        self.worker_count
+    }
+
     /// Execute all tasks and collect results
     pub fn execute_all(&self) -> ParallelResult<Vec<T::Output>> {
         let start = Instant::now();
@@ -228,6 +238,16 @@ impl LoadBalancer {
             config,
             thread_loads,
         }
+    }
+
+    /// Get the parallel configuration
+    pub fn config(&self) -> &ParallelConfig {
+        &self.config
+    }
+
+    /// Get the thread loads
+    pub fn thread_loads(&self) -> &Vec<AtomicUsize> {
+        &self.thread_loads
     }
 
     /// Get the least loaded thread
@@ -488,8 +508,8 @@ mod tests {
     fn test_task_queue() {
         let queue = PriorityTaskQueue::<TestTask>::new();
 
-        let id1 = queue.submit(TestTask { value: 1 });
-        let id2 = queue.submit(TestTask { value: 2 });
+        let _id1 = queue.submit(TestTask { value: 1 });
+        let _id2 = queue.submit(TestTask { value: 2 });
 
         assert_eq!(queue.pending_count(), 2);
 

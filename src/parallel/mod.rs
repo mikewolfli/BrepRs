@@ -40,7 +40,7 @@ pub use mesh_gen::*;
 #[cfg(feature = "rayon")]
 pub use shape_analysis::*;
 #[cfg(feature = "rayon")]
-pub use utils::*;
+// pub use utils::*; // 禁用歧义导出，建议显式导出所需项
 #[cfg(feature = "rayon")]
 pub use task_scheduler::*;
 #[cfg(feature = "rayon")]

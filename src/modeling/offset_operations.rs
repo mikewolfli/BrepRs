@@ -597,27 +597,209 @@ impl OffsetOperations {
     /// Connect pipe segments
     fn connect_pipe_segments(
         &self,
-        _shell: &mut TopoDsShell,
-        _prev_edge: &TopoDsEdge,
-        _current_edge: &TopoDsEdge,
-        _profile: &TopoDsWire,
+        shell: &mut TopoDsShell,
+        prev_edge: &TopoDsEdge,
+        current_edge: &TopoDsEdge,
+        profile: &TopoDsWire,
     ) {
         // Connect two pipe segments
-        // This is a simplified implementation
+        // Get vertices from both edges
+        let prev_end = prev_edge.end_vertex();
+        let current_start = current_edge.start_vertex();
+
+        if let (Some(prev_end_ref), Some(current_start_ref)) = (prev_end.get(), current_start.get())
+        {
+            // Check if the edges are connected
+            let prev_end_point = prev_end_ref.point();
+            let current_start_point = current_start_ref.point();
+
+            if prev_end_point.distance(&current_start_point) < 1e-6 {
+                // Create a transition face between the two segments
+                let transition_face = self.create_transition_face(prev_edge, current_edge, profile);
+
+                // Add the transition face to the shell
+                shell.add_face(Handle::new(std::sync::Arc::new(transition_face)));
+            }
+        }
+    }
+
+    /// Create a transition face between two pipe segments
+    fn create_transition_face(
+        &self,
+        _prev_edge: &TopoDsEdge,
+        _current_edge: &TopoDsEdge,
+        profile: &TopoDsWire,
+    ) -> TopoDsFace {
+        let mut face = TopoDsFace::new();
+
+        // Get the profile edges
+        let profile_edges = profile.edges();
+
+        // Create a wire for the transition face
+        let mut wire = TopoDsWire::new();
+
+        // For each edge in the profile, create a connecting edge
+        for profile_edge in profile_edges {
+            if let Some(profile_edge_ref) = profile_edge.get() {
+                // Get vertices from the profile edge
+                let profile_start = profile_edge_ref.start_vertex();
+                let profile_end = profile_edge_ref.end_vertex();
+
+                if let (Some(profile_start_ref), Some(profile_end_ref)) =
+                    (profile_start.get(), profile_end.get())
+                {
+                    // Create connecting edges between the two pipe segments
+                    let start_point = profile_start_ref.point();
+                    let end_point = profile_end_ref.point();
+
+                    // Create new vertices for the transition
+                    let new_start = TopoDsVertex::new(*start_point);
+                    let new_end = TopoDsVertex::new(*end_point);
+
+                    // Create new edge
+                    let new_edge = TopoDsEdge::new(
+                        Handle::new(std::sync::Arc::new(new_start)),
+                        Handle::new(std::sync::Arc::new(new_end)),
+                    );
+
+                    wire.add_edge(Handle::new(std::sync::Arc::new(new_edge)));
+                }
+            }
+        }
+
+        // Set the wire for the face
+        face.set_wire(0, Handle::new(std::sync::Arc::new(wire)));
+
+        face
     }
 
     /// Connect variable radius pipe segments
     fn connect_variable_radius_segments(
         &self,
-        _shell: &mut TopoDsShell,
-        _prev_edge: &TopoDsEdge,
-        _current_edge: &TopoDsEdge,
-        _profile: &TopoDsWire,
-        _prev_radius: f64,
-        _current_radius: f64,
+        shell: &mut TopoDsShell,
+        prev_edge: &TopoDsEdge,
+        current_edge: &TopoDsEdge,
+        profile: &TopoDsWire,
+        prev_radius: f64,
+        current_radius: f64,
     ) {
         // Connect two variable radius pipe segments
-        // This is a simplified implementation
+        // Get vertices from both edges
+        let prev_end = prev_edge.end_vertex();
+        let current_start = current_edge.start_vertex();
+
+        if let (Some(prev_end_ref), Some(current_start_ref)) = (prev_end.get(), current_start.get())
+        {
+            // Check if the edges are connected
+            let prev_end_point = prev_end_ref.point();
+            let current_start_point = current_start_ref.point();
+
+            if prev_end_point.distance(&current_start_point) < 1e-6 {
+                // Create a variable radius transition face
+                let transition_face = self.create_variable_radius_transition_face(
+                    prev_edge,
+                    current_edge,
+                    profile,
+                    prev_radius,
+                    current_radius,
+                );
+
+                // Add the transition face to the shell
+                shell.add_face(Handle::new(std::sync::Arc::new(transition_face)));
+            }
+        }
+    }
+
+    /// Create a variable radius transition face
+    fn create_variable_radius_transition_face(
+        &self,
+        _prev_edge: &TopoDsEdge,
+        _current_edge: &TopoDsEdge,
+        profile: &TopoDsWire,
+        prev_radius: f64,
+        current_radius: f64,
+    ) -> TopoDsFace {
+        let mut face = TopoDsFace::new();
+
+        // Get the profile edges
+        let profile_edges = profile.edges();
+
+        // Create a wire for the transition face
+        let mut wire = TopoDsWire::new();
+
+        // For each edge in the profile, create a connecting edge with radius transition
+        for profile_edge in profile_edges {
+            if let Some(profile_edge_ref) = profile_edge.get() {
+                // Get vertices from the profile edge
+                let profile_start = profile_edge_ref.start_vertex();
+                let profile_end = profile_edge_ref.end_vertex();
+
+                if let (Some(profile_start_ref), Some(profile_end_ref)) =
+                    (profile_start.get(), profile_end.get())
+                {
+                    // Create connecting edges with radius transition
+                    let (start_point, end_point) = self.calculate_transition_points(
+                        profile_start_ref.point(),
+                        profile_end_ref.point(),
+                        prev_radius,
+                        current_radius,
+                    );
+
+                    // Create new vertices for the transition
+                    let new_start = TopoDsVertex::new(start_point);
+                    let new_end = TopoDsVertex::new(end_point);
+
+                    // Create new edge
+                    let new_edge = TopoDsEdge::new(
+                        Handle::new(std::sync::Arc::new(new_start)),
+                        Handle::new(std::sync::Arc::new(new_end)),
+                    );
+
+                    wire.add_edge(Handle::new(std::sync::Arc::new(new_edge)));
+                }
+            }
+        }
+
+        // Set the wire for the face
+        face.set_wire(0, Handle::new(std::sync::Arc::new(wire)));
+
+        face
+    }
+
+    /// Calculate transition points for variable radius
+    fn calculate_transition_points(
+        &self,
+        start_point: &Point,
+        end_point: &Point,
+        prev_radius: f64,
+        current_radius: f64,
+    ) -> (Point, Point) {
+        // Calculate the direction vector
+        let direction = Vector::new(
+            end_point.x - start_point.x,
+            end_point.y - start_point.y,
+            end_point.z - start_point.z,
+        );
+        let length = direction.length();
+
+        if length < 1e-6 {
+            return (start_point.clone(), end_point.clone());
+        }
+
+        // Normalize the direction vector
+        let normalized_dir = direction / length;
+
+        // Calculate the scale factors based on radius change
+        let scale_factor_prev = prev_radius / (prev_radius + current_radius);
+        let scale_factor_current = current_radius / (prev_radius + current_radius);
+
+        // Calculate new points with radius transition
+        let new_start = start_point.clone() + normalized_dir * length * scale_factor_prev;
+        let new_end = end_point
+            .clone()
+            .translated(&(-normalized_dir * length * scale_factor_current));
+
+        (new_start, new_end)
     }
 
     // =========================================================================

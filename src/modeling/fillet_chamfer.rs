@@ -3,7 +3,7 @@
 /// This module provides fillet and chamfer operations for topological shapes,
 /// including edge filleting and face chamfering.
 use crate::foundation::handle::Handle;
-use crate::geometry::Point;
+use crate::geometry::{Direction, Point};
 #[cfg(test)]
 use crate::topology::ShapeType;
 
@@ -148,9 +148,14 @@ impl FilletChamfer {
                         if !fillet_surface.is_empty() {
                             // Create a face from the fillet surface points
                             let fillet_face = self.create_face_from_points(&fillet_surface);
-                            
+
                             // Trim original faces
-                            self.trim_adjacent_faces(&mut result, edge, &adjacent_faces, self.radius);
+                            self.trim_adjacent_faces(
+                                &mut result,
+                                edge,
+                                &adjacent_faces,
+                                self.radius,
+                            );
 
                             // Add fillet face to the solid
                             result.add_face(Handle::new(std::sync::Arc::new(fillet_face)));
@@ -162,62 +167,237 @@ impl FilletChamfer {
 
         result
     }
-    
+
     /// Create a face from a set of points
     fn create_face_from_points(&self, points: &[Point]) -> TopoDsFace {
         // Create a face from the given points
-        // This is a simplified implementation
         let mut face = TopoDsFace::new();
-        
+
         if points.len() >= 3 {
+            // Check if points are coplanar
+            if !self.are_points_coplanar(points) {
+                return face; // Return empty face if points are not coplanar
+            }
+
             // Create a wire from the points
             let mut wire = TopoDsWire::new();
-            
-            // Create edges between consecutive points
+            let mut vertices = Vec::new();
+
+            // Create vertices and edges between consecutive points
             for i in 0..points.len() {
                 let start_point = points[i];
                 let end_point = points[(i + 1) % points.len()];
-                
+
+                // Create vertices
+                let start_vertex = TopoDsVertex::new(start_point);
+                let end_vertex = TopoDsVertex::new(end_point);
+                vertices.push(Handle::new(std::sync::Arc::new(start_vertex.clone())));
+
                 // Create edge between points
                 let edge = TopoDsEdge::new(
-                    Handle::new(std::sync::Arc::new(TopoDsVertex::new(start_point))),
-                    Handle::new(std::sync::Arc::new(TopoDsVertex::new(end_point)))
+                    Handle::new(std::sync::Arc::new(start_vertex)),
+                    Handle::new(std::sync::Arc::new(end_vertex)),
                 );
-                
+
                 wire.add_edge(Handle::new(std::sync::Arc::new(edge)));
             }
-            
+
             // Set the wire for the face
             face.set_wire(0, Handle::new(std::sync::Arc::new(wire)));
         }
-        
+
         face
     }
-    
+
+    /// Check if points are coplanar
+    fn are_points_coplanar(&self, points: &[Point]) -> bool {
+        if points.len() < 3 {
+            return true;
+        }
+
+        // Calculate normal vector using first three points
+        let v1 = points[1] - points[0];
+        let v2 = points[2] - points[0];
+        let normal = v1.cross(&v2);
+
+        // Check if normal is zero (colinear points)
+        if normal.length() < 1e-6 {
+            return true;
+        }
+
+        // Check if all other points lie on the same plane
+        for i in 3..points.len() {
+            let v = points[i] - points[0];
+            let dot = normal.dot(&v);
+            if dot.abs() > 1e-6 {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    /// Calculate face normal from points
+    #[allow(dead_code)]
+    fn calculate_face_normal(&self, points: &[Point]) -> Option<Direction> {
+        if points.len() < 3 {
+            return None;
+        }
+
+        // Calculate normal vector using first three points
+        let v1 = points[1] - points[0];
+        let v2 = points[2] - points[0];
+        let normal_vector = v1.cross(&v2);
+
+        if normal_vector.length() < 1e-6 {
+            return None;
+        }
+
+        Some(Direction::new(
+            normal_vector.x,
+            normal_vector.y,
+            normal_vector.z,
+        ))
+    }
+
     /// Trim adjacent faces for fillet
-    fn trim_adjacent_faces(&self, _solid: &mut TopoDsSolid, edge: &Handle<TopoDsEdge>, adjacent_faces: &[Handle<TopoDsFace>], _radius: f64) {
+    fn trim_adjacent_faces(
+        &self,
+        solid: &mut TopoDsSolid,
+        edge: &Handle<TopoDsEdge>,
+        adjacent_faces: &[Handle<TopoDsFace>],
+        radius: f64,
+    ) {
         // Trim the adjacent faces to make room for the fillet
-        // This is a simplified implementation
         for face in adjacent_faces {
             if let Some(face_ref) = face.get() {
                 // Get the face's wires
                 let wires = face_ref.wires();
-                
+
                 // For each wire, adjust it to trim the face
                 for wire in wires {
                     if let Some(wire_ref) = wire.get() {
                         // Check if the wire contains the edge
                         let edges = wire_ref.edges();
                         if edges.contains(edge) {
-                            // In a real implementation, we would:
-                            // 1. Find the points where the fillet starts and ends
-                            // 2. Create new edges that follow the fillet profile
-                            // 3. Replace the original edge with the new edges
-                            // 4. Update the wire and face
+                            // Find the points where the fillet starts and ends
+                            if let Some(edge_ref) = edge.get() {
+                                let start_vertex = edge_ref.start_vertex();
+                                let end_vertex = edge_ref.end_vertex();
+
+                                if let (Some(start_v), Some(end_v)) =
+                                    (start_vertex.get(), end_vertex.get())
+                                {
+                                    // Calculate fillet start and end points
+                                    let (start_point, end_point) = self.calculate_fillet_points(
+                                        edge_ref,
+                                        *start_v.point(),
+                                        *end_v.point(),
+                                        radius,
+                                    );
+
+                                    // Create new edges for the trimmed face
+                                    let new_edges = self.create_trim_edges(
+                                        face_ref,
+                                        edge_ref,
+                                        start_point,
+                                        end_point,
+                                    );
+
+                                    // Update the wire with new edges
+                                    if !new_edges.is_empty() {
+                                        self.update_wire_with_new_edges(
+                                            solid,
+                                            wire.clone(),
+                                            edge,
+                                            &new_edges,
+                                        );
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+
+    /// Calculate fillet start and end points
+    fn calculate_fillet_points(
+        &self,
+        _edge: &TopoDsEdge,
+        start_point: Point,
+        end_point: Point,
+        radius: f64,
+    ) -> (Point, Point) {
+        // Calculate the direction vector of the edge
+        let edge_vector = end_point - start_point;
+        let edge_length = edge_vector.length();
+
+        // Calculate the distance from vertices to fillet start/end points
+        let trim_distance = radius;
+
+        // Ensure trim distance is not greater than half the edge length
+        let actual_trim = trim_distance.min(edge_length / 2.0);
+
+        // Calculate fillet start and end points
+        let start_fillet_point = start_point + edge_vector.normalized() * actual_trim;
+        let end_fillet_point = end_point.translated(&(-edge_vector.normalized() * actual_trim));
+
+        (start_fillet_point, end_fillet_point)
+    }
+
+    /// Create trim edges for the face
+    fn create_trim_edges(
+        &self,
+        _face: &TopoDsFace,
+        _edge: &TopoDsEdge,
+        start_point: Point,
+        end_point: Point,
+    ) -> Vec<Handle<TopoDsEdge>> {
+        let mut new_edges = Vec::new();
+
+        // Create new vertices
+        let start_vertex = TopoDsVertex::new(start_point);
+        let end_vertex = TopoDsVertex::new(end_point);
+
+        // Create new edge
+        let new_edge = TopoDsEdge::new(
+            Handle::new(std::sync::Arc::new(start_vertex)),
+            Handle::new(std::sync::Arc::new(end_vertex)),
+        );
+
+        new_edges.push(Handle::new(std::sync::Arc::new(new_edge)));
+        new_edges
+    }
+
+    /// Update wire with new edges
+    fn update_wire_with_new_edges(
+        &self,
+        _solid: &mut TopoDsSolid,
+        wire: Handle<TopoDsWire>,
+        old_edge: &Handle<TopoDsEdge>,
+        new_edges: &[Handle<TopoDsEdge>],
+    ) {
+        // Create a new wire with the old edges except the one to remove
+        let mut new_wire = TopoDsWire::new();
+
+        if let Some(wire_ref) = wire.get() {
+            // Add all edges except the old one
+            for edge in wire_ref.edges() {
+                if edge != old_edge {
+                    new_wire.add_edge(edge.clone());
+                }
+            }
+
+            // Add new edges
+            for new_edge in new_edges {
+                new_wire.add_edge(new_edge.clone());
+            }
+
+            // TODO: Update the face with the new wire
+            // This would typically involve finding the face that contains the wire
+            // and replacing the old wire with the new one
         }
     }
 
@@ -308,19 +488,25 @@ impl FilletChamfer {
                         // Check if edge can be chamfered
                         if self.can_fillet_edge(&edge) {
                             // Calculate chamfer surface
-                            let chamfer_surface = self.calculate_chamfer_surface(&edge, self.chamfer_distance);
+                            let chamfer_surface =
+                                self.calculate_chamfer_surface(&edge, self.chamfer_distance);
 
                             // Create chamfer face from the calculated surface
                             if !chamfer_surface.is_empty() {
                                 // Create a face from the chamfer surface points
                                 let chamfer_face = self.create_face_from_points(&chamfer_surface);
-                                
+
                                 // Get adjacent faces to the edge
                                 if let Some(edge_ref) = edge.get() {
                                     let adjacent_faces = edge_ref.adjacent_faces();
-                                    
+
                                     // Trim original faces
-                                    self.trim_adjacent_faces(&mut result, &edge, &adjacent_faces, self.chamfer_distance);
+                                    self.trim_adjacent_faces(
+                                        &mut result,
+                                        &edge,
+                                        &adjacent_faces,
+                                        self.chamfer_distance,
+                                    );
 
                                     // Add chamfer face to the solid
                                     result.add_face(Handle::new(std::sync::Arc::new(chamfer_face)));
@@ -416,51 +602,54 @@ impl FilletChamfer {
                 // Get edge vertices
                 let start_vertex = edge_ref.start_vertex();
                 let end_vertex = edge_ref.end_vertex();
-                
+
                 if let (Some(start), Some(end)) = (start_vertex.get(), end_vertex.get()) {
                     let start_point = start.point();
                     let end_point = end.point();
-                    
+
                     // Calculate edge direction
                     let dx = end_point.x - start_point.x;
                     let dy = end_point.y - start_point.y;
                     let dz = end_point.z - start_point.z;
                     let length = (dx * dx + dy * dy + dz * dz).sqrt();
-                    
+
                     if length > 1e-6 {
                         let unit_dx = dx / length;
                         let unit_dy = dy / length;
                         let _unit_dz = dz / length;
-                        
+
                         // Generate points along the fillet surface
                         // For simplicity, we'll generate points around the edge
                         for i in 0..20 {
                             let t = i as f64 / 19.0;
                             let edge_point = curve.value(t);
-                            
+
                             // Create a perpendicular direction for the fillet
                             // For simplicity, use a fixed perpendicular direction
                             let perp_x = -unit_dy;
                             let perp_y = unit_dx;
                             let perp_z = 0.0;
-                            let perp_length = (perp_x * perp_x + perp_y * perp_y + perp_z * perp_z).sqrt();
-                            
+                            let perp_length =
+                                (perp_x * perp_x + perp_y * perp_y + perp_z * perp_z).sqrt();
+
                             if perp_length > 1e-6 {
                                 let unit_perp_x = perp_x / perp_length;
                                 let unit_perp_y = perp_y / perp_length;
                                 let unit_perp_z = perp_z / perp_length;
-                                
+
                                 // Generate points at different angles around the edge
                                 for j in 0..8 {
                                     let angle = j as f64 * std::f64::consts::PI / 4.0;
-                                    let offset_x = radius * (unit_perp_x * angle.cos() - unit_perp_z * angle.sin());
+                                    let offset_x = radius
+                                        * (unit_perp_x * angle.cos() - unit_perp_z * angle.sin());
                                     let offset_y = radius * unit_perp_y;
-                                    let offset_z = radius * (unit_perp_x * angle.sin() + unit_perp_z * angle.cos());
-                                    
+                                    let offset_z = radius
+                                        * (unit_perp_x * angle.sin() + unit_perp_z * angle.cos());
+
                                     let fillet_point = Point::new(
                                         edge_point.x + offset_x,
                                         edge_point.y + offset_y,
-                                        edge_point.z + offset_z
+                                        edge_point.z + offset_z,
                                     );
                                     points.push(fillet_point);
                                 }
@@ -496,55 +685,56 @@ impl FilletChamfer {
                 // Get edge vertices
                 let start_vertex = edge_ref.start_vertex();
                 let end_vertex = edge_ref.end_vertex();
-                
+
                 if let (Some(start), Some(end)) = (start_vertex.get(), end_vertex.get()) {
                     let start_point = start.point();
                     let end_point = end.point();
-                    
+
                     // Calculate edge direction
                     let dx = end_point.x - start_point.x;
                     let dy = end_point.y - start_point.y;
                     let dz = end_point.z - start_point.z;
                     let length = (dx * dx + dy * dy + dz * dz).sqrt();
-                    
+
                     if length > 1e-6 {
                         let unit_dx = dx / length;
                         let unit_dy = dy / length;
                         let _unit_dz = dz / length;
-                        
+
                         // Generate points along the chamfer surface
                         for i in 0..20 {
                             let t = i as f64 / 19.0;
                             let edge_point = curve.value(t);
-                            
+
                             // Create perpendicular directions for the chamfer
                             // For simplicity, use a fixed perpendicular direction
                             let perp_x = -unit_dy;
                             let perp_y = unit_dx;
                             let perp_z = 0.0;
-                            let perp_length = (perp_x * perp_x + perp_y * perp_y + perp_z * perp_z).sqrt();
-                            
+                            let perp_length =
+                                (perp_x * perp_x + perp_y * perp_y + perp_z * perp_z).sqrt();
+
                             if perp_length > 1e-6 {
                                 let unit_perp_x = perp_x / perp_length;
                                 let unit_perp_y = perp_y / perp_length;
                                 let unit_perp_z = perp_z / perp_length;
-                                
+
                                 // Generate points for the chamfer surface
                                 // Chamfer creates a flat surface at 45 degrees
                                 let offset_x = distance * unit_perp_x;
                                 let offset_y = distance * unit_perp_y;
                                 let offset_z = distance * unit_perp_z;
-                                
+
                                 // Add points for both sides of the chamfer
                                 let chamfer_point1 = Point::new(
                                     edge_point.x + offset_x,
                                     edge_point.y + offset_y,
-                                    edge_point.z + offset_z
+                                    edge_point.z + offset_z,
                                 );
                                 let chamfer_point2 = Point::new(
                                     edge_point.x - offset_x,
                                     edge_point.y - offset_y,
-                                    edge_point.z - offset_z
+                                    edge_point.z - offset_z,
                                 );
                                 points.push(chamfer_point1);
                                 points.push(chamfer_point2);
@@ -747,7 +937,7 @@ mod tests {
 
     #[test]
     fn test_apply_fillet_to_box() {
-        let mut fc = FilletChamfer::with_radius(0.1);
+        let fc = FilletChamfer::with_radius(0.1);
 
         // Create a simple box
         let box_solid = primitives::make_box(1.0, 1.0, 1.0, Some(Point::new(0.0, 0.0, 0.0)));
@@ -761,7 +951,7 @@ mod tests {
 
     #[test]
     fn test_apply_chamfer_to_box() {
-        let mut fc = FilletChamfer::with_chamfer_distance(0.1);
+        let fc = FilletChamfer::with_chamfer_distance(0.1);
 
         // Create a simple box
         let box_solid = primitives::make_box(1.0, 1.0, 1.0, Some(Point::new(0.0, 0.0, 0.0)));

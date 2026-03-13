@@ -1,3 +1,15 @@
+use crate::geometry::traits::{GetCoord, SetCoord};
+impl GetCoord for CoordinateSystem {
+    fn coord(&self) -> (f64, f64, f64) {
+        self.location.coord()
+    }
+}
+
+impl SetCoord for CoordinateSystem {
+    fn set_coord(&mut self, x: f64, y: f64, z: f64) {
+        self.location.set_coord(x, y, z);
+    }
+}
 use crate::foundation::types::StandardReal;
 use crate::geometry::{Axis, Direction, Point, Transform};
 

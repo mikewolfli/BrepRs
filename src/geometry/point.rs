@@ -1,3 +1,17 @@
+use crate::geometry::traits::{GetCoord, SetCoord};
+impl GetCoord for Point {
+    fn coord(&self) -> (f64, f64, f64) {
+        (self.x as f64, self.y as f64, self.z as f64)
+    }
+}
+
+impl SetCoord for Point {
+    fn set_coord(&mut self, x: f64, y: f64, z: f64) {
+        self.x = x as StandardReal;
+        self.y = y as StandardReal;
+        self.z = z as StandardReal;
+    }
+}
 use crate::foundation::types::StandardReal;
 #[cfg(test)]
 use crate::foundation::types::STANDARD_REAL_EPSILON;
@@ -79,6 +93,11 @@ impl Point {
     #[inline]
     pub fn is_equal(&self, other: &Point, tolerance: StandardReal) -> bool {
         self.distance(other) <= tolerance
+    }
+
+    /// 使用全局容差判断相等
+    pub fn is_equal_tol(&self, other: &Point) -> bool {
+        self.distance(other) <= crate::geometry::traits::TOLERANCE as StandardReal
     }
 
     pub fn mirror(&mut self, point: &Point) {

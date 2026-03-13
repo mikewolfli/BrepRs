@@ -380,10 +380,10 @@ mod tests {
         let v1 = input_mesh.add_vertex(Point::new(1.0, 0.0, 0.0));
         let v2 = input_mesh.add_vertex(Point::new(1.0, 1.0, 0.0));
         let v3 = input_mesh.add_vertex(Point::new(0.0, 1.0, 0.0));
-        let v4 = input_mesh.add_vertex(Point::new(0.0, 0.0, 1.0));
-        let v5 = input_mesh.add_vertex(Point::new(1.0, 0.0, 1.0));
-        let v6 = input_mesh.add_vertex(Point::new(1.0, 1.0, 1.0));
-        let v7 = input_mesh.add_vertex(Point::new(0.0, 1.0, 1.0));
+        let _v4 = input_mesh.add_vertex(Point::new(0.0, 0.0, 1.0));
+        let _v5 = input_mesh.add_vertex(Point::new(1.0, 0.0, 1.0));
+        let _v6 = input_mesh.add_vertex(Point::new(1.0, 1.0, 1.0));
+        let _v7 = input_mesh.add_vertex(Point::new(0.0, 1.0, 1.0));
 
         // Add faces (bottom face)
         input_mesh.add_face(vec![v0, v1, v2]);

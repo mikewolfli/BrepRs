@@ -1,5 +1,8 @@
 use crate::foundation::exception::{Failure, Result};
 
+/// 一维数组，支持自定义下界。
+///
+/// 用于模拟OCCT的NCollection_Array1，支持边界检查和容量管理。
 pub struct Array1<T> {
     data: Vec<T>,
     lower: usize,
@@ -7,6 +10,7 @@ pub struct Array1<T> {
 }
 
 impl<T> Array1<T> {
+    /// 创建指定下界和上界的一维数组
     pub fn new(lower: usize, upper: usize) -> Result<Self> {
         if lower > upper {
             return Err(Failure::range_error("Lower bound must be <= upper bound"));
@@ -19,6 +23,7 @@ impl<T> Array1<T> {
         })
     }
 
+    /// 创建指定容量的一维数组
     pub fn with_capacity(lower: usize, upper: usize, capacity: usize) -> Result<Self> {
         if lower > upper {
             return Err(Failure::range_error("Lower bound must be <= upper bound"));
@@ -30,6 +35,7 @@ impl<T> Array1<T> {
         })
     }
 
+    /// 从Vec创建一维数组
     pub fn from_vec(lower: usize, vec: Vec<T>) -> Result<Self> {
         if vec.is_empty() {
             return Err(Failure::range_error("Cannot create Array1 from empty Vec"));

@@ -506,6 +506,16 @@ impl UsdImporter {
         Self { options }
     }
 
+    /// Get the import options
+    pub fn options(&self) -> &UsdImportOptions {
+        &self.options
+    }
+
+    /// Set the import options
+    pub fn set_options(&mut self, options: UsdImportOptions) {
+        self.options = options;
+    }
+
     /// Import a mesh from USD format
     pub fn import_mesh(&self, input_path: &Path) -> DataExchangeResult<Mesh> {
         let content = std::fs::read_to_string(input_path)?;

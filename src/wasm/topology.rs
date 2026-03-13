@@ -1,17 +1,13 @@
 //! WebAssembly bindings for topology types
 
-use wasm_bindgen::prelude::*;
+use super::geometry::WasmPoint;
 use crate::foundation::handle::Handle;
 use crate::topology::{
-    topods_vertex::TopoDsVertex,
-    topods_edge::TopoDsEdge,
+    topods_compound::TopoDsCompound, topods_edge::TopoDsEdge, topods_face::TopoDsFace,
+    topods_shell::TopoDsShell, topods_solid::TopoDsSolid, topods_vertex::TopoDsVertex,
     topods_wire::TopoDsWire,
-    topods_face::TopoDsFace,
-    topods_shell::TopoDsShell,
-    topods_solid::TopoDsSolid,
-    topods_compound::TopoDsCompound,
 };
-use super::geometry::WasmPoint;
+use wasm_bindgen::prelude::*;
 
 /// WebAssembly wrapper for Vertex
 #[wasm_bindgen(js_name = Vertex)]
@@ -226,6 +222,7 @@ impl Default for WasmSolid {
 #[wasm_bindgen(js_name = Compound)]
 #[derive(Debug, Clone)]
 pub struct WasmCompound {
+    #[allow(dead_code)]
     pub(crate) inner: Handle<TopoDsCompound>,
 }
 

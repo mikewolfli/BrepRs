@@ -21,6 +21,50 @@ pub struct LodLevel {
     quality_metrics: LodQualityMetrics,
 }
 
+impl LodLevel {
+    /// Create a new LOD level
+    pub fn new(
+        level: usize,
+        mesh: Mesh3D,
+        simplification_factor: f64,
+        bounding_box: crate::geometry::BoundingBox,
+        quality_metrics: LodQualityMetrics,
+    ) -> Self {
+        Self {
+            level,
+            mesh,
+            simplification_factor,
+            bounding_box,
+            quality_metrics,
+        }
+    }
+
+    /// Get the level ID
+    pub fn level(&self) -> usize {
+        self.level
+    }
+
+    /// Get the mesh
+    pub fn mesh(&self) -> &Mesh3D {
+        &self.mesh
+    }
+
+    /// Get the simplification factor
+    pub fn simplification_factor(&self) -> f64 {
+        self.simplification_factor
+    }
+
+    /// Get the bounding box
+    pub fn bounding_box(&self) -> &crate::geometry::BoundingBox {
+        &self.bounding_box
+    }
+
+    /// Get the quality metrics
+    pub fn quality_metrics(&self) -> &LodQualityMetrics {
+        &self.quality_metrics
+    }
+}
+
 /// LOD quality metrics
 pub struct LodQualityMetrics {
     /// Number of triangles
@@ -33,6 +77,50 @@ pub struct LodQualityMetrics {
     geometric_error: f64,
     /// Visual error estimate
     visual_error: f64,
+}
+
+impl LodQualityMetrics {
+    /// Create new quality metrics
+    pub fn new(
+        triangle_count: usize,
+        average_edge_length: f64,
+        maximum_edge_length: f64,
+        geometric_error: f64,
+        visual_error: f64,
+    ) -> Self {
+        Self {
+            triangle_count,
+            average_edge_length,
+            maximum_edge_length,
+            geometric_error,
+            visual_error,
+        }
+    }
+
+    /// Get the triangle count
+    pub fn triangle_count(&self) -> usize {
+        self.triangle_count
+    }
+
+    /// Get the average edge length
+    pub fn average_edge_length(&self) -> f64 {
+        self.average_edge_length
+    }
+
+    /// Get the maximum edge length
+    pub fn maximum_edge_length(&self) -> f64 {
+        self.maximum_edge_length
+    }
+
+    /// Get the geometric error
+    pub fn geometric_error(&self) -> f64 {
+        self.geometric_error
+    }
+
+    /// Get the visual error
+    pub fn visual_error(&self) -> f64 {
+        self.visual_error
+    }
 }
 
 /// LOD system
@@ -80,6 +168,86 @@ impl LodParams {
             enable_transitions: true,
             transition_duration: 0.5,
         }
+    }
+
+    /// Get the number of LOD levels
+    pub fn num_levels(&self) -> usize {
+        self.num_levels
+    }
+
+    /// Get the base simplification factor
+    pub fn base_simplification(&self) -> f64 {
+        self.base_simplification
+    }
+
+    /// Get the maximum geometric error
+    pub fn max_geometric_error(&self) -> f64 {
+        self.max_geometric_error
+    }
+
+    /// Get the maximum visual error
+    pub fn max_visual_error(&self) -> f64 {
+        self.max_visual_error
+    }
+
+    /// Get whether to use view-dependent LOD
+    pub fn use_view_dependent(&self) -> bool {
+        self.use_view_dependent
+    }
+
+    /// Get the screen space error threshold
+    pub fn screen_space_error(&self) -> f64 {
+        self.screen_space_error
+    }
+
+    /// Get whether transitions are enabled
+    pub fn enable_transitions(&self) -> bool {
+        self.enable_transitions
+    }
+
+    /// Get the transition duration
+    pub fn transition_duration(&self) -> f64 {
+        self.transition_duration
+    }
+
+    /// Set the number of LOD levels
+    pub fn set_num_levels(&mut self, num_levels: usize) {
+        self.num_levels = num_levels;
+    }
+
+    /// Set the base simplification factor
+    pub fn set_base_simplification(&mut self, base_simplification: f64) {
+        self.base_simplification = base_simplification;
+    }
+
+    /// Set the maximum geometric error
+    pub fn set_max_geometric_error(&mut self, max_geometric_error: f64) {
+        self.max_geometric_error = max_geometric_error;
+    }
+
+    /// Set the maximum visual error
+    pub fn set_max_visual_error(&mut self, max_visual_error: f64) {
+        self.max_visual_error = max_visual_error;
+    }
+
+    /// Set whether to use view-dependent LOD
+    pub fn set_use_view_dependent(&mut self, use_view_dependent: bool) {
+        self.use_view_dependent = use_view_dependent;
+    }
+
+    /// Set the screen space error threshold
+    pub fn set_screen_space_error(&mut self, screen_space_error: f64) {
+        self.screen_space_error = screen_space_error;
+    }
+
+    /// Set whether transitions are enabled
+    pub fn set_enable_transitions(&mut self, enable_transitions: bool) {
+        self.enable_transitions = enable_transitions;
+    }
+
+    /// Set the transition duration
+    pub fn set_transition_duration(&mut self, transition_duration: f64) {
+        self.transition_duration = transition_duration;
     }
 }
 
@@ -446,6 +614,47 @@ pub struct LodTransitionParams {
     use_morph: bool,
 }
 
+impl LodTransitionParams {
+    /// Create default transition parameters
+    pub fn default() -> Self {
+        Self {
+            duration: 0.5,
+            use_cross_fade: true,
+            use_morph: false,
+        }
+    }
+
+    /// Get the transition duration
+    pub fn duration(&self) -> f64 {
+        self.duration
+    }
+
+    /// Set the transition duration
+    pub fn set_duration(&mut self, duration: f64) {
+        self.duration = duration;
+    }
+
+    /// Get whether to use cross-fade transition
+    pub fn use_cross_fade(&self) -> bool {
+        self.use_cross_fade
+    }
+
+    /// Set whether to use cross-fade transition
+    pub fn set_use_cross_fade(&mut self, use_cross_fade: bool) {
+        self.use_cross_fade = use_cross_fade;
+    }
+
+    /// Get whether to use morph transition
+    pub fn use_morph(&self) -> bool {
+        self.use_morph
+    }
+
+    /// Set whether to use morph transition
+    pub fn set_use_morph(&mut self, use_morph: bool) {
+        self.use_morph = use_morph;
+    }
+}
+
 /// LOD transition state
 pub struct LodTransition {
     /// Start time (in seconds since epoch)
@@ -456,6 +665,48 @@ pub struct LodTransition {
     to_level: usize,
     /// Progress (0.0 to 1.0)
     progress: f64,
+}
+
+impl LodTransition {
+    /// Create a new LOD transition
+    pub fn new(from_level: usize, to_level: usize) -> Self {
+        Self {
+            start_time: 0.0,
+            from_level,
+            to_level,
+            progress: 0.0,
+        }
+    }
+
+    /// Get the start time
+    pub fn start_time(&self) -> f64 {
+        self.start_time
+    }
+
+    /// Set the start time
+    pub fn set_start_time(&mut self, start_time: f64) {
+        self.start_time = start_time;
+    }
+
+    /// Get the from level
+    pub fn from_level(&self) -> usize {
+        self.from_level
+    }
+
+    /// Get the to level
+    pub fn to_level(&self) -> usize {
+        self.to_level
+    }
+
+    /// Get the progress
+    pub fn progress(&self) -> f64 {
+        self.progress
+    }
+
+    /// Set the progress
+    pub fn set_progress(&mut self, progress: f64) {
+        self.progress = progress;
+    }
 }
 
 impl LodTransitionManager {
@@ -534,6 +785,16 @@ impl LodCollisionDetector {
         Self { lod_system, params }
     }
 
+    /// Get the LOD system
+    pub fn lod_system(&self) -> &LodSystem {
+        &self.lod_system
+    }
+
+    /// Get the collision parameters
+    pub fn params(&self) -> &CollisionParams {
+        &self.params
+    }
+
     /// Check collision with a point
     pub fn check_point_collision(&self, _point: Point) -> bool {
         // Implementation of point collision detection
@@ -553,6 +814,58 @@ impl LodCollisionDetector {
         // Implementation of mesh collision detection
         // This is a placeholder implementation
         false
+    }
+}
+
+impl CollisionParams {
+    /// Create default collision parameters
+    pub fn default() -> Self {
+        Self {
+            use_lod: true,
+            min_lod_level: 0,
+            max_lod_level: 3,
+            tolerance: 0.001,
+        }
+    }
+
+    /// Get whether to use LOD for collision detection
+    pub fn use_lod(&self) -> bool {
+        self.use_lod
+    }
+
+    /// Set whether to use LOD for collision detection
+    pub fn set_use_lod(&mut self, use_lod: bool) {
+        self.use_lod = use_lod;
+    }
+
+    /// Get the minimum LOD level
+    pub fn min_lod_level(&self) -> usize {
+        self.min_lod_level
+    }
+
+    /// Set the minimum LOD level
+    pub fn set_min_lod_level(&mut self, min_lod_level: usize) {
+        self.min_lod_level = min_lod_level;
+    }
+
+    /// Get the maximum LOD level
+    pub fn max_lod_level(&self) -> usize {
+        self.max_lod_level
+    }
+
+    /// Set the maximum LOD level
+    pub fn set_max_lod_level(&mut self, max_lod_level: usize) {
+        self.max_lod_level = max_lod_level;
+    }
+
+    /// Get the collision tolerance
+    pub fn tolerance(&self) -> f64 {
+        self.tolerance
+    }
+
+    /// Set the collision tolerance
+    pub fn set_tolerance(&mut self, tolerance: f64) {
+        self.tolerance = tolerance;
     }
 }
 
@@ -582,6 +895,16 @@ impl LodDebugger {
         Self { lod_system, params }
     }
 
+    /// Get the LOD system
+    pub fn lod_system(&self) -> &LodSystem {
+        &self.lod_system
+    }
+
+    /// Get the debug parameters
+    pub fn params(&self) -> &DebugParams {
+        &self.params
+    }
+
     /// Visualize LOD levels
     pub fn visualize_lod_levels(&self) {
         // Implementation of LOD level visualization
@@ -604,5 +927,57 @@ impl LodDebugger {
     pub fn visualize_transitions(&self) {
         // Implementation of transition state visualization
         // This is a placeholder implementation
+    }
+}
+
+impl DebugParams {
+    /// Create default debug parameters
+    pub fn default() -> Self {
+        Self {
+            show_lod_levels: true,
+            show_bounding_boxes: true,
+            show_error_metrics: true,
+            show_transitions: true,
+        }
+    }
+
+    /// Get whether to show LOD levels
+    pub fn show_lod_levels(&self) -> bool {
+        self.show_lod_levels
+    }
+
+    /// Set whether to show LOD levels
+    pub fn set_show_lod_levels(&mut self, show_lod_levels: bool) {
+        self.show_lod_levels = show_lod_levels;
+    }
+
+    /// Get whether to show bounding boxes
+    pub fn show_bounding_boxes(&self) -> bool {
+        self.show_bounding_boxes
+    }
+
+    /// Set whether to show bounding boxes
+    pub fn set_show_bounding_boxes(&mut self, show_bounding_boxes: bool) {
+        self.show_bounding_boxes = show_bounding_boxes;
+    }
+
+    /// Get whether to show error metrics
+    pub fn show_error_metrics(&self) -> bool {
+        self.show_error_metrics
+    }
+
+    /// Set whether to show error metrics
+    pub fn set_show_error_metrics(&mut self, show_error_metrics: bool) {
+        self.show_error_metrics = show_error_metrics;
+    }
+
+    /// Get whether to show transitions
+    pub fn show_transitions(&self) -> bool {
+        self.show_transitions
+    }
+
+    /// Set whether to show transitions
+    pub fn set_show_transitions(&mut self, show_transitions: bool) {
+        self.show_transitions = show_transitions;
     }
 }

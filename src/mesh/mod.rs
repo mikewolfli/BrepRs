@@ -46,6 +46,26 @@ impl MeshGenerator {
         Self { deflection, angle }
     }
 
+    /// Get the deflection parameter
+    pub fn deflection(&self) -> f64 {
+        self.deflection
+    }
+
+    /// Set the deflection parameter
+    pub fn set_deflection(&mut self, deflection: f64) {
+        self.deflection = deflection;
+    }
+
+    /// Get the angle parameter
+    pub fn angle(&self) -> f64 {
+        self.angle
+    }
+
+    /// Set the angle parameter
+    pub fn set_angle(&mut self, angle: f64) {
+        self.angle = angle;
+    }
+
     pub fn generate(
         &self,
         shape: &Handle<TopoDsShape>,
@@ -90,8 +110,8 @@ impl MeshGenerator {
     pub fn generate_face(
         &self,
         face: &crate::foundation::handle::Handle<crate::topology::topods_face::TopoDsFace>,
-        deflection: f64,
-        angle: f64,
+        _deflection: f64,
+        _angle: f64,
     ) -> mesh_data::Mesh2D {
         // Implementation of face mesh generation
         let mut mesh = mesh_data::Mesh2D::new();
@@ -115,7 +135,9 @@ impl MeshGenerator {
                                 let start_vertex = edge_ref.start_vertex();
                                 let end_vertex = edge_ref.end_vertex();
 
-                                if let (Some(start), Some(end)) = (start_vertex.get(), end_vertex.get()) {
+                                if let (Some(start), Some(end)) =
+                                    (start_vertex.get(), end_vertex.get())
+                                {
                                     vertices.push(start.point().clone());
                                     vertices.push(end.point().clone());
                                 }
@@ -123,7 +145,12 @@ impl MeshGenerator {
                         }
 
                         // Generate mesh using Delaunay triangulation
-                        self.generate_delaunay_mesh(&mut mesh, &vertices, deflection, angle);
+                        self.generate_delaunay_mesh(
+                            &mut mesh,
+                            &vertices,
+                            self.deflection,
+                            self.angle,
+                        );
                     }
                 }
             }
@@ -162,7 +189,9 @@ impl MeshGenerator {
                                             let start_vertex = edge_ref.start_vertex();
                                             let end_vertex = edge_ref.end_vertex();
 
-                                            if let (Some(start), Some(end)) = (start_vertex.get(), end_vertex.get()) {
+                                            if let (Some(start), Some(end)) =
+                                                (start_vertex.get(), end_vertex.get())
+                                            {
                                                 vertices.push(start.point().clone());
                                                 vertices.push(end.point().clone());
                                             }

@@ -31,6 +31,18 @@ impl BooleanOperations {
         }
     }
 
+    /// Get the BrepBuilder instance
+    #[inline]
+    pub fn builder(&self) -> &BrepBuilder {
+        &self.builder
+    }
+
+    /// Get a mutable reference to the BrepBuilder instance
+    #[inline]
+    pub fn builder_mut(&mut self) -> &mut BrepBuilder {
+        &mut self.builder
+    }
+
     /// Check if the boolean operations instance is valid
     #[inline]
     pub fn is_none(&self) -> bool {
@@ -223,13 +235,17 @@ impl BooleanOperations {
                 for face2 in &faces2 {
                     if let Some(face2_ref) = face2.get() {
                         // Get surfaces from both faces
-                        if let (Some(_surface1), Some(_surface2)) = (face1_ref.surface(), face2_ref.surface()) {
+                        if let (Some(_surface1), Some(_surface2)) =
+                            (face1_ref.surface(), face2_ref.surface())
+                        {
                             // Simplified intersection: create a sample edge
                             let vertex1 = Handle::new(std::sync::Arc::new(
-                                crate::topology::topods_vertex::TopoDsVertex::new(Point::origin())
+                                crate::topology::topods_vertex::TopoDsVertex::new(Point::origin()),
                             ));
                             let vertex2 = Handle::new(std::sync::Arc::new(
-                                crate::topology::topods_vertex::TopoDsVertex::new(Point::new(1.0, 0.0, 0.0))
+                                crate::topology::topods_vertex::TopoDsVertex::new(Point::new(
+                                    1.0, 0.0, 0.0,
+                                )),
                             ));
                             let edge = TopoDsEdge::new(vertex1, vertex2);
                             compound.add_component(Handle::new(std::sync::Arc::new(
@@ -253,7 +269,11 @@ impl BooleanOperations {
     /// # Returns
     /// A new compound that contains the intersection curves
     #[inline]
-    pub fn section_with_plane(&self, shape: &Handle<TopoDsShape>, _plane: &Plane) -> TopoDsCompound {
+    pub fn section_with_plane(
+        &self,
+        shape: &Handle<TopoDsShape>,
+        _plane: &Plane,
+    ) -> TopoDsCompound {
         let mut compound = TopoDsCompound::new();
 
         // Extract all faces from the shape
@@ -266,14 +286,15 @@ impl BooleanOperations {
                 if let Some(_surface) = face_ref.surface() {
                     // Simplified intersection: create a sample edge
                     let vertex1 = Handle::new(std::sync::Arc::new(
-                        crate::topology::topods_vertex::TopoDsVertex::new(Point::origin())
+                        crate::topology::topods_vertex::TopoDsVertex::new(Point::origin()),
                     ));
                     let vertex2 = Handle::new(std::sync::Arc::new(
-                        crate::topology::topods_vertex::TopoDsVertex::new(Point::new(1.0, 0.0, 0.0))
+                        crate::topology::topods_vertex::TopoDsVertex::new(Point::new(
+                            1.0, 0.0, 0.0,
+                        )),
                     ));
                     let edge = TopoDsEdge::new(vertex1, vertex2);
-                    compound
-                        .add_component(Handle::new(std::sync::Arc::new(edge.shape().clone())));
+                    compound.add_component(Handle::new(std::sync::Arc::new(edge.shape().clone())));
                 }
             }
         }
@@ -366,12 +387,19 @@ impl BooleanOperations {
     /// Reconstruct shapes from BSP tree
     fn reconstruct_shapes_from_tree(
         &self,
-        _tree: &crate::modeling::bsp_tree::BspTree,
+        tree: &crate::modeling::bsp_tree::BspTree,
         compound: &mut TopoDsCompound,
     ) {
-        // Simplified implementation: just create a box
-        let box_shape = crate::modeling::primitives::make_box(1.0, 1.0, 1.0, Some(Point::origin()));
-        compound.add_component(Handle::new(std::sync::Arc::new(box_shape.shape().clone())));
+        // Reconstruct shapes from BSP tree
+        // Get all faces from the BSP tree
+        let faces = tree.collect_all_faces_parallel();
+
+        // Create a shape from the faces
+        if !faces.is_empty() {
+            // For simplicity, create a box shape
+            let box_shape = crate::modeling::primitives::make_box(1.0, 1.0, 1.0, Some(Point::origin()));
+            compound.add_component(Handle::new(std::sync::Arc::new(box_shape.shape().clone())));
+        }
     }
 }
 
@@ -559,7 +587,7 @@ mod tests {
 
         let result = boolean_ops.common(&shape1, &shape2);
         // Result should be the intersection of the two boxes
-        assert!(result.components().len() >= 0);
+        assert!(result.components().len() > 0);
     }
 
     #[test]
@@ -576,7 +604,7 @@ mod tests {
 
         let result = boolean_ops.section(&shape1, &shape2);
         // Result should be the intersection curves
-        assert!(result.components().len() >= 0);
+        assert!(result.components().len() > 0);
     }
 
     #[test]
@@ -598,6 +626,6 @@ mod tests {
 
         let result = boolean_ops.section_with_plane(&shape, &plane);
         // Result should be the intersection curve
-        assert!(result.components().len() >= 0);
+        assert!(result.components().len() > 0);
     }
 }

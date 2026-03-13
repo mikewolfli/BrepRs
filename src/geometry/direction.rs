@@ -1,3 +1,18 @@
+use crate::geometry::traits::{GetCoord, SetCoord, TOLERANCE};
+impl GetCoord for Direction {
+    fn coord(&self) -> (f64, f64, f64) {
+        (self.x as f64, self.y as f64, self.z as f64)
+    }
+}
+
+impl SetCoord for Direction {
+    fn set_coord(&mut self, x: f64, y: f64, z: f64) {
+        self.x = x as StandardReal;
+        self.y = y as StandardReal;
+        self.z = z as StandardReal;
+        self.normalize();
+    }
+}
 use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -8,6 +23,18 @@ pub struct Direction {
 }
 
 impl Direction {
+    /// 使用全局容差判断零方向
+    pub fn is_zero_tol(&self) -> bool {
+        let mag = (self.x * self.x + self.y * self.y + self.z * self.z).sqrt();
+        mag <= TOLERANCE as StandardReal
+    }
+
+    /// 使用全局容差判断相等
+    pub fn is_equal_tol(&self, other: &Direction) -> bool {
+        let diff =
+            crate::geometry::Vector::new(self.x - other.x, self.y - other.y, self.z - other.z);
+        diff.magnitude() <= TOLERANCE as StandardReal
+    }
     pub fn new(x: StandardReal, y: StandardReal, z: StandardReal) -> Self {
         let mut dir = Self { x, y, z };
         dir.normalize();
@@ -94,17 +121,28 @@ impl Direction {
         }
     }
 
-    pub fn normalized(&self) -> Direction {
+    /// 返回归一化方向，若为零向量则返回Err
+    pub fn normalized_result(&self) -> Result<Direction, &'static str> {
         let mag = (self.x * self.x + self.y * self.y + self.z * self.z).sqrt();
         if mag > STANDARD_REAL_EPSILON {
-            Direction {
+            Ok(Direction {
                 x: self.x / mag,
                 y: self.y / mag,
                 z: self.z / mag,
-            }
+            })
         } else {
-            *self
+            Err("Direction is zero vector, cannot normalize.")
         }
+    }
+
+    /// 返回归一化方向，若为零向量则返回默认方向
+    pub fn normalized(&self) -> Direction {
+        self.normalized_result().unwrap_or_default()
+    }
+
+    /// 计算与other的夹角，若任一为零向量则返回0
+    pub fn angle(&self, other: &Direction) -> StandardReal {
+        self.angle_result(other).unwrap_or(0.0)
     }
 
     pub fn reverse(&mut self) {
@@ -144,10 +182,16 @@ impl Direction {
         cross.x * cross.x + cross.y * cross.y + cross.z * cross.z
     }
 
-    pub fn angle(&self, other: &Direction) -> StandardReal {
+    /// 计算与other的夹角，若任一为零向量则返回Err
+    pub fn angle_result(&self, other: &Direction) -> Result<StandardReal, &'static str> {
+        let mag_self = (self.x * self.x + self.y * self.y + self.z * self.z).sqrt();
+        let mag_other = (other.x * other.x + other.y * other.y + other.z * other.z).sqrt();
+        if mag_self <= STANDARD_REAL_EPSILON || mag_other <= STANDARD_REAL_EPSILON {
+            return Err("One or both directions are zero vector.");
+        }
         let dot = self.dot(other);
         let dot = dot.max(-1.0).min(1.0);
-        dot.acos()
+        Ok(dot.acos())
     }
 
     pub fn angle_with_ref(&self, other: &Direction, v_ref: &Direction) -> StandardReal {
@@ -254,11 +298,11 @@ impl Direction {
 
     pub fn transformed(&self, transform: &crate::geometry::Transform) -> Direction {
         let matrix = &transform.rotation.data;
-        
+
         let x = matrix[0][0] * self.x + matrix[0][1] * self.y + matrix[0][2] * self.z;
         let y = matrix[1][0] * self.x + matrix[1][1] * self.y + matrix[1][2] * self.z;
         let z = matrix[2][0] * self.x + matrix[2][1] * self.y + matrix[2][2] * self.z;
-        
+
         Direction::new(x, y, z)
     }
 }

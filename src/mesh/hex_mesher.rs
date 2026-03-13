@@ -416,7 +416,7 @@ impl HexMesher {
     }
 
     /// Calculate hexahedron quality
-    fn calculate_hex_quality(&self, mesh: &Mesh3D, hex: &MeshHexahedron) -> f64 {
+    pub fn calculate_hex_quality(&self, mesh: &Mesh3D, hex: &MeshHexahedron) -> f64 {
         // Calculate edge lengths
         let edges = vec![
             (hex.vertices[0], hex.vertices[1]),
@@ -474,7 +474,7 @@ mod tests {
             min: Point::new(0.0, 0.0, 0.0),
             max: Point::new(1.0, 1.0, 1.0),
         };
-        let mesher = HexMesher::new(params, geometry);
+        let _mesher = HexMesher::new(params, geometry);
         // Test passed if no panic
     }
 

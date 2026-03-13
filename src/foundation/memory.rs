@@ -15,16 +15,24 @@ pub struct MemoryManager {
     total_allocated: AtomicUsize,
     total_freed: AtomicUsize,
     active_objects: AtomicUsize,
+    enabled: bool,
 }
 
 impl MemoryManager {
     #[inline]
-    pub const fn new() -> Self {
+    /// 创建新的内存管理器，debug模式默认启用，release模式可配置
+    pub fn new() -> Self {
         Self {
             total_allocated: AtomicUsize::new(0),
             total_freed: AtomicUsize::new(0),
             active_objects: AtomicUsize::new(0),
+            enabled: cfg!(debug_assertions),
         }
+    }
+
+    /// 显式启用/禁用内存跟踪
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
     }
 
     /// Track an allocation of the given size
@@ -78,9 +86,7 @@ impl MemoryManager {
     /// Check if memory tracking is enabled
     #[inline]
     pub fn is_enabled(&self) -> bool {
-        // Memory tracking is always enabled in debug builds
-        // In release builds, it's disabled for performance
-        cfg!(debug_assertions)
+        self.enabled
     }
 }
 
@@ -91,7 +97,8 @@ impl Default for MemoryManager {
 }
 
 /// Global memory manager instance
-pub static MEMORY_MANAGER: MemoryManager = MemoryManager::new();
+use std::sync::LazyLock;
+pub static MEMORY_MANAGER: LazyLock<MemoryManager> = LazyLock::new(|| MemoryManager::new());
 
 /// Wrapper type for automatic memory tracking via Drop trait
 ///

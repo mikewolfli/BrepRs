@@ -449,6 +449,16 @@ impl ThreeMfImporter {
         Self { options }
     }
 
+    /// Get the import options
+    pub fn options(&self) -> &ThreeMfImportOptions {
+        &self.options
+    }
+
+    /// Set the import options
+    pub fn set_options(&mut self, options: ThreeMfImportOptions) {
+        self.options = options;
+    }
+
     /// Import objects from 3MF format
     pub fn import_objects(&self, input_path: &Path) -> DataExchangeResult<Vec<ThreeMfObject>> {
         // Read ZIP file

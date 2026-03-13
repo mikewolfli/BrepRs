@@ -1,3 +1,17 @@
+use crate::geometry::traits::{GetCoord, SetCoord};
+impl GetCoord for Vector {
+    fn coord(&self) -> (f64, f64, f64) {
+        (self.x as f64, self.y as f64, self.z as f64)
+    }
+}
+
+impl SetCoord for Vector {
+    fn set_coord(&mut self, x: f64, y: f64, z: f64) {
+        self.x = x as StandardReal;
+        self.y = y as StandardReal;
+        self.z = z as StandardReal;
+    }
+}
 use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -82,10 +96,21 @@ impl Vector {
         self.magnitude() <= tolerance
     }
 
+    /// 使用全局容差判断零向量
+    pub fn is_zero_tol(&self) -> bool {
+        self.magnitude() <= crate::geometry::traits::TOLERANCE as StandardReal
+    }
+
     #[inline]
     pub fn is_equal(&self, other: &Vector, tolerance: StandardReal) -> bool {
         let diff = *self - *other;
         diff.magnitude() <= tolerance
+    }
+
+    /// 使用全局容差判断相等
+    pub fn is_equal_tol(&self, other: &Vector) -> bool {
+        let diff = *self - *other;
+        diff.magnitude() <= crate::geometry::traits::TOLERANCE as StandardReal
     }
 
     pub fn normalize(&mut self) {
@@ -321,11 +346,11 @@ impl Vector {
     }
 
     /// Rotate the vector around an axis by a given angle
-    /// 
+    ///
     /// # Arguments
     /// * `axis` - The axis to rotate around (as a Vector)
     /// * `angle` - The angle in radians
-    /// 
+    ///
     /// # Returns
     /// The rotated vector
     pub fn rotate_around_axis(&self, axis: Vector, angle: StandardReal) -> Vector {

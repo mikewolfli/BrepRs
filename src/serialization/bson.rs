@@ -410,62 +410,62 @@ pub fn bson_array_to_bytes(docs: &[bson::Document]) -> Result<Vec<u8>, BsonError
     Ok(buf)
 }
 
+/// Pretty-print BSON document
+pub fn pretty_print_bson(doc: &bson::Document) -> String {
+    let bson = Bson::Document(doc.clone());
+    match bson.to_string() {
+        s if !s.is_empty() => s,
+        _ => "<invalid BSON>".to_string(),
+    }
+}
+
+/// Convert BSON document to JSON value
+pub fn bson_to_json(doc: &bson::Document) -> serde_json::Value {
+    let bson = Bson::Document(doc.clone());
+    match bson {
+        Bson::Document(ref d) => {
+            let mut map = serde_json::Map::new();
+            for (k, v) in d.iter() {
+                map.insert(k.clone(), bson_to_json_value(v));
+            }
+            serde_json::Value::Object(map)
+        }
+        _ => serde_json::Value::Null,
+    }
+}
+
+/// Convert BSON value to JSON value
+pub fn bson_to_json_value(bson: &Bson) -> serde_json::Value {
+    match bson {
+        Bson::Double(f) => serde_json::Value::Number(
+            serde_json::Number::from_f64(*f).unwrap_or_else(|| serde_json::Number::from(0)),
+        ),
+        Bson::String(s) => serde_json::Value::String(s.clone()),
+        Bson::Array(arr) => serde_json::Value::Array(arr.iter().map(bson_to_json_value).collect()),
+        Bson::Document(doc) => bson_to_json(doc),
+        Bson::Boolean(b) => serde_json::Value::Bool(*b),
+        Bson::Int32(i) => serde_json::Value::Number(serde_json::Number::from(*i)),
+        Bson::Int64(i) => serde_json::Value::Number(serde_json::Number::from(*i)),
+        Bson::Null => serde_json::Value::Null,
+        _ => serde_json::Value::Null,
+    }
+}
+
+/// Stream BSON array deserialization
+pub fn stream_bson_array<R: std::io::Read>(
+    reader: R,
+) -> impl Iterator<Item = Result<bson::Document, BsonError>> {
+    let mut r = reader;
+    std::iter::from_fn(move || match bson::Document::from_reader(&mut r) {
+        Ok(doc) => Some(Ok(doc)),
+        Err(_) => None,
+    })
+}
+
 /// Deserialize array of BSON documents
 pub fn bytes_to_bson_array(bytes: &[u8]) -> Result<Vec<bson::Document>, BsonError> {
     let mut docs = Vec::new();
     let slice = bytes;
-    /// Pretty-print BSON document
-    pub fn pretty_print_bson(doc: &bson::Document) -> String {
-        let bson = Bson::Document(doc.clone());
-        match bson.to_string() {
-            s if !s.is_empty() => s,
-            _ => "<invalid BSON>".to_string(),
-        }
-    }
-
-    /// Convert BSON document to JSON value
-    pub fn bson_to_json(doc: &bson::Document) -> serde_json::Value {
-        let bson = Bson::Document(doc.clone());
-        match bson {
-            Bson::Document(ref d) => {
-                let mut map = serde_json::Map::new();
-                for (k, v) in d.iter() {
-                    map.insert(k.clone(), bson_to_json_value(v));
-                }
-                serde_json::Value::Object(map)
-            }
-            _ => serde_json::Value::Null,
-        }
-    }
-
-    fn bson_to_json_value(bson: &Bson) -> serde_json::Value {
-        match bson {
-            Bson::Double(f) => serde_json::Value::Number(
-                serde_json::Number::from_f64(*f).unwrap_or_else(|| serde_json::Number::from(0)),
-            ),
-            Bson::String(s) => serde_json::Value::String(s.clone()),
-            Bson::Array(arr) => {
-                serde_json::Value::Array(arr.iter().map(bson_to_json_value).collect())
-            }
-            Bson::Document(doc) => bson_to_json(doc),
-            Bson::Boolean(b) => serde_json::Value::Bool(*b),
-            Bson::Int32(i) => serde_json::Value::Number(serde_json::Number::from(*i)),
-            Bson::Int64(i) => serde_json::Value::Number(serde_json::Number::from(*i)),
-            Bson::Null => serde_json::Value::Null,
-            _ => serde_json::Value::Null,
-        }
-    }
-
-    /// Stream BSON array deserialization
-    pub fn stream_bson_array<R: std::io::Read>(
-        reader: R,
-    ) -> impl Iterator<Item = Result<bson::Document, BsonError>> {
-        let mut r = reader;
-        std::iter::from_fn(move || match bson::Document::from_reader(&mut r) {
-            Ok(doc) => Some(Ok(doc)),
-            Err(_) => None,
-        })
-    }
     while !slice.is_empty() {
         match bson::Document::from_reader(slice) {
             Ok(doc) => {

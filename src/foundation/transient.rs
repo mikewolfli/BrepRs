@@ -1,39 +1,53 @@
 use std::any::{Any, TypeId};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+/// 基础对象特征，用于支持动态类型和引用计数。
+///
+/// 所有可被Handle管理的对象需实现该trait。
 pub trait Transient: Any + Send + Sync {
+    /// 获取类型ID
     fn type_id(&self) -> TypeId {
         Any::type_id(self)
     }
 
+    /// 获取动态类型ID
     fn dynamic_type(&self) -> TypeId {
         Any::type_id(self)
     }
 
+    /// 判断类型是否匹配
     fn is_kind(&self, other: TypeId) -> bool {
         Any::type_id(self) == other
     }
 
+    /// 增加引用计数
     fn increment_ref_count(&self);
+    /// 减少引用计数
     fn decrement_ref_count(&self);
+    /// 获取当前引用计数
     fn ref_count(&self) -> usize;
 }
 
+/// 构建Transient对象的trait。
 pub trait TransientBuilder {
+    /// 构建对象
     fn build(self) -> Box<dyn Transient>;
 }
 
+/// Transient对象基础实现，包含引用计数。
 pub struct TransientBase {
     ref_count: AtomicUsize,
 }
 
 impl TransientBase {
+    /// 创建新对象，引用计数为1
     pub fn new() -> Self {
         Self {
             ref_count: AtomicUsize::new(1),
         }
     }
 
+    /// 增加引用计数
     pub fn increment_ref_count(&self) {
         self.ref_count.fetch_add(1, Ordering::SeqCst);
     }
