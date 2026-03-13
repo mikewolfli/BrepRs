@@ -3,6 +3,7 @@ use crate::geometry::Point;
 use crate::topology::{
     topods_location::TopoDsLocation, topods_shape::TopoDsShape, topods_wire::TopoDsWire,
 };
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 /// Represents a face in topological structure
@@ -32,6 +33,7 @@ use std::sync::Arc;
 /// - Faces without a surface represent planar faces
 /// - The outer wire defines the face's boundary, holes define cutouts
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TopoDsFace {
     shape: TopoDsShape,
     surface: Option<Handle<dyn Surface>>,
@@ -423,7 +425,7 @@ impl PartialEq for TopoDsFace {
 /// Trait for surfaces that can be associated with faces
 ///
 /// Surfaces are reference-counted via Handle<T> to allow sharing between multiple faces.
-pub trait Surface: std::fmt::Debug + Send + Sync {
+pub trait Surface: std::fmt::Debug + Send + Sync + Serialize + for<'de> Deserialize<'de> {
     /// Get the point on the surface at (u, v) parameters
     fn value(&self, u: f64, v: f64) -> Point;
 

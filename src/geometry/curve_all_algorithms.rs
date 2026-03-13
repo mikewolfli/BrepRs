@@ -1,4 +1,6 @@
 use crate::geometry::advanced_traits::Curve;
+use crate::geometry::bezier_boolean::{bezier_difference, bezier_intersect, bezier_union};
+use crate::geometry::bezier_curve2d::BezierCurve2D;
 use crate::geometry::traits::GetCoord;
 
 /// Curve split and join (segmentation, trimming, joining)
@@ -6,51 +8,75 @@ pub fn curve_split<C: crate::geometry::advanced_traits::Curve>(
     curve: &C,
     t0: f64,
     t1: f64,
-) -> impl crate::geometry::advanced_traits::Curve {
+) -> BezierCurve2D
+where
+    C: crate::geometry::advanced_traits::Curve + 'static,
+{
     // Robust curve split for BezierCurve2D
     // Handles edge cases: t0 == t1, t0/t1 out of bounds
-    use crate::geometry::bezier_curve2d::BezierCurve2D;
-    let curve = unsafe { &*(curve as *const _ as *const BezierCurve2D) };
     let t0 = t0.clamp(0.0, 1.0);
     let t1 = t1.clamp(0.0, 1.0);
     if (t0 - t1).abs() < 1e-12 {
-        return curve.clone();
+        // Return a clone if t0 == t1
+        if let Some(bz) = curve_as_bezier_static(curve) {
+            return bz.clone();
+        }
+        // Edge case: not a BezierCurve2D
+        return BezierCurve2D::default();
     }
-    curve.subcurve(t0, t1)
+    if let Some(bz) = curve_as_bezier_static(curve) {
+        bz.subcurve(t0, t1)
+    } else {
+        // Edge case: not a BezierCurve2D
+        BezierCurve2D::default()
+    }
 }
 
-pub fn curve_join<C: crate::geometry::advanced_traits::Curve>(
-    curves: &[&C],
-) -> impl crate::geometry::advanced_traits::Curve {
+// Add 'static bound to C
+fn curve_as_bezier_static<C: Curve + 'static>(curve: &C) -> Option<&BezierCurve2D> {
+    let any = curve as &dyn std::any::Any;
+    any.downcast_ref::<BezierCurve2D>()
+}
+
+pub fn curve_join<C: crate::geometry::advanced_traits::Curve>(curves: &[&C]) -> BezierCurve2D
+where
+    C: crate::geometry::advanced_traits::Curve + 'static,
+{
     // Robust curve join for BezierCurve2D
     // Handles empty input, mismatched endpoints
-    use crate::geometry::bezier_curve2d::BezierCurve2D;
     if curves.is_empty() {
-        panic!("curve_join: input curves empty");
+        // Edge case: input curves empty
+        return BezierCurve2D::default();
     }
-    let joined = curves.iter().fold(None, |acc, &c| {
-        let c = unsafe { &*(c as *const _ as *const BezierCurve2D) };
-        match acc {
-            None => Some(c.clone()),
-            Some(prev) => Some(prev.join(&c)),
+    let mut result: Option<BezierCurve2D> = None;
+    for &c in curves {
+        if let Some(bz) = curve_as_bezier_static(c) {
+            result = match result {
+                None => Some(bz.clone()),
+                Some(prev) => Some(prev.join(bz)),
+            };
+        } else {
+            panic!("curve_join: not a BezierCurve2D");
         }
-    });
-    joined.unwrap()
+    }
+    result.unwrap_or_else(BezierCurve2D::default)
 }
 
 /// Curve fitting (least squares, interpolation)
 pub fn curve_fit<C: crate::geometry::advanced_traits::Curve<Point = crate::geometry::Point>>(
     points: &[C::Point],
     degree: usize,
-) -> impl crate::geometry::advanced_traits::Curve {
+) -> BezierCurve2D {
     // Robust curve fitting for BezierCurve2D
     // Handles empty input, degree bounds
-    use crate::geometry::bezier_curve2d::BezierCurve2D;
     if points.is_empty() {
-        panic!("curve_fit: input points empty");
+        // Edge case: input points empty
+        return BezierCurve2D::default();
     }
     let clamped_degree = degree.clamp(1, points.len().saturating_sub(1));
-    BezierCurve2D::fit(points, clamped_degree as i32)
+    // Convert points to crate::geometry::Point if needed
+    let pts: Vec<crate::geometry::Point> = points.iter().map(|p| p.clone()).collect();
+    BezierCurve2D::fit(&pts, clamped_degree as i32)
 }
 
 /// Curve boolean operations (intersection, union, difference)
@@ -58,31 +84,39 @@ pub fn curve_boolean<C: crate::geometry::advanced_traits::Curve>(
     curve1: &C,
     curve2: &C,
     op: &str,
-) -> impl crate::geometry::advanced_traits::Curve {
+) -> BezierCurve2D
+where
+    C: crate::geometry::advanced_traits::Curve + 'static,
+{
     // op: "union", "intersect", "subtract"
-    // ...
     // Robust boolean operations for BezierCurve2D
-    // Handles invalid op, null curves
-    use crate::geometry::bezier_boolean::{bezier_difference, bezier_intersect, bezier_union};
-    use crate::geometry::bezier_curve2d::BezierCurve2D;
-    let curve1 = unsafe { &*(curve1 as *const _ as *const BezierCurve2D) };
-    let curve2 = unsafe { &*(curve2 as *const _ as *const BezierCurve2D) };
-    match op {
-        "intersect" => {
-            let result = bezier_intersect(curve1, curve2, 1e-6, 32);
-            let mut poles = Vec::new();
-            for (_, _, p) in result {
-                poles.push(p.clone());
+    if let (Some(bz1), Some(bz2)) = (
+        curve_as_bezier_static(curve1),
+        curve_as_bezier_static(curve2),
+    ) {
+        match op {
+            "intersect" => {
+                let result = bezier_intersect(bz1, bz2, 1e-6, 32);
+                let mut poles = Vec::new();
+                for (_, _, p) in result {
+                    poles.push(p.clone());
+                }
+                if poles.is_empty() {
+                    BezierCurve2D::default()
+                } else {
+                    BezierCurve2D::fit(&poles, poles.len() as i32)
+                }
             }
-            if poles.is_empty() {
+            "union" => bezier_union(bz1, bz2).unwrap_or_else(BezierCurve2D::default),
+            "subtract" => bezier_difference(bz1, bz2).unwrap_or_else(BezierCurve2D::default),
+            _ => {
+                // Edge case: invalid op
                 BezierCurve2D::default()
-            } else {
-                BezierCurve2D::new(poles)
             }
         }
-        "union" => bezier_union(curve1, curve2).unwrap_or_default(),
-        "subtract" => bezier_difference(curve1, curve2).unwrap_or_default(),
-        _ => panic!("curve_boolean: invalid op {}", op),
+    } else {
+        // Edge case: not a BezierCurve2D
+        BezierCurve2D::default()
     }
 }
 
@@ -91,31 +125,36 @@ type ParamMap = fn(f64) -> f64;
 pub fn curve_param_map<C: crate::geometry::advanced_traits::Curve>(
     curve: &C,
     map: ParamMap,
-) -> impl crate::geometry::advanced_traits::Curve {
+) -> BezierCurve2D
+where
+    C: crate::geometry::advanced_traits::Curve + 'static,
+{
     // ...
     // Robust parameter mapping for BezierCurve2D
     // Handles invalid mapping, out-of-bounds
-    use crate::geometry::bezier_curve2d::BezierCurve2D;
-    let curve = unsafe { &*(curve as *const _ as *const BezierCurve2D) };
     let n = 32;
     let mut pts = Vec::new();
-    for i in 0..=n {
-        let t = i as f64 / n as f64;
-        let mapped_t = map(t).clamp(0.0, 1.0);
-        pts.push(curve.sample(mapped_t));
-    }
-    if pts.is_empty() {
-        BezierCurve2D::default()
+    if let Some(bz) = curve_as_bezier_static(curve) {
+        for i in 0..=n {
+            let t = i as f64 / n as f64;
+            let mapped_t = map(t).clamp(0.0, 1.0);
+            pts.push(bz.sample(mapped_t));
+        }
+        if pts.is_empty() {
+            BezierCurve2D::default()
+        } else {
+            BezierCurve2D::new(pts)
+        }
     } else {
-        BezierCurve2D::new(pts)
+        BezierCurve2D::default()
     }
 }
 
 /// Curve adaptive mesh generation (equidistant, equal chord sampling)
-pub fn curve_mesh<C: crate::geometry::advanced_traits::Curve>(
-    curve: &C,
-    n: usize,
-) -> Vec<C::Point> {
+pub fn curve_mesh<C: crate::geometry::advanced_traits::Curve>(curve: &C, n: usize) -> Vec<C::Point>
+where
+    C: crate::geometry::advanced_traits::Curve + 'static,
+{
     // Robust mesh generation for BezierCurve2D
     // Handles n == 0, performance notes
     let mut pts = Vec::new();
@@ -131,47 +170,53 @@ pub fn curve_mesh<C: crate::geometry::advanced_traits::Curve>(
 
 /// Curve extreme/degenerate case handling
 type CurveCheckResult = bool;
-pub fn curve_check_degenerate<C: crate::geometry::advanced_traits::Curve>(
+pub fn curve_check_degenerate<C: crate::geometry::advanced_traits::Curve + 'static>(
     curve: &C,
 ) -> CurveCheckResult {
     // Robust degenerate/extreme case handling for BezierCurve2D
     // Checks for zero degree, closed, or degenerate points
-    use crate::geometry::bezier_curve2d::BezierCurve2D;
-    let curve = unsafe { &*(curve as *const _ as *const BezierCurve2D) };
-    let poles = curve.poles();
-    // Zero degree: only one pole
-    if poles.len() <= 1 {
-        return true;
+    if let Some(bz) = curve_as_bezier_static(curve) {
+        let poles = bz.poles();
+        // Edge case: zero degree
+        if poles.len() <= 1 {
+            return true;
+        }
+        // Edge case: closed curve
+        if poles.first() == poles.last() {
+            return true;
+        }
+        // Edge case: degenerate (all poles nearly equal)
+        let tol = 1e-8;
+        let first = &poles[0];
+        if poles.iter().all(|p| p.distance(first) < tol) {
+            return true;
+        }
+        false
+    } else {
+        // Edge case: not a BezierCurve2D
+        false
     }
-    // Closed: first and last pole are equal
-    if poles.first() == poles.last() {
-        return true;
-    }
-    // Degenerate: all poles are nearly equal
-    let tol = 1e-8;
-    let first = &poles[0];
-    if poles.iter().all(|p| p.distance(first) < tol) {
-        return true;
-    }
-    false
 }
 
 /// Curve batch intersections, bounding box, distance queries
-pub fn curve_batch_intersections<C: crate::geometry::advanced_traits::Curve>(
+pub fn curve_batch_intersections<C: crate::geometry::advanced_traits::Curve + 'static>(
     curve1: &C,
     curve2: &C,
     n: usize,
 ) -> Vec<(f64, f64)> {
     // Robust batch intersection, bounding box, and distance queries for BezierCurve2D
-    use crate::geometry::bezier_boolean::bezier_intersect;
-    use crate::geometry::bezier_curve2d::BezierCurve2D;
-    let curve1 = unsafe { &*(curve1 as *const _ as *const BezierCurve2D) };
-    let curve2 = unsafe { &*(curve2 as *const _ as *const BezierCurve2D) };
-    // Batch intersection: find intersection parameters (t1, t2)
-    let intersections = bezier_intersect(curve1, curve2, 1e-6, n);
     let mut params = Vec::new();
-    for (t1, t2, _p) in intersections {
-        params.push((t1, t2));
+    if let (Some(bz1), Some(bz2)) = (
+        curve_as_bezier_static(curve1),
+        curve_as_bezier_static(curve2),
+    ) {
+        let intersections = bezier_intersect(bz1, bz2, 1e-6, n);
+        for (t1, t2, _) in intersections {
+            params.push((t1, t2));
+        }
+    } else {
+        // Edge case: not a BezierCurve2D
+        // Return empty vector
     }
     // Optionally, bounding box and distance queries can be added here
     // For demonstration, only intersection parameters are returned
@@ -189,6 +234,10 @@ where
     // Robust multithread/SIMD parallel processing for BezierCurve2D
     // Uses rayon for parallel iteration
     use rayon::prelude::*;
+    // Edge case: empty input
+    if ts.is_empty() {
+        return Vec::new();
+    }
     ts.par_iter().map(|&t| curve.sample(t)).collect()
 }
 
@@ -235,6 +284,10 @@ pub fn curve_reparam<C: crate::geometry::advanced_traits::Curve>(
     // Robust reparameterization and equidistant sampling for BezierCurve2D
     // Supports custom parameter mapping and equidistant sampling
     let mut pts = Vec::new();
+    // Edge case: n == 0
+    if n == 0 {
+        return pts;
+    }
     // Custom parameter mapping
     for i in 0..=n {
         let t = map(i as f64 / n as f64);
@@ -251,6 +304,10 @@ pub fn curve_transform<C: crate::geometry::advanced_traits::Curve>(
 ) -> Vec<C::Point> {
     // Sample the curve and apply transformation function to each sample point
     let mut pts = Vec::new();
+    // Edge case: n == 0
+    if n == 0 {
+        return pts;
+    }
     for i in 0..=n {
         let t = i as f64 / n as f64;
         let p = curve.sample(t);
@@ -266,6 +323,10 @@ pub fn curve_extremum<C: crate::geometry::advanced_traits::Curve>(
     n: usize,
 ) -> Option<(f64, C::Point)> {
     // Sample points on the curve and find the point farthest from the origin
+    // Edge case: n == 0
+    if n == 0 {
+        return None;
+    }
     let mut max_dist = -1.0;
     let mut max_t = 0.0;
     let mut max_p = curve.sample(0.0);
@@ -294,6 +355,10 @@ pub fn curve_error_control<C: crate::geometry::advanced_traits::Curve>(
 ) -> Vec<C::Point> {
     // Adaptive sampling, adjust sampling density based on error control
     let mut pts = Vec::new();
+    // Edge case: tol <= 0
+    if tol <= 0.0 {
+        return pts;
+    }
     let mut stack = vec![(0.0, 1.0)];
 
     while let Some((t0, t1)) = stack.pop() {
@@ -333,6 +398,10 @@ pub fn curve_batch_attributes<C: crate::geometry::advanced_traits::Curve>(
     // Batch calculate attributes for points on the curve
     let mut attrs = Vec::new();
 
+    // Edge case: n == 0
+    if n == 0 {
+        return attrs;
+    }
     for i in 0..=n {
         let t = i as f64 / n as f64;
         let tangent = curve.derivative(t);

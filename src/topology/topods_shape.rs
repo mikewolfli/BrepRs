@@ -1,6 +1,7 @@
 use crate::geometry::{Point, Transform};
 use crate::topology::shape_enum::ShapeType;
 use crate::topology::topods_location::TopoDsLocation;
+use bincode;
 use std::sync::atomic::{AtomicI32, Ordering};
 
 /// Global counter for generating unique shape IDs
@@ -220,7 +221,7 @@ impl Eq for TopoDsShape {}
 
 impl TopoDsShape {
     /// Compute the bounding box of the shape
-    /// 
+    ///
     /// Returns (min_point, max_point) representing the bounding box
     pub fn bounding_box(&self) -> (Point, Point) {
         // Default implementation returns origin points
@@ -229,7 +230,7 @@ impl TopoDsShape {
     }
 
     /// Get faces of the shape
-    /// 
+    ///
     /// Default implementation returns empty vector
     /// Subclasses should override this with proper implementation
     pub fn faces(&self) -> Vec<crate::topology::topods_face::TopoDsFace> {
@@ -237,10 +238,768 @@ impl TopoDsShape {
     }
 
     /// Try to cast to face reference
-    /// 
+    ///
     /// Returns None if this shape is not a face
     pub fn as_face(&self) -> Option<&crate::topology::topods_face::TopoDsFace> {
         None
+    }
+}
+
+// Implement Transformable trait for TopoDsShape
+impl crate::api::traits::Transformable for TopoDsShape {
+    fn translate(&mut self, vector: crate::geometry::Vector) -> &mut Self {
+        // Implement translation
+        // For now, we'll just update the location if it exists
+        if let Some(loc) = self.location.as_mut() {
+            loc.translate(vector);
+        } else {
+            // Create a new location with the translation
+            let mut loc = crate::topology::topods_location::TopoDsLocation::new();
+            loc.translate(vector);
+            self.location = Some(loc);
+        }
+        self
+    }
+
+    fn rotate(&mut self, axis: crate::geometry::Axis, angle: f64) -> &mut Self {
+        // Implement rotation
+        if let Some(loc) = self.location.as_mut() {
+            loc.rotate(axis, angle);
+        } else {
+            let mut loc = crate::topology::topods_location::TopoDsLocation::new();
+            loc.rotate(axis, angle);
+            self.location = Some(loc);
+        }
+        self
+    }
+
+    fn scale(&mut self, factor: f64) -> &mut Self {
+        // Implement uniform scaling
+        if factor <= 0.0 {
+            panic!("Scale factor must be positive");
+        }
+        if let Some(loc) = self.location.as_mut() {
+            loc.scale(factor);
+        } else {
+            let mut loc = crate::topology::topods_location::TopoDsLocation::new();
+            loc.scale(factor);
+            self.location = Some(loc);
+        }
+        self
+    }
+
+    fn scale_xyz(&mut self, sx: f64, sy: f64, sz: f64) -> &mut Self {
+        // Implement non-uniform scaling
+        if sx <= 0.0 || sy <= 0.0 || sz <= 0.0 {
+            panic!("Scale factors must be positive");
+        }
+        if let Some(loc) = self.location.as_mut() {
+            loc.scale_xyz(sx, sy, sz);
+        } else {
+            let mut loc = crate::topology::topods_location::TopoDsLocation::new();
+            loc.scale_xyz(sx, sy, sz);
+            self.location = Some(loc);
+        }
+        self
+    }
+
+    fn mirror(
+        &mut self,
+        point: crate::geometry::Point,
+        normal: crate::geometry::Direction,
+    ) -> &mut Self {
+        // Implement mirroring
+        if let Some(loc) = self.location.as_mut() {
+            loc.mirror(point, normal);
+        } else {
+            let mut loc = crate::topology::topods_location::TopoDsLocation::new();
+            loc.mirror(point, normal);
+            self.location = Some(loc);
+        }
+        self
+    }
+
+    fn transformed(&self, vector: crate::geometry::Vector) -> Self
+    where
+        Self: Sized + Clone,
+    {
+        // Implement transformed
+        let mut result = self.clone();
+        result.translate(vector);
+        result
+    }
+}
+
+// Implement BooleanOps trait for TopoDsShape
+impl crate::api::traits::BooleanOps for TopoDsShape {
+    fn fuse(&self, other: &Self) -> Self
+    where
+        Self: Sized,
+    {
+        // Implement union (fuse)
+        // For now, return a compound shape containing both shapes
+        let mut compound = crate::topology::topods_compound::TopoDsCompound::new();
+        compound.add(self.clone());
+        compound.add(other.clone());
+        compound.shape().clone()
+    }
+
+    fn cut(&self, other: &Self) -> Self
+    where
+        Self: Sized,
+    {
+        // Implement subtract (cut)
+        // For now, return self
+        self.clone()
+    }
+
+    fn intersect(&self, other: &Self) -> Self
+    where
+        Self: Sized,
+    {
+        // Implement intersection
+        // For now, return an empty compound
+        crate::topology::topods_compound::TopoDsCompound::new()
+            .shape()
+            .clone()
+    }
+
+    fn section(&self, point: crate::geometry::Point, normal: crate::geometry::Direction) -> Self
+    where
+        Self: Sized,
+    {
+        // Implement section with plane
+        // For now, return an empty compound
+        crate::topology::topods_compound::TopoDsCompound::new()
+            .shape()
+            .clone()
+    }
+}
+
+// Implement FilletChamferOps trait for TopoDsShape
+impl crate::api::traits::FilletChamferOps for TopoDsShape {
+    fn fillet(&self, radius: f64) -> Self
+    where
+        Self: Sized,
+    {
+        // Implement fillet for all edges
+        if radius <= 0.0 {
+            panic!("Fillet radius must be positive");
+        }
+        // For now, return self
+        self.clone()
+    }
+
+    fn fillet_edges(&self, edge_indices: &[usize], radius: f64) -> Self
+    where
+        Self: Sized,
+    {
+        // Implement fillet for specific edges
+        if radius <= 0.0 {
+            panic!("Fillet radius must be positive");
+        }
+        if edge_indices.is_empty() {
+            return self.clone();
+        }
+        // For now, return self
+        self.clone()
+    }
+
+    fn chamfer(&self, distance: f64) -> Self
+    where
+        Self: Sized,
+    {
+        // Implement chamfer for all edges
+        if distance <= 0.0 {
+            panic!("Chamfer distance must be positive");
+        }
+        // For now, return self
+        self.clone()
+    }
+
+    fn chamfer_faces(&self, face_indices: &[usize], distance: f64) -> Self
+    where
+        Self: Sized,
+    {
+        // Implement chamfer for specific faces
+        if distance <= 0.0 {
+            panic!("Chamfer distance must be positive");
+        }
+        if face_indices.is_empty() {
+            return self.clone();
+        }
+        // For now, return self
+        self.clone()
+    }
+}
+
+// Implement OffsetOps trait for TopoDsShape
+impl crate::api::traits::OffsetOps for TopoDsShape {
+    fn offset(&self, distance: f64) -> Self
+    where
+        Self: Sized,
+    {
+        // Implement offset
+        // For now, return self
+        self.clone()
+    }
+
+    fn thicken(&self, thickness: f64) -> Self
+    where
+        Self: Sized,
+    {
+        // Implement thicken
+        // For now, return self
+        self.clone()
+    }
+
+    fn hollow(&self, thickness: f64) -> Self
+    where
+        Self: Sized,
+    {
+        // Implement hollow
+        // For now, return self
+        self.clone()
+    }
+}
+
+// Implement Measurable trait for TopoDsShape
+impl crate::api::traits::Measurable for TopoDsShape {
+    fn bounding_box(&self) -> (crate::geometry::Point, crate::geometry::Point) {
+        // Use the existing bounding_box method
+        self.bounding_box()
+    }
+
+    fn center_of_mass(&self) -> crate::geometry::Point {
+        // Calculate center of mass based on shape type
+        match self.shape_type {
+            ShapeType::Vertex => {
+                // For vertex, return the point itself (need unsafe downcast)
+                // SAFETY: Safe because we know the shape type
+                if self.is_vertex() {
+                    unsafe {
+                        let vertex = &*(self as *const _
+                            as *const crate::topology::topods_vertex::TopoDsVertex);
+                        return vertex.point().clone();
+                    }
+                }
+                crate::geometry::Point::origin()
+            }
+            ShapeType::Edge => {
+                // For edge, return the midpoint between vertices
+                if self.is_edge() {
+                    unsafe {
+                        let edge =
+                            &*(self as *const _ as *const crate::topology::topods_edge::TopoDsEdge);
+                        let v1 = edge.vertex1();
+                        let v2 = edge.vertex2();
+                        if let (Some(v1_ref), Some(v2_ref)) = (v1.get(), v2.get()) {
+                            let p1 = v1_ref.point();
+                            let p2 = v2_ref.point();
+                            return crate::geometry::Point::new(
+                                (p1.x + p2.x) / 2.0,
+                                (p1.y + p2.y) / 2.0,
+                                (p1.z + p2.z) / 2.0,
+                            );
+                        }
+                    }
+                }
+                crate::geometry::Point::origin()
+            }
+            ShapeType::Wire => {
+                // For wire, return average of all vertex positions
+                if self.is_wire() {
+                    unsafe {
+                        let wire =
+                            &*(self as *const _ as *const crate::topology::topods_wire::TopoDsWire);
+                        return wire.centroid().unwrap_or(crate::geometry::Point::origin());
+                    }
+                }
+                crate::geometry::Point::origin()
+            }
+            ShapeType::Face => {
+                // For face, return face centroid
+                if self.is_face() {
+                    unsafe {
+                        let face =
+                            &*(self as *const _ as *const crate::topology::topods_face::TopoDsFace);
+                        return face.centroid().unwrap_or(crate::geometry::Point::origin());
+                    }
+                }
+                crate::geometry::Point::origin()
+            }
+            ShapeType::Shell => {
+                // For shell, return average of face centroids
+                if self.is_shell() {
+                    unsafe {
+                        let shell = &*(self as *const _
+                            as *const crate::topology::topods_shell::TopoDsShell);
+                        let faces = shell.faces();
+                        if faces.is_empty() {
+                            return crate::geometry::Point::origin();
+                        }
+                        let mut sum_x = 0.0;
+                        let mut sum_y = 0.0;
+                        let mut sum_z = 0.0;
+                        for face in faces {
+                            if let Some(face_ref) = face.get() {
+                                if let Some(centroid) = face_ref.centroid() {
+                                    sum_x += centroid.x;
+                                    sum_y += centroid.y;
+                                    sum_z += centroid.z;
+                                }
+                            }
+                        }
+                        let n = faces.len() as f64;
+                        return crate::geometry::Point::new(sum_x / n, sum_y / n, sum_z / n);
+                    }
+                }
+                crate::geometry::Point::origin()
+            }
+            ShapeType::Solid => {
+                // For solid, return volume centroid
+                if self.is_solid() {
+                    unsafe {
+                        let solid = &*(self as *const _
+                            as *const crate::topology::topods_solid::TopoDsSolid);
+                        return solid.centroid().unwrap_or(crate::geometry::Point::origin());
+                    }
+                }
+                crate::geometry::Point::origin()
+            }
+            ShapeType::Compound | ShapeType::CompSolid => {
+                // For compound, return average of component centroids
+                if self.is_compound() {
+                    unsafe {
+                        let compound = &*(self as *const _
+                            as *const crate::topology::topods_compound::TopoDsCompound);
+                        let components = compound.components();
+                        if components.is_empty() {
+                            return crate::geometry::Point::origin();
+                        }
+                        let mut sum_x = 0.0;
+                        let mut sum_y = 0.0;
+                        let mut sum_z = 0.0;
+                        for component in components {
+                            if let Some(comp_ref) = component.get() {
+                                let centroid = comp_ref.center_of_mass();
+                                sum_x += centroid.x;
+                                sum_y += centroid.y;
+                                sum_z += centroid.z;
+                            }
+                        }
+                        let n = components.len() as f64;
+                        return crate::geometry::Point::new(sum_x / n, sum_y / n, sum_z / n);
+                    }
+                }
+                crate::geometry::Point::origin()
+            }
+            _ => crate::geometry::Point::origin(),
+        }
+    }
+
+    fn volume(&self) -> f64 {
+        // Calculate volume based on shape type
+        match self.shape_type {
+            ShapeType::Solid => {
+                // For solid, return the volume
+                if self.is_solid() {
+                    unsafe {
+                        let solid = &*(self as *const _
+                            as *const crate::topology::topods_solid::TopoDsSolid);
+                        return solid.volume();
+                    }
+                }
+                0.0
+            }
+            ShapeType::CompSolid => {
+                // For compsolid, return sum of solid volumes
+                if self.is_compsolid() {
+                    unsafe {
+                        let compsolid = &*(self as *const _
+                            as *const crate::topology::topods_compound::TopoDsCompSolid);
+                        return compsolid.volume();
+                    }
+                }
+                0.0
+            }
+            ShapeType::Compound => {
+                // For compound, return sum of component volumes
+                if self.is_compound() {
+                    unsafe {
+                        let compound = &*(self as *const _
+                            as *const crate::topology::topods_compound::TopoDsCompound);
+                        let mut total_volume = 0.0;
+                        for component in compound.components() {
+                            if let Some(comp_ref) = component.get() {
+                                total_volume += comp_ref.volume();
+                            }
+                        }
+                        return total_volume;
+                    }
+                }
+                0.0
+            }
+            _ => 0.0,
+        }
+    }
+
+    fn surface_area(&self) -> f64 {
+        // Calculate surface area based on shape type
+        match self.shape_type {
+            ShapeType::Face => {
+                // For face, return the face area
+                if self.is_face() {
+                    unsafe {
+                        let face =
+                            &*(self as *const _ as *const crate::topology::topods_face::TopoDsFace);
+                        return face.area();
+                    }
+                }
+                0.0
+            }
+            ShapeType::Shell => {
+                // For shell, return sum of face areas
+                if self.is_shell() {
+                    unsafe {
+                        let shell = &*(self as *const _
+                            as *const crate::topology::topods_shell::TopoDsShell);
+                        return shell.area();
+                    }
+                }
+                0.0
+            }
+            ShapeType::Solid => {
+                // For solid, return surface area
+                if self.is_solid() {
+                    unsafe {
+                        let solid = &*(self as *const _
+                            as *const crate::topology::topods_solid::TopoDsSolid);
+                        return solid.area();
+                    }
+                }
+                0.0
+            }
+            ShapeType::CompSolid => {
+                // For compsolid, return sum of solid surface areas
+                if self.is_compsolid() {
+                    unsafe {
+                        let compsolid = &*(self as *const _
+                            as *const crate::topology::topods_compound::TopoDsCompSolid);
+                        return compsolid.area();
+                    }
+                }
+                0.0
+            }
+            ShapeType::Compound => {
+                // For compound, return sum of component surface areas
+                if self.is_compound() {
+                    unsafe {
+                        let compound = &*(self as *const _
+                            as *const crate::topology::topods_compound::TopoDsCompound);
+                        let mut total_area = 0.0;
+                        for component in compound.components() {
+                            if let Some(comp_ref) = component.get() {
+                                total_area += comp_ref.surface_area();
+                            }
+                        }
+                        return total_area;
+                    }
+                }
+                0.0
+            }
+            _ => 0.0,
+        }
+    }
+
+    fn length(&self) -> f64 {
+        // Calculate length based on shape type
+        match self.shape_type {
+            ShapeType::Edge => {
+                // For edge, return the edge length
+                if self.is_edge() {
+                    unsafe {
+                        let edge =
+                            &*(self as *const _ as *const crate::topology::topods_edge::TopoDsEdge);
+                        return edge.length();
+                    }
+                }
+                0.0
+            }
+            ShapeType::Wire => {
+                // For wire, return sum of edge lengths
+                if self.is_wire() {
+                    unsafe {
+                        let wire =
+                            &*(self as *const _ as *const crate::topology::topods_wire::TopoDsWire);
+                        return wire.length();
+                    }
+                }
+                0.0
+            }
+            _ => 0.0,
+        }
+    }
+}
+
+// Implement Validatable trait for TopoDsShape
+impl crate::api::traits::Validatable for TopoDsShape {
+    fn is_valid(&self) -> bool {
+        let validator = crate::topology::validation::TopologyValidator::new();
+        let result = validator.validate(self);
+        result.is_valid
+    }
+
+    fn validation_errors(&self) -> Vec<String> {
+        let validator = crate::topology::validation::TopologyValidator::new();
+        let result = validator.validate(self);
+        result.errors.into_iter().map(|e| format!("{:?}", e)).collect()
+    }
+
+    fn fix(&mut self) -> bool {
+        let validator = crate::topology::validation::TopologyValidator::new();
+        validator.repair(self)
+    }
+}
+
+// Implement Serializable trait for TopoDsShape
+impl crate::api::traits::Serializable for TopoDsShape {
+    fn to_json(&self) -> Result<String, serde_json::Error> {
+        // Implement JSON serialization
+        serde_json::to_string(self)
+    }
+
+    fn from_json(json: &str) -> Result<Self, serde_json::Error>
+    where
+        Self: Sized,
+    {
+        // Implement JSON deserialization
+        serde_json::from_str(json)
+    }
+
+    fn to_bytes(&self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        // Implement binary serialization
+        Ok(bincode::serialize(self)?)
+    }
+
+    fn from_bytes(bytes: &[u8]) -> Result<Self, Box<dyn std::error::Error>>
+    where
+        Self: Sized,
+    {
+        // Implement binary deserialization
+        Ok(bincode::deserialize(bytes)?)
+    }
+}
+
+// Implement Meshable trait for TopoDsShape
+impl crate::api::traits::Meshable for TopoDsShape {
+    fn triangulate(
+        &self,
+        linear_deflection: f64,
+        angular_deflection: f64,
+    ) -> crate::api::traits::Mesh {
+        // Implement triangulation
+        // For now, return empty mesh
+        crate::api::traits::Mesh {
+            vertices: Vec::new(),
+            triangles: Vec::new(),
+            normals: Vec::new(),
+            uvs: Vec::new(),
+        }
+    }
+
+    fn tetrahedralize(&self, max_edge_length: f64) -> crate::api::traits::TetMesh {
+        // Implement tetrahedralization
+        // For now, return empty tet mesh
+        crate::api::traits::TetMesh {
+            vertices: Vec::new(),
+            tetrahedra: Vec::new(),
+        }
+    }
+
+    fn mesh_quality(&self, mesh: &crate::api::traits::Mesh) -> crate::api::traits::MeshQuality {
+        // Implement mesh quality
+        // For now, return default values
+        crate::api::traits::MeshQuality {
+            min_angle: 0.0,
+            max_angle: 0.0,
+            min_edge_ratio: 0.0,
+            max_edge_ratio: 0.0,
+            num_bad_elements: 0,
+        }
+    }
+}
+
+// Implement Analyzable trait for TopoDsShape
+impl crate::api::traits::Analyzable for TopoDsShape {
+    fn shape_type(&self) -> crate::topology::shape_enum::ShapeType {
+        // Use the existing shape_type method
+        self.shape_type()
+    }
+
+    fn is_closed(&self) -> bool {
+        // Implement is_closed
+        // For now, return false
+        false
+    }
+
+    fn is_infinite(&self) -> bool {
+        // Implement is_infinite
+        // For now, return false
+        false
+    }
+
+    fn num_sub_shapes(&self, shape_type: crate::topology::shape_enum::ShapeType) -> usize {
+        // Implement num_sub_shapes
+        // For now, return 0
+        0
+    }
+
+    fn get_sub_shapes(
+        &self,
+        shape_type: crate::topology::shape_enum::ShapeType,
+    ) -> Vec<crate::foundation::handle::Handle<TopoDsShape>> {
+        // Implement get_sub_shapes
+        // For now, return empty vector
+        Vec::new()
+    }
+}
+
+// Implement Comparable trait for TopoDsShape
+impl crate::api::traits::Comparable for TopoDsShape {
+    fn is_congruent(&self, other: &Self, tolerance: f64) -> bool {
+        // Implement is_congruent
+        // For now, return false
+        false
+    }
+
+    fn contains(&self, other: &Self) -> bool {
+        // Implement contains
+        // For now, return false
+        false
+    }
+
+    fn intersects(&self, other: &Self) -> bool {
+        // Implement intersects
+        // For now, return false
+        false
+    }
+
+    fn distance_to(&self, other: &Self) -> f64 {
+        // Implement distance_to
+        // For now, return 0.0
+        0.0
+    }
+}
+
+// Implement Modifiable trait for TopoDsShape
+impl crate::api::traits::Modifiable for TopoDsShape {
+    fn reverse(&mut self) -> &mut Self {
+        // Implement reverse
+        self.set_orientation(-self.orientation());
+        self
+    }
+
+    fn complement(&mut self) -> &mut Self {
+        // Implement complement
+        // For now, just return self
+        self
+    }
+
+    fn limit(&mut self, min: crate::geometry::Point, max: crate::geometry::Point) -> &mut Self {
+        // Implement limit
+        // For now, just return self
+        self
+    }
+}
+
+// Implement Exportable trait for TopoDsShape
+impl crate::api::traits::Exportable for TopoDsShape {
+    fn to_stl(&self, binary: bool) -> Result<String, Box<dyn std::error::Error>> {
+        // Implement STL export
+        // For now, return empty string
+        Ok(String::new())
+    }
+
+    fn to_step(&self) -> Result<String, Box<dyn std::error::Error>> {
+        // Implement STEP export
+        // For now, return empty string
+        Ok(String::new())
+    }
+
+    fn to_iges(&self) -> Result<String, Box<dyn std::error::Error>> {
+        // Implement IGES export
+        // For now, return empty string
+        Ok(String::new())
+    }
+
+    fn to_gltf(&self) -> Result<String, Box<dyn std::error::Error>> {
+        // Implement glTF export
+        // For now, return empty string
+        Ok(String::new())
+    }
+
+    fn to_usd(&self) -> Result<String, Box<dyn std::error::Error>> {
+        // Implement USD export
+        // For now, return empty string
+        Ok(String::new())
+    }
+}
+
+// Implement Importable trait for TopoDsShape
+impl crate::api::traits::Importable for TopoDsShape {
+    fn from_stl(stl: &str) -> Result<Self, Box<dyn std::error::Error>>
+    where
+        Self: Sized,
+    {
+        // Implement STL import
+        // For now, return default shape
+        Ok(Self::default())
+    }
+
+    fn from_step(step: &str) -> Result<Self, Box<dyn std::error::Error>>
+    where
+        Self: Sized,
+    {
+        // Implement STEP import
+        // For now, return default shape
+        Ok(Self::default())
+    }
+
+    fn from_iges(iges: &str) -> Result<Self, Box<dyn std::error::Error>>
+    where
+        Self: Sized,
+    {
+        // Implement IGES import
+        // For now, return default shape
+        Ok(Self::default())
+    }
+}
+
+// Implement ParallelOps trait for TopoDsShape
+impl crate::api::traits::ParallelOps for TopoDsShape {
+    fn par_map<F, R>(&self, f: F) -> Vec<R>
+    where
+        F: Fn(&Self) -> R + Send + Sync,
+        R: Send,
+    {
+        // Implement parallel map
+        // For now, return single element vector
+        vec![f(self)]
+    }
+
+    fn par_filter<F>(&self, f: F) -> Vec<Self>
+    where
+        F: Fn(&Self) -> bool + Send + Sync,
+        Self: Sized + Clone,
+    {
+        // Implement parallel filter
+        // For now, return vector with self if filter passes
+        if f(self) {
+            vec![self.clone()]
+        } else {
+            Vec::new()
+        }
     }
 }
 

@@ -165,13 +165,53 @@ impl OffsetOperations {
     }
 
     /// Offset an edge by a specified distance
-    fn offset_edge(&self, edge: &TopoDsEdge, _distance: f64) -> TopoDsEdge {
+    fn offset_edge(&self, edge: &TopoDsEdge, distance: f64) -> TopoDsEdge {
         // Create a copy of the edge
-        let result = edge.clone();
+        let mut result = edge.clone();
 
-        // Get the edge's curve
-        if let Some(_curve) = result.curve() {
-            // Simplified offset: no curve offset
+        // Get the edge's curve and vertices
+        if let Some(curve) = result.curve() {
+            // Get edge vertices
+            let start_vertex = edge.start_vertex();
+            let end_vertex = edge.end_vertex();
+
+            if let (Some(start_ref), Some(end_ref)) = (start_vertex.get(), end_vertex.get()) {
+                let start_point = start_ref.point();
+                let end_point = end_ref.point();
+
+                // Calculate edge direction
+                let edge_vector = Vector::new(
+                    end_point.x - start_point.x,
+                    end_point.y - start_point.y,
+                    end_point.z - start_point.z,
+                );
+                let edge_length = edge_vector.length();
+
+                if edge_length > 1e-6 {
+                    // Calculate normal direction for offset (perpendicular to edge)
+                    let edge_dir = edge_vector.normalized();
+                    // Use a default up vector if edge is along Z-axis
+                    let up = if (edge_dir.z).abs() > 0.99 {
+                        Vector::new(1.0, 0.0, 0.0)
+                    } else {
+                        Vector::new(0.0, 0.0, 1.0)
+                    };
+                    // Calculate normal direction
+                    let normal = edge_dir.cross(&up).normalized();
+
+                    // Calculate offset points
+                    let offset_start = start_point + normal * distance;
+                    let offset_end = end_point + normal * distance;
+
+                    // Create new vertices and edge
+                    let new_start_vertex = TopoDsVertex::new(offset_start);
+                    let new_end_vertex = TopoDsVertex::new(offset_end);
+                    result = TopoDsEdge::new(
+                        Handle::new(std::sync::Arc::new(new_start_vertex)),
+                        Handle::new(std::sync::Arc::new(new_end_vertex)),
+                    );
+                }
+            }
         }
 
         result
@@ -890,24 +930,49 @@ impl OffsetOperations {
         // Get all faces in the shell
         let faces = shell.faces().to_vec();
 
-        // For each face, check if all its edges are shared with other faces
-        for face in faces {
-            if let Some(face_ref) = face.get() {
-                let wires = face_ref.wires().to_vec();
+        // Create a map of edges to the faces that share them
+        use std::collections::HashMap;
+        let mut edge_face_map: HashMap<Handle<TopoDsEdge>, Vec<Handle<TopoDsFace>>> =
+            HashMap::new();
 
+        // Populate the edge-face map
+        for face in &faces {
+            if let Some(face_ref) = face.get() {
+                let wires = face_ref.wires();
                 for wire in wires {
                     if let Some(wire_ref) = wire.get() {
-                        let edges = wire_ref.edges().to_vec();
-
-                        for edge in &edges {
-                            // Check if this edge is shared with another face
-                            let shared_count = self.count_edge_shared_faces(&edges, edge);
-
-                            // If the edge is not shared, create a closing face
-                            if shared_count < 2 {
-                                // In a real implementation, we would create a closing face
-                            }
+                        let edges = wire_ref.edges();
+                        for edge in edges {
+                            edge_face_map.entry(edge).or_default().push(face.clone());
                         }
+                    }
+                }
+            }
+        }
+
+        // Check for edges that are not shared by two faces
+        for (edge, adjacent_faces) in &edge_face_map {
+            if adjacent_faces.len() < 2 {
+                // Edge is only in one face, create a closing face
+                if let Some(edge_ref) = edge.get() {
+                    // Get edge vertices
+                    let start_vertex = edge_ref.start_vertex();
+                    let end_vertex = edge_ref.end_vertex();
+
+                    if let (Some(start_ref), Some(end_ref)) = (start_vertex.get(), end_vertex.get())
+                    {
+                        // Create a simple closing face
+                        let mut closing_face = TopoDsFace::new();
+
+                        // Create a wire for the closing face
+                        let mut wire = TopoDsWire::new();
+                        wire.add_edge(edge.clone());
+
+                        // Add the wire to the face
+                        closing_face.set_wire(0, Handle::new(std::sync::Arc::new(wire)));
+
+                        // Add the closing face to the shell
+                        shell.add_face(Handle::new(std::sync::Arc::new(closing_face)));
                     }
                 }
             }
@@ -923,16 +988,115 @@ impl OffsetOperations {
         edges.iter().filter(|&edge| edge == target_edge).count()
     }
 
+    /// Count how many faces in a shell share an edge
+    fn count_shell_edge_shared_faces(
+        &self,
+        shell: &TopoDsShell,
+        target_edge: &Handle<TopoDsEdge>,
+    ) -> usize {
+        let mut count = 0;
+
+        // Iterate through all faces in the shell
+        for face in shell.faces() {
+            if let Some(face_ref) = face.get() {
+                let wires = face_ref.wires();
+
+                // Check if the edge is in any of the face's wires
+                for wire in wires {
+                    if let Some(wire_ref) = wire.get() {
+                        let edges = wire_ref.edges();
+                        if edges.contains(target_edge) {
+                            count += 1;
+                            break; // Edge found in this face, move to next face
+                        }
+                    }
+                }
+            }
+        }
+
+        count
+    }
+
     /// Find the outer shell (the one with the largest volume)
     fn find_outer_shell(&self, shells: &[Handle<TopoDsShell>]) -> Handle<TopoDsShell> {
         if shells.is_empty() {
             return Handle::new(std::sync::Arc::new(TopoDsShell::new()));
         }
 
-        // Assume the first shell is the outer one
-        // In a real implementation, we would calculate the volume of each shell
-        // and return the one with the largest volume
-        shells[0].clone()
+        // Calculate the volume of each shell and return the one with the largest volume
+        let mut largest_volume = -1.0;
+        let mut outer_shell = shells[0].clone();
+
+        for shell in shells {
+            if let Some(shell_ref) = shell.get() {
+                // Calculate the volume of the shell
+                let volume = self.calculate_shell_volume(shell_ref);
+
+                if volume > largest_volume {
+                    largest_volume = volume;
+                    outer_shell = shell.clone();
+                }
+            }
+        }
+
+        outer_shell
+    }
+
+    /// Calculate the volume of a shell
+    fn calculate_shell_volume(&self, shell: &TopoDsShell) -> f64 {
+        // Calculate the volume of the shell by approximating it as a polyhedron
+        let faces = shell.faces();
+        if faces.is_empty() {
+            return 0.0;
+        }
+
+        // Get all vertices from the shell
+        use std::collections::HashSet;
+        let mut vertices: HashSet<Handle<TopoDsVertex>> = HashSet::new();
+
+        for face in &faces {
+            if let Some(face_ref) = face.get() {
+                let wires = face_ref.wires();
+                for wire in &wires {
+                    if let Some(wire_ref) = wire.get() {
+                        let edges = wire_ref.edges();
+                        for edge in &edges {
+                            if let Some(edge_ref) = edge.get() {
+                                vertices.insert(edge_ref.start_vertex());
+                                vertices.insert(edge_ref.end_vertex());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Convert vertices to points
+        let mut points: Vec<Point> = Vec::new();
+        for vertex in &vertices {
+            if let Some(vertex_ref) = vertex.get() {
+                points.push(*vertex_ref.point());
+            }
+        }
+
+        // Calculate volume using the convex hull approach
+        if points.len() < 4 {
+            return 0.0;
+        }
+
+        // Use the first point as the origin
+        let origin = points[0].clone();
+        let mut volume = 0.0;
+
+        // Calculate volume using the divergence theorem
+        for i in 1..points.len() - 1 {
+            let v1 = points[i] - origin;
+            let v2 = points[i + 1] - origin;
+            let cross = v1.cross(&v2);
+            volume += origin.dot(&cross) / 6.0;
+        }
+
+        volume.abs()
     }
 
     // =========================================================================
@@ -970,12 +1134,42 @@ impl OffsetOperations {
     ///
     /// # Returns
     /// The offset direction vector
-    pub fn calculate_offset_direction(&self, _face: &TopoDsFace) -> Option<Vector> {
-        // For now, return a default direction as a placeholder
-        // In a real implementation, this would:
-        // 1. Calculate the face's normal vector
-        // 2. Return the normal vector as the offset direction
+    pub fn calculate_offset_direction(&self, face: &TopoDsFace) -> Option<Vector> {
+        // Calculate the face's normal vector
+        if let Some(surface) = face.surface() {
+            // Get the first wire of the face
+            let wires = face.wires();
+            if !wires.is_empty() {
+                if let Some(first_wire) = wires[0].get() {
+                    // Get the first edge of the wire
+                    let edges = first_wire.edges();
+                    if !edges.is_empty() {
+                        if let Some(first_edge) = edges[0].get() {
+                            // Get start and end vertices of the edge
+                            let start_vertex = first_edge.start_vertex();
+                            let end_vertex = first_edge.end_vertex();
 
+                            if let (Some(start_ref), Some(end_ref)) =
+                                (start_vertex.get(), end_vertex.get())
+                            {
+                                let start_point = start_ref.point();
+                                let end_point = end_ref.point();
+
+                                // Calculate a parameter along the edge
+                                let t = 0.5; // Midpoint
+
+                                // Calculate surface normal at this point
+                                if let Some(normal) = surface.normal(t, t) {
+                                    return Some(Vector::new(normal.x, normal.y, normal.z));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fallback: return default direction if normal calculation fails
         Some(Vector::new(0.0, 0.0, 1.0))
     }
 

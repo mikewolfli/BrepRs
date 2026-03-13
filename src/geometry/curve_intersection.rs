@@ -1,4 +1,5 @@
 use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
+use crate::geometry::advanced_traits::Curve;
 use crate::geometry::{Circle2D, Ellipse2D, Line2D, Point, Vector};
 
 /// Represents an intersection point between two curves
@@ -23,6 +24,375 @@ impl CurveIntersection {
 pub struct CurveIntersection2D;
 
 impl CurveIntersection2D {
+    /// Find intersections between two NURBS curves using subdivision method
+    /// This implementation uses adaptive subdivision to find accurate intersections
+    pub fn nurbs_nurbs(
+        curve1: &crate::geometry::nurbs_curve2d::NurbsCurve2D,
+        curve2: &crate::geometry::nurbs_curve2d::NurbsCurve2D,
+        tolerance: StandardReal,
+        _samples: usize,
+    ) -> Vec<CurveIntersection> {
+        let mut intersections = Vec::new();
+
+        // Bounding box pre-check
+        let bbox1 = Self::calculate_nurbs_bounding_box(curve1);
+        let bbox2 = Self::calculate_nurbs_bounding_box(curve2);
+
+        // If bounding boxes do not overlap, skip
+        if !Self::bounding_boxes_overlap(&bbox1, &bbox2) {
+            return intersections;
+        }
+
+        // Use adaptive subdivision to find intersections
+        Self::subdivide_nurbs_nurbs(
+            curve1,
+            curve2,
+            0.0,
+            1.0,
+            0.0,
+            1.0,
+            tolerance,
+            &mut intersections,
+        );
+
+        // Remove duplicate intersections
+        Self::remove_duplicates(&mut intersections, tolerance);
+
+        intersections
+    }
+
+    /// Calculate bounding box for a NURBS curve
+    fn calculate_nurbs_bounding_box(
+        curve: &crate::geometry::nurbs_curve2d::NurbsCurve2D,
+    ) -> (Point, Point) {
+        let poles = curve.poles();
+
+        if poles.is_empty() {
+            return (Point::origin(), Point::origin());
+        }
+
+        let mut min_x = poles[0].x;
+        let mut min_y = poles[0].y;
+        let mut max_x = poles[0].x;
+        let mut max_y = poles[0].y;
+
+        for pole in &poles[1..] {
+            min_x = min_x.min(pole.x);
+            min_y = min_y.min(pole.y);
+            max_x = max_x.max(pole.x);
+            max_y = max_y.max(pole.y);
+        }
+
+        (Point::new(min_x, min_y, 0.0), Point::new(max_x, max_y, 0.0))
+    }
+
+    /// Check if two bounding boxes overlap
+    fn bounding_boxes_overlap(bbox1: &(Point, Point), bbox2: &(Point, Point)) -> bool {
+        let (min1, max1) = bbox1;
+        let (min2, max2) = bbox2;
+
+        !(max1.x < min2.x || min1.x > max2.x || max1.y < min2.y || min1.y > max2.y)
+    }
+
+    /// Adaptive subdivision for NURBS-NURBS intersection
+    fn subdivide_nurbs_nurbs(
+        curve1: &crate::geometry::nurbs_curve2d::NurbsCurve2D,
+        curve2: &crate::geometry::nurbs_curve2d::NurbsCurve2D,
+        t1_start: StandardReal,
+        t1_end: StandardReal,
+        t2_start: StandardReal,
+        t2_end: StandardReal,
+        tolerance: StandardReal,
+        intersections: &mut Vec<CurveIntersection>,
+    ) {
+        // Get the endpoints of the curve segments
+        let p1_start = curve1.position(t1_start);
+        let p1_end = curve1.position(t1_end);
+        let p2_start = curve2.position(t2_start);
+        let p2_end = curve2.position(t2_end);
+
+        // Check if the line segments intersect
+        if let Some((t1, t2)) =
+            Self::line_segment_intersection(&p1_start, &p1_end, &p2_start, &p2_end, tolerance)
+        {
+            // Calculate the actual parameters on the original curves
+            let actual_t1 = t1_start + t1 * (t1_end - t1_start);
+            let actual_t2 = t2_start + t2 * (t2_end - t2_start);
+
+            // Check if the intersection point is within the tolerance
+            let p1 = curve1.position(actual_t1);
+            let p2 = curve2.position(actual_t2);
+            let dist = p1.distance(&p2);
+
+            if dist < tolerance {
+                intersections.push(CurveIntersection::new(p1, actual_t1, actual_t2));
+                return;
+            }
+        }
+
+        // Check if the segments are small enough
+        let len1 = p1_start.distance(&p1_end);
+        let len2 = p2_start.distance(&p2_end);
+
+        if len1 < tolerance && len2 < tolerance {
+            return;
+        }
+
+        // Subdivide the curves and recurse
+        let t1_mid = (t1_start + t1_end) / 2.0;
+        let t2_mid = (t2_start + t2_end) / 2.0;
+
+        Self::subdivide_nurbs_nurbs(
+            curve1,
+            curve2,
+            t1_start,
+            t1_mid,
+            t2_start,
+            t2_mid,
+            tolerance,
+            intersections,
+        );
+        Self::subdivide_nurbs_nurbs(
+            curve1,
+            curve2,
+            t1_mid,
+            t1_end,
+            t2_start,
+            t2_mid,
+            tolerance,
+            intersections,
+        );
+        Self::subdivide_nurbs_nurbs(
+            curve1,
+            curve2,
+            t1_start,
+            t1_mid,
+            t2_mid,
+            t2_end,
+            tolerance,
+            intersections,
+        );
+        Self::subdivide_nurbs_nurbs(
+            curve1,
+            curve2,
+            t1_mid,
+            t1_end,
+            t2_mid,
+            t2_end,
+            tolerance,
+            intersections,
+        );
+    }
+
+    /// Calculate intersection of two line segments
+    fn line_segment_intersection(
+        p1: &Point,
+        p2: &Point,
+        p3: &Point,
+        p4: &Point,
+        tolerance: StandardReal,
+    ) -> Option<(StandardReal, StandardReal)> {
+        let d1 = p2.x - p1.x;
+        let d2 = p2.y - p1.y;
+        let d3 = p4.x - p3.x;
+        let d4 = p4.y - p3.y;
+
+        let denominator = d1 * d4 - d2 * d3;
+
+        if denominator.abs() < tolerance {
+            // Lines are parallel or coincident
+            return None;
+        }
+
+        let dx = p3.x - p1.x;
+        let dy = p3.y - p1.y;
+
+        let t1 = (dx * d4 - dy * d3) / denominator;
+        let t2 = (dx * d2 - dy * d1) / denominator;
+
+        if t1 >= 0.0 - tolerance
+            && t1 <= 1.0 + tolerance
+            && t2 >= 0.0 - tolerance
+            && t2 <= 1.0 + tolerance
+        {
+            Some((t1.max(0.0).min(1.0), t2.max(0.0).min(1.0)))
+        } else {
+            None
+        }
+    }
+
+    /// Remove duplicate intersections
+    fn remove_duplicates(intersections: &mut Vec<CurveIntersection>, tolerance: StandardReal) {
+        let mut unique: Vec<CurveIntersection> = Vec::new();
+
+        for intersection in &mut *intersections {
+            let mut is_duplicate = false;
+
+            for unique_intersection in &unique {
+                if intersection.point.distance(&unique_intersection.point) < tolerance {
+                    is_duplicate = true;
+                    break;
+                }
+            }
+
+            if !is_duplicate {
+                unique.push(*intersection);
+            }
+        }
+
+        *intersections = unique;
+    }
+    /// Find intersections between two Bezier curves using subdivision method
+    /// This implementation uses adaptive subdivision to find accurate intersections
+    pub fn bezier_bezier(
+        curve1: &crate::geometry::bezier_curve2d::BezierCurve2D,
+        curve2: &crate::geometry::bezier_curve2d::BezierCurve2D,
+        tolerance: StandardReal,
+        _samples: usize,
+    ) -> Vec<CurveIntersection> {
+        let mut intersections = Vec::new();
+
+        // Bounding box pre-check
+        let bbox1 = Self::calculate_bezier_bounding_box(curve1);
+        let bbox2 = Self::calculate_bezier_bounding_box(curve2);
+
+        // If bounding boxes do not overlap, skip
+        if !Self::bounding_boxes_overlap(&bbox1, &bbox2) {
+            return intersections;
+        }
+
+        // Use adaptive subdivision to find intersections
+        Self::subdivide_bezier_bezier(
+            curve1,
+            curve2,
+            0.0,
+            1.0,
+            0.0,
+            1.0,
+            tolerance,
+            &mut intersections,
+        );
+
+        // Remove duplicate intersections
+        Self::remove_duplicates(&mut intersections, tolerance);
+
+        intersections
+    }
+
+    /// Calculate bounding box for a Bezier curve
+    fn calculate_bezier_bounding_box(
+        curve: &crate::geometry::bezier_curve2d::BezierCurve2D,
+    ) -> (Point, Point) {
+        let poles = curve.poles();
+
+        if poles.is_empty() {
+            return (Point::origin(), Point::origin());
+        }
+
+        let mut min_x = poles[0].x;
+        let mut min_y = poles[0].y;
+        let mut max_x = poles[0].x;
+        let mut max_y = poles[0].y;
+
+        for pole in &poles[1..] {
+            min_x = min_x.min(pole.x);
+            min_y = min_y.min(pole.y);
+            max_x = max_x.max(pole.x);
+            max_y = max_y.max(pole.y);
+        }
+
+        (Point::new(min_x, min_y, 0.0), Point::new(max_x, max_y, 0.0))
+    }
+
+    /// Adaptive subdivision for Bezier-Bezier intersection
+    fn subdivide_bezier_bezier(
+        curve1: &crate::geometry::bezier_curve2d::BezierCurve2D,
+        curve2: &crate::geometry::bezier_curve2d::BezierCurve2D,
+        t1_start: StandardReal,
+        t1_end: StandardReal,
+        t2_start: StandardReal,
+        t2_end: StandardReal,
+        tolerance: StandardReal,
+        intersections: &mut Vec<CurveIntersection>,
+    ) {
+        // Get the endpoints of the curve segments
+        let p1_start = curve1.sample(t1_start);
+        let p1_end = curve1.sample(t1_end);
+        let p2_start = curve2.sample(t2_start);
+        let p2_end = curve2.sample(t2_end);
+
+        // Check if the line segments intersect
+        if let Some((t1, t2)) =
+            Self::line_segment_intersection(&p1_start, &p1_end, &p2_start, &p2_end, tolerance)
+        {
+            // Calculate the actual parameters on the original curves
+            let actual_t1 = t1_start + t1 * (t1_end - t1_start);
+            let actual_t2 = t2_start + t2 * (t2_end - t2_start);
+
+            // Check if the intersection point is within the tolerance
+            let p1 = curve1.sample(actual_t1);
+            let p2 = curve2.sample(actual_t2);
+            let dist = p1.distance(&p2);
+
+            if dist < tolerance {
+                intersections.push(CurveIntersection::new(p1, actual_t1, actual_t2));
+                return;
+            }
+        }
+
+        // Check if the segments are small enough
+        let len1 = p1_start.distance(&p1_end);
+        let len2 = p2_start.distance(&p2_end);
+
+        if len1 < tolerance && len2 < tolerance {
+            return;
+        }
+
+        // Subdivide the curves and recurse
+        let t1_mid = (t1_start + t1_end) / 2.0;
+        let t2_mid = (t2_start + t2_end) / 2.0;
+
+        Self::subdivide_bezier_bezier(
+            curve1,
+            curve2,
+            t1_start,
+            t1_mid,
+            t2_start,
+            t2_mid,
+            tolerance,
+            intersections,
+        );
+        Self::subdivide_bezier_bezier(
+            curve1,
+            curve2,
+            t1_mid,
+            t1_end,
+            t2_start,
+            t2_mid,
+            tolerance,
+            intersections,
+        );
+        Self::subdivide_bezier_bezier(
+            curve1,
+            curve2,
+            t1_start,
+            t1_mid,
+            t2_mid,
+            t2_end,
+            tolerance,
+            intersections,
+        );
+        Self::subdivide_bezier_bezier(
+            curve1,
+            curve2,
+            t1_mid,
+            t1_end,
+            t2_mid,
+            t2_end,
+            tolerance,
+            intersections,
+        );
+    }
     /// Find intersections between two lines
     pub fn line_line(
         line1: &Line2D,
@@ -342,6 +712,34 @@ mod tests {
     use crate::geometry::{Direction, Point};
 
     #[test]
+    fn test_nurbs_nurbs_intersection() {
+        use crate::geometry::nurbs_curve2d::NurbsCurve2D;
+        let curve1 = NurbsCurve2D::new(
+            1,
+            vec![Point::new(0.0, 0.0, 0.0), Point::new(1.0, 1.0, 0.0)],
+            vec![1.0, 1.0],
+            vec![0.0, 1.0],
+            vec![2, 2],
+        );
+        let curve2 = NurbsCurve2D::new(
+            1,
+            vec![Point::new(0.0, 1.0, 0.0), Point::new(1.0, 0.0, 0.0)],
+            vec![1.0, 1.0],
+            vec![0.0, 1.0],
+            vec![2, 2],
+        );
+        let intersections = CurveIntersection2D::nurbs_nurbs(&curve1, &curve2, 0.01, 32);
+        assert!(!intersections.is_empty());
+    }
+
+    #[test]
+    fn test_bezier_bezier_intersection() {
+        use crate::geometry::bezier_curve2d::BezierCurve2D;
+        let curve1 = BezierCurve2D::new(vec![Point::new(0.0, 0.0, 0.0), Point::new(1.0, 1.0, 0.0)]);
+        let curve2 = BezierCurve2D::new(vec![Point::new(0.0, 1.0, 0.0), Point::new(1.0, 0.0, 0.0)]);
+        let intersections = CurveIntersection2D::bezier_bezier(&curve1, &curve2, 0.01, 32);
+        assert!(!intersections.is_empty());
+    }
     fn test_line_line_intersection() {
         let line1 = Line2D::new(Point::new(0.0, 0.0, 0.0), Direction::new(1.0, 0.0, 0.0));
         let line2 = Line2D::new(Point::new(1.0, 0.0, 0.0), Direction::new(0.0, 1.0, 0.0));

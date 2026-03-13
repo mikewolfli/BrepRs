@@ -63,15 +63,15 @@ impl Line2D {
 
     pub fn contains(&self, point: &Point, tolerance: StandardReal) -> bool {
         let vec = Vector::from_point(&self.location, point);
-        let cross_dir = self.direction.cross(&vec.to_dir());
-        let cross_vec = Vector::new(cross_dir.x, cross_dir.y, cross_dir.z);
+        let dir_vec = Vector::new(self.direction.x, self.direction.y, self.direction.z);
+        let cross_vec = dir_vec.cross(&vec);
         cross_vec.magnitude() <= tolerance
     }
 
     pub fn distance(&self, point: &Point) -> StandardReal {
         let vec = Vector::from_point(&self.location, point);
-        let cross_dir = self.direction.cross(&vec.to_dir());
-        let cross_vec = Vector::new(cross_dir.x, cross_dir.y, cross_dir.z);
+        let dir_vec = Vector::new(self.direction.x, self.direction.y, self.direction.z);
+        let cross_vec = dir_vec.cross(&vec);
         cross_vec.magnitude()
     }
 

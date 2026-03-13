@@ -153,6 +153,45 @@ impl TopoDsLocation {
     pub fn is_equal(&self, other: &TopoDsLocation, tolerance: f64) -> bool {
         self.distance(other) < tolerance
     }
+
+    /// Translate the location by a vector
+    pub fn translate(&mut self, vector: Vector) {
+        self.translation = Point::new(
+            self.translation.x + vector.x,
+            self.translation.y + vector.y,
+            self.translation.z + vector.z
+        );
+    }
+
+    /// Rotate the location around an axis
+    pub fn rotate(&mut self, axis: Axis, angle: f64) {
+        let rotation = Transform::rotation(axis, angle);
+        self.transformation = rotation.multiply(&self.transformation);
+    }
+
+    /// Scale the location uniformly
+    pub fn scale(&mut self, factor: f64) {
+        if factor <= 0.0 {
+            panic!("Scale factor must be positive");
+        }
+        let scaling = Transform::scaling(factor, factor, factor);
+        self.transformation = scaling.multiply(&self.transformation);
+    }
+
+    /// Scale the location non-uniformly
+    pub fn scale_xyz(&mut self, sx: f64, sy: f64, sz: f64) {
+        if sx <= 0.0 || sy <= 0.0 || sz <= 0.0 {
+            panic!("Scale factors must be positive");
+        }
+        let scaling = Transform::scaling(sx, sy, sz);
+        self.transformation = scaling.multiply(&self.transformation);
+    }
+
+    /// Mirror the location across a plane
+    pub fn mirror(&mut self, point: Point, normal: Direction) {
+        let mirror = Transform::mirror(point, normal);
+        self.transformation = mirror.multiply(&self.transformation);
+    }
 }
 
 impl Default for TopoDsLocation {

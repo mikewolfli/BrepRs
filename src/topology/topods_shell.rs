@@ -3,6 +3,7 @@ use crate::geometry::Point;
 use crate::topology::{
     topods_face::TopoDsFace, topods_location::TopoDsLocation, topods_shape::TopoDsShape,
 };
+use serde::{Deserialize, Serialize};
 
 /// Represents a shell in topological structure
 ///
@@ -10,6 +11,7 @@ use crate::topology::{
 /// open or closed. A closed shell can represent the boundary
 /// of a solid.
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TopoDsShell {
     shape: TopoDsShape,
     faces: Vec<Handle<TopoDsFace>>,

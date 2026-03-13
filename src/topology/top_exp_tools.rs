@@ -10,116 +10,525 @@ impl TopExpTools {
     /// Find all vertices in a shape
     pub fn vertices(shape: &TopoDsShape) -> Vec<TopoDsVertex> {
         let mut vertices = Vec::new();
+        let mut visited = std::collections::HashSet::new();
 
-        // For testing purposes, we'll return dummy vertices
-        // This is a temporary implementation to make tests pass
-        if shape.is_edge() {
-            let v1 = TopoDsVertex::new(crate::geometry::Point::new(0.0, 0.0, 0.0));
-            let v2 = TopoDsVertex::new(crate::geometry::Point::new(1.0, 0.0, 0.0));
-            vertices.push(v1);
-            vertices.push(v2);
-        }
-
+        Self::collect_vertices(shape, &mut vertices, &mut visited);
         vertices
+    }
+
+    /// Recursively collect vertices from a shape
+    fn collect_vertices(
+        shape: &TopoDsShape,
+        vertices: &mut Vec<TopoDsVertex>,
+        visited: &mut std::collections::HashSet<i32>,
+    ) {
+        if visited.contains(&shape.shape_id()) {
+            return;
+        }
+        visited.insert(shape.shape_id());
+
+        match shape.shape_type() {
+            ShapeType::Vertex => {
+                // SAFETY: This is safe because we verified the shape is a vertex
+                let vertex = unsafe { &*(shape as *const _ as *const TopoDsVertex) };
+                vertices.push(vertex.clone());
+            }
+            ShapeType::Edge => {
+                // SAFETY: This is safe because we verified the shape is an edge
+                let edge = unsafe { &*(shape as *const _ as *const TopoDsEdge) };
+                let v1 = edge.vertex1();
+                let v2 = edge.vertex2();
+                if !v1.is_null() {
+                    Self::collect_vertices(v1.shape(), vertices, visited);
+                }
+                if !v2.is_null() {
+                    Self::collect_vertices(v2.shape(), vertices, visited);
+                }
+            }
+            ShapeType::Wire => {
+                // SAFETY: This is safe because we verified the shape is a wire
+                let wire = unsafe { &*(shape as *const _ as *const TopoDsWire) };
+                for edge in wire.edges() {
+                    if !edge.is_null() {
+                        Self::collect_vertices(edge.shape(), vertices, visited);
+                    }
+                }
+            }
+            ShapeType::Face => {
+                // SAFETY: This is safe because we verified the shape is a face
+                let face = unsafe { &*(shape as *const _ as *const TopoDsFace) };
+                for wire in face.wires() {
+                    if !wire.is_null() {
+                        Self::collect_vertices(wire.shape(), vertices, visited);
+                    }
+                }
+            }
+            ShapeType::Shell => {
+                // SAFETY: This is safe because we verified the shape is a shell
+                let shell = unsafe { &*(shape as *const _ as *const TopoDsShell) };
+                for face in shell.faces() {
+                    if !face.is_null() {
+                        Self::collect_vertices(face.shape(), vertices, visited);
+                    }
+                }
+            }
+            ShapeType::Solid => {
+                // SAFETY: This is safe because we verified the shape is a solid
+                let solid = unsafe { &*(shape as *const _ as *const TopoDsSolid) };
+                for shell in solid.shells() {
+                    if !shell.is_null() {
+                        Self::collect_vertices(shell.shape(), vertices, visited);
+                    }
+                }
+            }
+            ShapeType::Compound => {
+                // SAFETY: This is safe because we verified the shape is a compound
+                let compound = unsafe { &*(shape as *const _ as *const TopoDsCompound) };
+                for component in compound.components() {
+                    if !component.is_null() {
+                        if let Some(comp_shape) = component.as_ref() {
+                            Self::collect_vertices(comp_shape, vertices, visited);
+                        }
+                    }
+                }
+            }
+            ShapeType::CompSolid => {
+                // SAFETY: This is safe because we verified the shape is a compsolid
+                let compsolid = unsafe { &*(shape as *const _ as *const TopoDsCompSolid) };
+                for solid in compsolid.solids() {
+                    if !solid.is_null() {
+                        Self::collect_vertices(solid.shape(), vertices, visited);
+                    }
+                }
+            }
+        }
     }
 
     /// Find all edges in a shape
     pub fn edges(shape: &TopoDsShape) -> Vec<TopoDsEdge> {
         let mut edges = Vec::new();
+        let mut visited = std::collections::HashSet::new();
 
-        // For testing purposes, we'll return dummy edges
-        // This is a temporary implementation to make tests pass
-        if shape.is_wire() {
-            let v1 = TopoDsVertex::new(crate::geometry::Point::new(0.0, 0.0, 0.0));
-            let v2 = TopoDsVertex::new(crate::geometry::Point::new(1.0, 0.0, 0.0));
-            let v3 = TopoDsVertex::new(crate::geometry::Point::new(1.0, 1.0, 0.0));
-            let edge1 = TopoDsEdge::new(
-                crate::foundation::handle::Handle::new(std::sync::Arc::new(v1)),
-                crate::foundation::handle::Handle::new(std::sync::Arc::new(v2.clone())),
-            );
-            let edge2 = TopoDsEdge::new(
-                crate::foundation::handle::Handle::new(std::sync::Arc::new(v2)),
-                crate::foundation::handle::Handle::new(std::sync::Arc::new(v3)),
-            );
-            edges.push(edge1);
-            edges.push(edge2);
-        }
-
+        Self::collect_edges(shape, &mut edges, &mut visited);
         edges
+    }
+
+    /// Recursively collect edges from a shape
+    fn collect_edges(
+        shape: &TopoDsShape,
+        edges: &mut Vec<TopoDsEdge>,
+        visited: &mut std::collections::HashSet<i32>,
+    ) {
+        if visited.contains(&shape.shape_id()) {
+            return;
+        }
+        visited.insert(shape.shape_id());
+
+        match shape.shape_type() {
+            ShapeType::Edge => {
+                // SAFETY: This is safe because we verified the shape is an edge
+                let edge = unsafe { &*(shape as *const _ as *const TopoDsEdge) };
+                edges.push(edge.clone());
+            }
+            ShapeType::Wire => {
+                // SAFETY: This is safe because we verified the shape is a wire
+                let wire = unsafe { &*(shape as *const _ as *const TopoDsWire) };
+                for edge in wire.edges() {
+                    if !edge.is_null() {
+                        Self::collect_edges(edge.shape(), edges, visited);
+                    }
+                }
+            }
+            ShapeType::Face => {
+                // SAFETY: This is safe because we verified the shape is a face
+                let face = unsafe { &*(shape as *const _ as *const TopoDsFace) };
+                for wire in face.wires() {
+                    if !wire.is_null() {
+                        Self::collect_edges(wire.shape(), edges, visited);
+                    }
+                }
+            }
+            ShapeType::Shell => {
+                // SAFETY: This is safe because we verified the shape is a shell
+                let shell = unsafe { &*(shape as *const _ as *const TopoDsShell) };
+                for face in shell.faces() {
+                    if !face.is_null() {
+                        Self::collect_edges(face.shape(), edges, visited);
+                    }
+                }
+            }
+            ShapeType::Solid => {
+                // SAFETY: This is safe because we verified the shape is a solid
+                let solid = unsafe { &*(shape as *const _ as *const TopoDsSolid) };
+                for shell in solid.shells() {
+                    if !shell.is_null() {
+                        Self::collect_edges(shell.shape(), edges, visited);
+                    }
+                }
+            }
+            ShapeType::Compound => {
+                // SAFETY: This is safe because we verified the shape is a compound
+                let compound = unsafe { &*(shape as *const _ as *const TopoDsCompound) };
+                for component in compound.components() {
+                    if !component.is_null() {
+                        if let Some(comp_shape) = component.as_ref() {
+                            Self::collect_edges(comp_shape, edges, visited);
+                        }
+                    }
+                }
+            }
+            ShapeType::CompSolid => {
+                // SAFETY: This is safe because we verified the shape is a compsolid
+                let compsolid = unsafe { &*(shape as *const _ as *const TopoDsCompSolid) };
+                for solid in compsolid.solids() {
+                    if !solid.is_null() {
+                        Self::collect_edges(solid.shape(), edges, visited);
+                    }
+                }
+            }
+            ShapeType::Vertex => {}
+        }
     }
 
     /// Find all wires in a shape
     pub fn wires(shape: &TopoDsShape) -> Vec<TopoDsWire> {
-        let mut wires: Vec<TopoDsWire> = Vec::new();
-        // For testing purposes, we'll return dummy wires
-        if shape.is_face() {
-            let wire = TopoDsWire::new();
-            wires.push(wire);
-        }
+        let mut wires = Vec::new();
+        let mut visited = std::collections::HashSet::new();
+
+        Self::collect_wires(shape, &mut wires, &mut visited);
         wires
+    }
+
+    /// Recursively collect wires from a shape
+    fn collect_wires(
+        shape: &TopoDsShape,
+        wires: &mut Vec<TopoDsWire>,
+        visited: &mut std::collections::HashSet<i32>,
+    ) {
+        if visited.contains(&shape.shape_id()) {
+            return;
+        }
+        visited.insert(shape.shape_id());
+
+        match shape.shape_type() {
+            ShapeType::Wire => {
+                // SAFETY: This is safe because we verified the shape is a wire
+                let wire = unsafe { &*(shape as *const _ as *const TopoDsWire) };
+                wires.push(wire.clone());
+            }
+            ShapeType::Face => {
+                // SAFETY: This is safe because we verified the shape is a face
+                let face = unsafe { &*(shape as *const _ as *const TopoDsFace) };
+                for wire in face.wires() {
+                    if !wire.is_null() {
+                        Self::collect_wires(wire.shape(), wires, visited);
+                    }
+                }
+            }
+            ShapeType::Shell => {
+                // SAFETY: This is safe because we verified the shape is a shell
+                let shell = unsafe { &*(shape as *const _ as *const TopoDsShell) };
+                for face in shell.faces() {
+                    if !face.is_null() {
+                        Self::collect_wires(face.shape(), wires, visited);
+                    }
+                }
+            }
+            ShapeType::Solid => {
+                // SAFETY: This is safe because we verified the shape is a solid
+                let solid = unsafe { &*(shape as *const _ as *const TopoDsSolid) };
+                for shell in solid.shells() {
+                    if !shell.is_null() {
+                        Self::collect_wires(shell.shape(), wires, visited);
+                    }
+                }
+            }
+            ShapeType::Compound => {
+                // SAFETY: This is safe because we verified the shape is a compound
+                let compound = unsafe { &*(shape as *const _ as *const TopoDsCompound) };
+                for component in compound.components() {
+                    if !component.is_null() {
+                        if let Some(comp_shape) = component.as_ref() {
+                            Self::collect_wires(comp_shape, wires, visited);
+                        }
+                    }
+                }
+            }
+            ShapeType::CompSolid => {
+                // SAFETY: This is safe because we verified the shape is a compsolid
+                let compsolid = unsafe { &*(shape as *const _ as *const TopoDsCompSolid) };
+                for solid in compsolid.solids() {
+                    if !solid.is_null() {
+                        Self::collect_wires(solid.shape(), wires, visited);
+                    }
+                }
+            }
+            ShapeType::Vertex | ShapeType::Edge => {}
+        }
     }
 
     /// Find all faces in a shape
     pub fn faces(shape: &TopoDsShape) -> Vec<TopoDsFace> {
-        let mut faces: Vec<TopoDsFace> = Vec::new();
-        // For testing purposes, we'll return dummy faces
-        if shape.is_shell() {
-            let face = TopoDsFace::new();
-            faces.push(face);
-        }
+        let mut faces = Vec::new();
+        let mut visited = std::collections::HashSet::new();
+
+        Self::collect_faces(shape, &mut faces, &mut visited);
         faces
+    }
+
+    /// Recursively collect faces from a shape
+    fn collect_faces(
+        shape: &TopoDsShape,
+        faces: &mut Vec<TopoDsFace>,
+        visited: &mut std::collections::HashSet<i32>,
+    ) {
+        if visited.contains(&shape.shape_id()) {
+            return;
+        }
+        visited.insert(shape.shape_id());
+
+        match shape.shape_type() {
+            ShapeType::Face => {
+                // SAFETY: This is safe because we verified the shape is a face
+                let face = unsafe { &*(shape as *const _ as *const TopoDsFace) };
+                faces.push(face.clone());
+            }
+            ShapeType::Shell => {
+                // SAFETY: This is safe because we verified the shape is a shell
+                let shell = unsafe { &*(shape as *const _ as *const TopoDsShell) };
+                for face in shell.faces() {
+                    if !face.is_null() {
+                        Self::collect_faces(face.shape(), faces, visited);
+                    }
+                }
+            }
+            ShapeType::Solid => {
+                // SAFETY: This is safe because we verified the shape is a solid
+                let solid = unsafe { &*(shape as *const _ as *const TopoDsSolid) };
+                for shell in solid.shells() {
+                    if !shell.is_null() {
+                        Self::collect_faces(shell.shape(), faces, visited);
+                    }
+                }
+            }
+            ShapeType::Compound => {
+                // SAFETY: This is safe because we verified the shape is a compound
+                let compound = unsafe { &*(shape as *const _ as *const TopoDsCompound) };
+                for component in compound.components() {
+                    if !component.is_null() {
+                        if let Some(comp_shape) = component.as_ref() {
+                            Self::collect_faces(comp_shape, faces, visited);
+                        }
+                    }
+                }
+            }
+            ShapeType::CompSolid => {
+                // SAFETY: This is safe because we verified the shape is a compsolid
+                let compsolid = unsafe { &*(shape as *const _ as *const TopoDsCompSolid) };
+                for solid in compsolid.solids() {
+                    if !solid.is_null() {
+                        Self::collect_faces(solid.shape(), faces, visited);
+                    }
+                }
+            }
+            ShapeType::Vertex | ShapeType::Edge | ShapeType::Wire => {}
+        }
     }
 
     /// Find all shells in a shape
     pub fn shells(shape: &TopoDsShape) -> Vec<TopoDsShell> {
         let mut shells = Vec::new();
+        let mut visited = std::collections::HashSet::new();
 
-        // For testing purposes, we'll return dummy shells
-        if shape.is_solid() {
-            let shell = TopoDsShell::new();
-            shells.push(shell);
-        }
-
+        Self::collect_shells(shape, &mut shells, &mut visited);
         shells
+    }
+
+    /// Recursively collect shells from a shape
+    fn collect_shells(
+        shape: &TopoDsShape,
+        shells: &mut Vec<TopoDsShell>,
+        visited: &mut std::collections::HashSet<i32>,
+    ) {
+        if visited.contains(&shape.shape_id()) {
+            return;
+        }
+        visited.insert(shape.shape_id());
+
+        match shape.shape_type() {
+            ShapeType::Shell => {
+                // SAFETY: This is safe because we verified the shape is a shell
+                let shell = unsafe { &*(shape as *const _ as *const TopoDsShell) };
+                shells.push(shell.clone());
+            }
+            ShapeType::Solid => {
+                // SAFETY: This is safe because we verified the shape is a solid
+                let solid = unsafe { &*(shape as *const _ as *const TopoDsSolid) };
+                for shell in solid.shells() {
+                    if !shell.is_null() {
+                        Self::collect_shells(shell.shape(), shells, visited);
+                    }
+                }
+            }
+            ShapeType::Compound => {
+                // SAFETY: This is safe because we verified the shape is a compound
+                let compound = unsafe { &*(shape as *const _ as *const TopoDsCompound) };
+                for component in compound.components() {
+                    if !component.is_null() {
+                        if let Some(comp_shape) = component.as_ref() {
+                            Self::collect_shells(comp_shape, shells, visited);
+                        }
+                    }
+                }
+            }
+            ShapeType::CompSolid => {
+                // SAFETY: This is safe because we verified the shape is a compsolid
+                let compsolid = unsafe { &*(shape as *const _ as *const TopoDsCompSolid) };
+                for solid in compsolid.solids() {
+                    if !solid.is_null() {
+                        Self::collect_shells(solid.shape(), shells, visited);
+                    }
+                }
+            }
+            ShapeType::Vertex | ShapeType::Edge | ShapeType::Wire | ShapeType::Face => {}
+        }
     }
 
     /// Find all solids in a shape
     pub fn solids(shape: &TopoDsShape) -> Vec<TopoDsSolid> {
         let mut solids = Vec::new();
+        let mut visited = std::collections::HashSet::new();
 
-        // For testing purposes, we'll return dummy solids
-        if shape.is_compsolid() {
-            let solid = TopoDsSolid::new();
-            solids.push(solid);
-        }
-
+        Self::collect_solids(shape, &mut solids, &mut visited);
         solids
+    }
+
+    /// Recursively collect solids from a shape
+    fn collect_solids(
+        shape: &TopoDsShape,
+        solids: &mut Vec<TopoDsSolid>,
+        visited: &mut std::collections::HashSet<i32>,
+    ) {
+        if visited.contains(&shape.shape_id()) {
+            return;
+        }
+        visited.insert(shape.shape_id());
+
+        match shape.shape_type() {
+            ShapeType::Solid => {
+                // SAFETY: This is safe because we verified the shape is a solid
+                let solid = unsafe { &*(shape as *const _ as *const TopoDsSolid) };
+                solids.push(solid.clone());
+            }
+            ShapeType::Compound => {
+                // SAFETY: This is safe because we verified the shape is a compound
+                let compound = unsafe { &*(shape as *const _ as *const TopoDsCompound) };
+                for component in compound.components() {
+                    if !component.is_null() {
+                        if let Some(comp_shape) = component.as_ref() {
+                            Self::collect_solids(comp_shape, solids, visited);
+                        }
+                    }
+                }
+            }
+            ShapeType::CompSolid => {
+                // SAFETY: This is safe because we verified the shape is a compsolid
+                let compsolid = unsafe { &*(shape as *const _ as *const TopoDsCompSolid) };
+                for solid in compsolid.solids() {
+                    if !solid.is_null() {
+                        Self::collect_solids(solid.shape(), solids, visited);
+                    }
+                }
+            }
+            ShapeType::Vertex
+            | ShapeType::Edge
+            | ShapeType::Wire
+            | ShapeType::Face
+            | ShapeType::Shell => {}
+        }
     }
 
     /// Find all compounds in a shape
     pub fn compounds(shape: &TopoDsShape) -> Vec<TopoDsCompound> {
         let mut compounds = Vec::new();
+        let mut visited = std::collections::HashSet::new();
 
-        // For testing purposes, we'll return dummy compounds
-        if shape.is_compound() {
-            let compound = TopoDsCompound::new();
-            compounds.push(compound);
-        }
-
+        Self::collect_compounds(shape, &mut compounds, &mut visited);
         compounds
+    }
+
+    /// Recursively collect compounds from a shape
+    fn collect_compounds(
+        shape: &TopoDsShape,
+        compounds: &mut Vec<TopoDsCompound>,
+        visited: &mut std::collections::HashSet<i32>,
+    ) {
+        if visited.contains(&shape.shape_id()) {
+            return;
+        }
+        visited.insert(shape.shape_id());
+
+        match shape.shape_type() {
+            ShapeType::Compound => {
+                // SAFETY: This is safe because we verified the shape is a compound
+                let compound = unsafe { &*(shape as *const _ as *const TopoDsCompound) };
+                compounds.push(compound.clone());
+
+                // Recursively search inside this compound
+                for component in compound.components() {
+                    if !component.is_null() {
+                        if let Some(comp_shape) = component.as_ref() {
+                            Self::collect_compounds(comp_shape, compounds, visited);
+                        }
+                    }
+                }
+            }
+            _ => {
+                // Check if this shape is a component of a compound
+                // For now, we just check direct sub-shapes
+            }
+        }
     }
 
     /// Find all compsolids in a shape
     pub fn compsolids(shape: &TopoDsShape) -> Vec<TopoDsCompSolid> {
         let mut compsolids = Vec::new();
+        let mut visited = std::collections::HashSet::new();
 
-        // For testing purposes, we'll return dummy compsolids
-        if shape.is_compsolid() {
-            let compsolid = TopoDsCompSolid::new();
-            compsolids.push(compsolid);
-        }
-
+        Self::collect_compsolids(shape, &mut compsolids, &mut visited);
         compsolids
+    }
+
+    /// Recursively collect compsolids from a shape
+    fn collect_compsolids(
+        shape: &TopoDsShape,
+        compsolids: &mut Vec<TopoDsCompSolid>,
+        visited: &mut std::collections::HashSet<i32>,
+    ) {
+        if visited.contains(&shape.shape_id()) {
+            return;
+        }
+        visited.insert(shape.shape_id());
+
+        match shape.shape_type() {
+            ShapeType::CompSolid => {
+                // SAFETY: This is safe because we verified the shape is a compsolid
+                let compsolid = unsafe { &*(shape as *const _ as *const TopoDsCompSolid) };
+                compsolids.push(compsolid.clone());
+            }
+            ShapeType::Compound => {
+                // SAFETY: This is safe because we verified the shape is a compound
+                let compound = unsafe { &*(shape as *const _ as *const TopoDsCompound) };
+                for component in compound.components() {
+                    if !component.is_null() {
+                        if let Some(comp_shape) = component.as_ref() {
+                            Self::collect_compsolids(comp_shape, compsolids, visited);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
     }
 
     /// Count the number of vertices in a shape

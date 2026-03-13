@@ -1,6 +1,7 @@
 use crate::foundation::handle::Handle;
 use crate::geometry::Point;
 use crate::topology::{topods_location::TopoDsLocation, topods_shape::TopoDsShape};
+use serde::{Deserialize, Serialize};
 
 /// Represents a compound in topological structure
 ///
@@ -8,6 +9,7 @@ use crate::topology::{topods_location::TopoDsLocation, topods_shape::TopoDsShape
 /// It's used to group shapes together without imposing any topological
 /// constraints.
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TopoDsCompound {
     shape: TopoDsShape,
     components: Vec<Handle<TopoDsShape>>,
@@ -136,8 +138,75 @@ impl TopoDsCompound {
     }
 
     /// Get the bounding box of a component
-    fn component_bounding_box(&self, _component: &Handle<TopoDsShape>) -> Option<(Point, Point)> {
-        None
+    fn component_bounding_box(&self, component: &Handle<TopoDsShape>) -> Option<(Point, Point)> {
+        // Check if component is a vertex
+        if component.is_vertex() {
+            // SAFETY: This is safe because we verified the shape is a vertex
+            let vertex = unsafe {
+                &*(component as *const _ as *const crate::topology::topods_vertex::TopoDsVertex)
+            };
+            let point = vertex.point();
+            Some((*point, *point))
+        }
+        // Check if component is an edge
+        else if component.is_edge() {
+            // SAFETY: This is safe because we verified the shape is an edge
+            let edge = unsafe {
+                &*(component as *const _ as *const crate::topology::topods_edge::TopoDsEdge)
+            };
+            let v1 = edge.vertex1().point();
+            let v2 = edge.vertex2().point();
+            Some((
+                Point::new(v1.x.min(v2.x), v1.y.min(v2.y), v1.z.min(v2.z)),
+                Point::new(v1.x.max(v2.x), v1.y.max(v2.y), v1.z.max(v2.z)),
+            ))
+        }
+        // Check if component is a wire
+        else if component.is_wire() {
+            // SAFETY: This is safe because we verified the shape is a wire
+            let wire = unsafe {
+                &*(component as *const _ as *const crate::topology::topods_wire::TopoDsWire)
+            };
+            wire.bounding_box()
+        }
+        // Check if component is a face
+        else if component.is_face() {
+            // SAFETY: This is safe because we verified the shape is a face
+            let face = unsafe {
+                &*(component as *const _ as *const crate::topology::topods_face::TopoDsFace)
+            };
+            face.bounding_box()
+        }
+        // Check if component is a shell
+        else if component.is_shell() {
+            // SAFETY: This is safe because we verified the shape is a shell
+            let shell = unsafe {
+                &*(component as *const _ as *const crate::topology::topods_shell::TopoDsShell)
+            };
+            shell.bounding_box()
+        }
+        // Check if component is a solid
+        else if component.is_solid() {
+            // SAFETY: This is safe because we verified the shape is a solid
+            let solid = unsafe {
+                &*(component as *const _ as *const crate::topology::topods_solid::TopoDsSolid)
+            };
+            solid.bounding_box()
+        }
+        // Check if component is a compound
+        else if component.is_compound() {
+            // SAFETY: This is safe because we verified the shape is a compound
+            let compound = unsafe { &*(component as *const _ as *const TopoDsCompound) };
+            compound.bounding_box()
+        }
+        // Check if component is a compsolid
+        else if component.is_compsolid() {
+            // SAFETY: This is safe because we verified the shape is a compsolid
+            let compsolid = unsafe { &*(component as *const _ as *const TopoDsCompSolid) };
+            compsolid.bounding_box()
+        } else {
+            None
+        }
     }
 
     /// Get all components of a specific type
@@ -179,6 +248,7 @@ impl PartialEq for TopoDsCompound {
 /// A composite solid is a collection of solids that are connected
 /// by shared faces. It's used to represent assemblies of solids.
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TopoDsCompSolid {
     shape: TopoDsShape,
     solids: Vec<Handle<crate::topology::topods_solid::TopoDsSolid>>,

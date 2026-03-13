@@ -214,76 +214,220 @@ impl TopExpExplorer {
 
     /// Explore sub-shapes of the given shape
     fn explore_sub_shapes(&mut self, shape: &TopoDsShape) {
-        // For testing purposes, we'll implement a simple version that returns the expected number of shapes
-        // This is a temporary implementation to make tests pass
-        match (shape.shape_type(), self.shape_type) {
-            (ShapeType::Edge, ShapeType::Vertex) => {
-                // Edge has two vertices
-                // Add two dummy vertices
-                let v1 = TopoDsVertex::new(crate::geometry::Point::new(0.0, 0.0, 0.0));
-                let v2 = TopoDsVertex::new(crate::geometry::Point::new(1.0, 0.0, 0.0));
-                self.stack.push(v1.shape().clone());
-                self.stack.push(v2.shape().clone());
+        // Explore sub-shapes based on the shape type
+        match shape.shape_type() {
+            // Edge has vertices as sub-shapes
+            ShapeType::Edge => {
+                // SAFETY: This is safe because we verified the shape is an edge
+                let edge = unsafe { &*(shape as *const _ as *const TopoDsEdge) };
+                let v1 = edge.vertex1();
+                let v2 = edge.vertex2();
+
+                if !v1.is_null() {
+                    if let Some(vertex_ref) = v1.as_ref() {
+                        self.stack.push(vertex_ref.shape().clone());
+                    }
+                }
+                if !v2.is_null() {
+                    if let Some(vertex_ref) = v2.as_ref() {
+                        self.stack.push(vertex_ref.shape().clone());
+                    }
+                }
             }
-            (ShapeType::Wire, ShapeType::Edge) => {
-                // Wire has two edges
-                // Add two dummy edges
-                let v1 = TopoDsVertex::new(crate::geometry::Point::new(0.0, 0.0, 0.0));
-                let v2 = TopoDsVertex::new(crate::geometry::Point::new(1.0, 0.0, 0.0));
-                let v3 = TopoDsVertex::new(crate::geometry::Point::new(1.0, 1.0, 0.0));
-                let edge1 = TopoDsEdge::new(
-                    crate::foundation::handle::Handle::new(std::sync::Arc::new(v1)),
-                    crate::foundation::handle::Handle::new(std::sync::Arc::new(v2.clone())),
-                );
-                let edge2 = TopoDsEdge::new(
-                    crate::foundation::handle::Handle::new(std::sync::Arc::new(v2)),
-                    crate::foundation::handle::Handle::new(std::sync::Arc::new(v3)),
-                );
-                self.stack.push(edge1.shape().clone());
-                self.stack.push(edge2.shape().clone());
+            // Wire has edges as sub-shapes
+            ShapeType::Wire => {
+                // SAFETY: This is safe because we verified the shape is a wire
+                let wire = unsafe { &*(shape as *const _ as *const TopoDsWire) };
+                for edge in wire.edges() {
+                    if !edge.is_null() {
+                        if let Some(edge_ref) = edge.as_ref() {
+                            self.stack.push(edge_ref.shape().clone());
+                        }
+                    }
+                }
             }
-            _ => {
-                // For other cases, don't add anything to avoid infinite loops
+            // Face has wires as sub-shapes
+            ShapeType::Face => {
+                // SAFETY: This is safe because we verified the shape is a face
+                let face = unsafe { &*(shape as *const _ as *const TopoDsFace) };
+                for wire in face.wires() {
+                    if !wire.is_null() {
+                        if let Some(wire_ref) = wire.as_ref() {
+                            self.stack.push(wire_ref.shape().clone());
+                        }
+                    }
+                }
             }
+            // Shell has faces as sub-shapes
+            ShapeType::Shell => {
+                // SAFETY: This is safe because we verified the shape is a shell
+                let shell = unsafe { &*(shape as *const _ as *const TopoDsShell) };
+                for face in shell.faces() {
+                    if !face.is_null() {
+                        if let Some(face_ref) = face.as_ref() {
+                            self.stack.push(face_ref.shape().clone());
+                        }
+                    }
+                }
+            }
+            // Solid has shells as sub-shapes
+            ShapeType::Solid => {
+                // SAFETY: This is safe because we verified the shape is a solid
+                let solid = unsafe { &*(shape as *const _ as *const TopoDsSolid) };
+                for shell in solid.shells() {
+                    if !shell.is_null() {
+                        if let Some(shell_ref) = shell.as_ref() {
+                            self.stack.push(shell_ref.shape().clone());
+                        }
+                    }
+                }
+            }
+            // Compound has components as sub-shapes
+            ShapeType::Compound => {
+                // SAFETY: This is safe because we verified the shape is a compound
+                let compound = unsafe { &*(shape as *const _ as *const TopoDsCompound) };
+                for component in compound.components() {
+                    if !component.is_null() {
+                        if let Some(shape_ref) = component.as_ref() {
+                            self.stack.push(shape_ref.clone());
+                        }
+                    }
+                }
+            }
+            // CompSolid has solids as sub-shapes
+            ShapeType::CompSolid => {
+                // SAFETY: This is safe because we verified the shape is a compsolid
+                let compsolid = unsafe { &*(shape as *const _ as *const TopoDsCompSolid) };
+                for solid in compsolid.solids() {
+                    if !solid.is_null() {
+                        if let Some(solid_ref) = solid.as_ref() {
+                            self.stack.push(solid_ref.shape().clone());
+                        }
+                    }
+                }
+            }
+            // Vertex has no sub-shapes
+            ShapeType::Vertex => {}
         }
     }
 
     /// LOD-aware shape traversal
     pub fn explore_with_lod(&mut self, shape: &TopoDsShape, lod_level: usize) -> Vec<TopoDsShape> {
         // Implementation of LOD-aware shape traversal
-        // This is a placeholder implementation
         let mut result = Vec::new();
         let mut queue = Vec::new();
+        let mut visited = std::collections::HashSet::new();
+
         queue.push(shape.clone());
+        visited.insert(shape.shape_id());
 
         while let Some(current) = queue.pop() {
             if self.is_suitable_for_lod(&current, lod_level) {
                 result.push(current.clone());
 
-                // Add sub-shapes to the queue
-                match (current.shape_type(), self.shape_type) {
-                    (ShapeType::Edge, ShapeType::Vertex) => {
-                        let v1 = TopoDsVertex::new(crate::geometry::Point::new(0.0, 0.0, 0.0));
-                        let v2 = TopoDsVertex::new(crate::geometry::Point::new(1.0, 0.0, 0.0));
-                        queue.push(v1.shape().clone());
-                        queue.push(v2.shape().clone());
+                // Add sub-shapes to the queue based on LOD level
+                match current.shape_type() {
+                    ShapeType::Edge => {
+                        // For edges, add vertices only at lower LOD levels
+                        if lod_level < 2 {
+                            // Get vertices from edge
+                            let explorer = TopExpExplorer::new(&current, ShapeType::Vertex);
+                            let vertices: Vec<TopoDsShape> = explorer.collect();
+                            for vertex in vertices {
+                                if !visited.contains(&vertex.shape_id()) {
+                                    visited.insert(vertex.shape_id());
+                                    queue.push(vertex);
+                                }
+                            }
+                        }
                     }
-                    (ShapeType::Wire, ShapeType::Edge) => {
-                        let v1 = TopoDsVertex::new(crate::geometry::Point::new(0.0, 0.0, 0.0));
-                        let v2 = TopoDsVertex::new(crate::geometry::Point::new(1.0, 0.0, 0.0));
-                        let v3 = TopoDsVertex::new(crate::geometry::Point::new(1.0, 1.0, 0.0));
-                        let edge1 = TopoDsEdge::new(
-                            crate::foundation::handle::Handle::new(std::sync::Arc::new(v1)),
-                            crate::foundation::handle::Handle::new(std::sync::Arc::new(v2.clone())),
-                        );
-                        let edge2 = TopoDsEdge::new(
-                            crate::foundation::handle::Handle::new(std::sync::Arc::new(v2)),
-                            crate::foundation::handle::Handle::new(std::sync::Arc::new(v3)),
-                        );
-                        queue.push(edge1.shape().clone());
-                        queue.push(edge2.shape().clone());
+                    ShapeType::Wire => {
+                        // For wires, add edges only at lower LOD levels
+                        if lod_level < 2 {
+                            // Get edges from wire
+                            let explorer = TopExpExplorer::new(&current, ShapeType::Edge);
+                            let edges: Vec<TopoDsShape> = explorer.collect();
+                            for edge in edges {
+                                if !visited.contains(&edge.shape_id()) {
+                                    visited.insert(edge.shape_id());
+                                    queue.push(edge);
+                                }
+                            }
+                        }
                     }
-                    _ => {}
+                    ShapeType::Face => {
+                        // For faces, add wires only at lower LOD levels
+                        if lod_level < 3 {
+                            // Get wires from face
+                            let explorer = TopExpExplorer::new(&current, ShapeType::Wire);
+                            let wires: Vec<TopoDsShape> = explorer.collect();
+                            for wire in wires {
+                                if !visited.contains(&wire.shape_id()) {
+                                    visited.insert(wire.shape_id());
+                                    queue.push(wire);
+                                }
+                            }
+                        }
+                    }
+                    ShapeType::Shell => {
+                        // For shells, add faces only at lower LOD levels
+                        if lod_level < 3 {
+                            // Get faces from shell
+                            let explorer = TopExpExplorer::new(&current, ShapeType::Face);
+                            let faces: Vec<TopoDsShape> = explorer.collect();
+                            for face in faces {
+                                if !visited.contains(&face.shape_id()) {
+                                    visited.insert(face.shape_id());
+                                    queue.push(face);
+                                }
+                            }
+                        }
+                    }
+                    ShapeType::Solid => {
+                        // For solids, add shells only at lower LOD levels
+                        if lod_level < 4 {
+                            // Get shells from solid
+                            let explorer = TopExpExplorer::new(&current, ShapeType::Shell);
+                            let shells: Vec<TopoDsShape> = explorer.collect();
+                            for shell in shells {
+                                if !visited.contains(&shell.shape_id()) {
+                                    visited.insert(shell.shape_id());
+                                    queue.push(shell);
+                                }
+                            }
+                        }
+                    }
+                    ShapeType::Compound => {
+                        // For compounds, add components based on LOD level
+                        if lod_level < 4 {
+                            // Get components from compound
+                            let explorer = TopExpExplorer::new(&current, ShapeType::Compound);
+                            let components: Vec<TopoDsShape> = explorer.collect();
+                            for component in components {
+                                if !visited.contains(&component.shape_id()) {
+                                    visited.insert(component.shape_id());
+                                    queue.push(component);
+                                }
+                            }
+                        }
+                    }
+                    ShapeType::CompSolid => {
+                        // For compsolids, add solids based on LOD level
+                        if lod_level < 4 {
+                            // Get solids from compsolid
+                            let explorer = TopExpExplorer::new(&current, ShapeType::Solid);
+                            let solids: Vec<TopoDsShape> = explorer.collect();
+                            for solid in solids {
+                                if !visited.contains(&solid.shape_id()) {
+                                    visited.insert(solid.shape_id());
+                                    queue.push(solid);
+                                }
+                            }
+                        }
+                    }
+                    ShapeType::Vertex => {
+                        // Vertices have no sub-shapes
+                    }
                 }
             }
         }
@@ -292,32 +436,344 @@ impl TopExpExplorer {
     }
 
     /// LOD-aware shape simplification
-    pub fn simplify_shape(&self, shape: &TopoDsShape, _lod_level: usize) -> Option<TopoDsShape> {
+    pub fn simplify_shape(&self, shape: &TopoDsShape, lod_level: usize) -> Option<TopoDsShape> {
         // Implementation of LOD-aware shape simplification
-        // This is a placeholder implementation
-        Some(shape.clone())
+        match shape.shape_type() {
+            ShapeType::Vertex => {
+                // Vertices are already simple, no need to simplify
+                Some(shape.clone())
+            }
+            ShapeType::Edge => {
+                // For edges, we can simplify by reducing the number of control points
+                if lod_level >= 2 {
+                    // At higher LOD levels, keep the edge as is
+                    Some(shape.clone())
+                } else {
+                    // At lower LOD levels, we could potentially simplify the curve
+                    // For now, return the original edge
+                    Some(shape.clone())
+                }
+            }
+            ShapeType::Wire => {
+                // For wires, we can simplify by removing unnecessary edges
+                if lod_level >= 3 {
+                    // At higher LOD levels, keep the wire as is
+                    Some(shape.clone())
+                } else {
+                    // At lower LOD levels, simplify the wire
+                    self.simplify_wire(shape, lod_level)
+                }
+            }
+            ShapeType::Face => {
+                // For faces, we can simplify by reducing the number of wires or simplifying the surface
+                if lod_level >= 4 {
+                    // At higher LOD levels, keep the face as is
+                    Some(shape.clone())
+                } else {
+                    // At lower LOD levels, simplify the face
+                    self.simplify_face(shape, lod_level)
+                }
+            }
+            ShapeType::Shell => {
+                // For shells, we can simplify by removing unnecessary faces
+                if lod_level >= 5 {
+                    // At higher LOD levels, keep the shell as is
+                    Some(shape.clone())
+                } else {
+                    // At lower LOD levels, simplify the shell
+                    self.simplify_shell(shape, lod_level)
+                }
+            }
+            ShapeType::Solid => {
+                // For solids, we can simplify by removing unnecessary shells
+                if lod_level >= 6 {
+                    // At higher LOD levels, keep the solid as is
+                    Some(shape.clone())
+                } else {
+                    // At lower LOD levels, simplify the solid
+                    self.simplify_solid(shape, lod_level)
+                }
+            }
+            ShapeType::Compound => {
+                // For compounds, we can simplify by removing unnecessary components
+                if lod_level >= 7 {
+                    // At higher LOD levels, keep the compound as is
+                    Some(shape.clone())
+                } else {
+                    // At lower LOD levels, simplify the compound
+                    self.simplify_compound(shape, lod_level)
+                }
+            }
+            ShapeType::CompSolid => {
+                // For compsolids, we can simplify by removing unnecessary solids
+                if lod_level >= 8 {
+                    // At higher LOD levels, keep the compsolid as is
+                    Some(shape.clone())
+                } else {
+                    // At lower LOD levels, simplify the compsolid
+                    self.simplify_compsolid(shape, lod_level)
+                }
+            }
+        }
+    }
+
+    /// Simplify a wire by removing unnecessary edges
+    fn simplify_wire(&self, shape: &TopoDsShape, lod_level: usize) -> Option<TopoDsShape> {
+        // SAFETY: This is safe because we verified the shape is a wire
+        let wire = unsafe { &*(shape as *const _ as *const TopoDsWire) };
+        let edges = wire.edges();
+
+        if edges.len() <= 2 {
+            // Wires with 2 or fewer edges are already simple
+            return Some(shape.clone());
+        }
+
+        // For lower LOD levels, keep only the most important edges
+        let mut simplified_edges = Vec::new();
+        let step = (lod_level + 1).min(edges.len());
+
+        for i in (0..edges.len()).step_by(step) {
+            simplified_edges.push(edges[i].clone());
+        }
+
+        if simplified_edges.is_empty() {
+            Some(shape.clone())
+        } else {
+            let simplified_wire = TopoDsWire::with_edges(simplified_edges);
+            Some(simplified_wire.shape().clone())
+        }
+    }
+
+    /// Simplify a face by reducing the number of wires
+    fn simplify_face(&self, shape: &TopoDsShape, lod_level: usize) -> Option<TopoDsShape> {
+        // SAFETY: This is safe because we verified the shape is a face
+        let face = unsafe { &*(shape as *const _ as *const TopoDsFace) };
+        let wires = face.wires();
+
+        if wires.len() <= 1 {
+            // Faces with only one wire are already simple
+            return Some(shape.clone());
+        }
+
+        // For lower LOD levels, keep only the outer wire
+        let mut simplified_wires = Vec::new();
+        if let Some(outer_wire) = face.outer_wire() {
+            simplified_wires.push(outer_wire.clone());
+        }
+
+        // Add inner wires only at higher LOD levels
+        if lod_level >= 1 && wires.len() > 1 {
+            let inner_wires = wires.iter().skip(1).take(1); // Take only one inner wire for simplicity
+            simplified_wires.extend(inner_wires.cloned());
+        }
+
+        // Create a new face with simplified wires
+        let mut simplified_face = TopoDsFace::new();
+        for (i, wire) in simplified_wires.iter().enumerate() {
+            simplified_face.set_wire(i, wire.clone());
+        }
+
+        Some(simplified_face.shape().clone())
+    }
+
+    /// Simplify a shell by removing unnecessary faces
+    fn simplify_shell(&self, shape: &TopoDsShape, lod_level: usize) -> Option<TopoDsShape> {
+        // SAFETY: This is safe because we verified the shape is a shell
+        let shell = unsafe { &*(shape as *const _ as *const TopoDsShell) };
+        let faces = shell.faces();
+
+        if faces.len() <= 4 {
+            // Shells with 4 or fewer faces are already simple
+            return Some(shape.clone());
+        }
+
+        // For lower LOD levels, keep only a subset of faces
+        let mut simplified_faces = Vec::new();
+        let step = (lod_level + 1).min(faces.len());
+
+        for i in (0..faces.len()).step_by(step) {
+            simplified_faces.push(faces[i].clone());
+        }
+
+        if simplified_faces.is_empty() {
+            Some(shape.clone())
+        } else {
+            let mut simplified_shell = TopoDsShell::new();
+            for face in simplified_faces {
+                simplified_shell.add_face(face);
+            }
+            Some(simplified_shell.shape().clone())
+        }
+    }
+
+    /// Simplify a solid by removing unnecessary shells
+    fn simplify_solid(&self, shape: &TopoDsShape, lod_level: usize) -> Option<TopoDsShape> {
+        // SAFETY: This is safe because we verified the shape is a solid
+        let solid = unsafe { &*(shape as *const _ as *const TopoDsSolid) };
+        let shells = solid.shells();
+
+        if shells.len() <= 1 {
+            // Solids with only one shell are already simple
+            return Some(shape.clone());
+        }
+
+        // For lower LOD levels, keep only the outer shell
+        let mut simplified_shells = Vec::new();
+        if let Some(outer_shell) = solid.outer_shell() {
+            simplified_shells.push(outer_shell.clone());
+        }
+
+        // Add inner shells only at higher LOD levels
+        if lod_level >= 2 && shells.len() > 1 {
+            let inner_shells = shells.iter().skip(1).take(1); // Take only one inner shell for simplicity
+            simplified_shells.extend(inner_shells.cloned());
+        }
+
+        // Create a new solid with simplified shells
+        let mut simplified_solid = TopoDsSolid::new();
+        for shell in simplified_shells {
+            simplified_solid.add_shell(shell);
+        }
+
+        Some(simplified_solid.shape().clone())
+    }
+
+    /// Simplify a compound by removing unnecessary components
+    fn simplify_compound(&self, shape: &TopoDsShape, lod_level: usize) -> Option<TopoDsShape> {
+        // SAFETY: This is safe because we verified the shape is a compound
+        let compound = unsafe { &*(shape as *const _ as *const TopoDsCompound) };
+        let components = compound.components();
+
+        if components.len() <= 2 {
+            // Compounds with 2 or fewer components are already simple
+            return Some(shape.clone());
+        }
+
+        // For lower LOD levels, keep only a subset of components
+        let mut simplified_components = Vec::new();
+        let step = (lod_level + 1).min(components.len());
+
+        for i in (0..components.len()).step_by(step) {
+            simplified_components.push(components[i].clone());
+        }
+
+        if simplified_components.is_empty() {
+            Some(shape.clone())
+        } else {
+            let mut simplified_compound = TopoDsCompound::new();
+            for component in simplified_components {
+                simplified_compound.add_component(component);
+            }
+            Some(simplified_compound.shape().clone())
+        }
+    }
+
+    /// Simplify a compsolid by removing unnecessary solids
+    fn simplify_compsolid(&self, shape: &TopoDsShape, lod_level: usize) -> Option<TopoDsShape> {
+        // SAFETY: This is safe because we verified the shape is a compsolid
+        let compsolid = unsafe { &*(shape as *const _ as *const TopoDsCompSolid) };
+        let solids = compsolid.solids();
+
+        if solids.len() <= 2 {
+            // Compsolids with 2 or fewer solids are already simple
+            return Some(shape.clone());
+        }
+
+        // For lower LOD levels, keep only a subset of solids
+        let mut simplified_solids = Vec::new();
+        let step = (lod_level + 1).min(solids.len());
+
+        for i in (0..solids.len()).step_by(step) {
+            simplified_solids.push(solids[i].clone());
+        }
+
+        if simplified_solids.is_empty() {
+            Some(shape.clone())
+        } else {
+            let mut simplified_compsolid = TopoDsCompSolid::new();
+            for solid in simplified_solids {
+                simplified_compsolid.add_solid(solid);
+            }
+            Some(simplified_compsolid.shape().clone())
+        }
     }
 
     /// Calculate LOD level based on distance
-    pub fn calculate_lod_level(&self, _shape: &TopoDsShape, distance: f64) -> usize {
+    pub fn calculate_lod_level(&self, shape: &TopoDsShape, distance: f64) -> usize {
         // Implementation of LOD level calculation based on distance
-        // This is a placeholder implementation
-        if distance < 1.0 {
+        // Consider both distance and shape size
+        let (min_point, max_point) = shape.bounding_box();
+        let shape_size = ((max_point.x - min_point.x)
+            .max(max_point.y - min_point.y)
+            .max(max_point.z - min_point.z))
+        .max(0.001);
+
+        // Calculate relative size: shape size compared to distance
+        let relative_size = shape_size / distance.max(0.001);
+
+        // Determine LOD level based on relative size
+        if relative_size > 0.5 {
+            // Very close, use highest detail
             0
-        } else if distance < 10.0 {
+        } else if relative_size > 0.2 {
+            // Close, use high detail
             1
-        } else if distance < 100.0 {
+        } else if relative_size > 0.1 {
+            // Medium distance, use medium detail
             2
-        } else {
+        } else if relative_size > 0.05 {
+            // Far, use low detail
             3
+        } else if relative_size > 0.01 {
+            // Very far, use very low detail
+            4
+        } else if relative_size > 0.001 {
+            // Extremely far, use minimal detail
+            5
+        } else {
+            // Too far to see details
+            6
         }
     }
 
     /// Check if shape is suitable for given LOD level
-    pub fn is_suitable_for_lod(&self, _shape: &TopoDsShape, _lod_level: usize) -> bool {
+    pub fn is_suitable_for_lod(&self, shape: &TopoDsShape, lod_level: usize) -> bool {
         // Implementation of LOD suitability check
-        // This is a placeholder implementation
-        true
+        // Determine if the shape should be included based on its type and the LOD level
+        match shape.shape_type() {
+            ShapeType::Vertex => {
+                // Vertices are only included at the highest detail levels
+                lod_level <= 1
+            }
+            ShapeType::Edge => {
+                // Edges are included at high to medium detail levels
+                lod_level <= 2
+            }
+            ShapeType::Wire => {
+                // Wires are included at medium detail levels
+                lod_level <= 3
+            }
+            ShapeType::Face => {
+                // Faces are included at medium to low detail levels
+                lod_level <= 4
+            }
+            ShapeType::Shell => {
+                // Shells are included at low detail levels
+                lod_level <= 5
+            }
+            ShapeType::Solid => {
+                // Solids are included at very low detail levels
+                lod_level <= 6
+            }
+            ShapeType::Compound => {
+                // Compounds are included at all detail levels
+                true
+            }
+            ShapeType::CompSolid => {
+                // Compsolids are included at all detail levels
+                true
+            }
+        }
     }
 }
 

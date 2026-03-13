@@ -1,5 +1,6 @@
 /// Downcast inner Arc to a specific type if possible
 // Moved to impl block below
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
@@ -20,6 +21,7 @@ use std::sync::Arc;
 /// - Use `is_null()` to check if a handle is null
 /// - Use `as_ref()` for safe access to the inner value
 /// - Use `as_mut()` for mutable access (only possible if no other references exist)
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Handle<T: ?Sized> {
     inner: Option<Arc<T>>,
 }
@@ -133,7 +135,9 @@ impl<T: ?Sized> std::ops::Deref for Handle<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        self.inner.as_ref().unwrap()
+        self.inner
+            .as_ref()
+            .expect("Attempted to dereference null handle")
     }
 }
 

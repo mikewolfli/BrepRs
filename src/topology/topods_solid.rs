@@ -3,6 +3,7 @@ use crate::geometry::Point;
 use crate::topology::{
     topods_location::TopoDsLocation, topods_shape::TopoDsShape, topods_shell::TopoDsShell,
 };
+use serde::{Deserialize, Serialize};
 
 /// Represents a solid in topological structure
 ///
@@ -10,6 +11,7 @@ use crate::topology::{
 /// The first shell is the outer boundary, and subsequent shells
 /// are cavities or voids within the solid.
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TopoDsSolid {
     shape: TopoDsShape,
     shells: Vec<Handle<TopoDsShell>>,
@@ -92,7 +94,7 @@ impl TopoDsSolid {
             let shell = TopoDsShell::new();
             self.shells.push(Handle::new(std::sync::Arc::new(shell)));
         }
-        
+
         if let Some(shell) = self.shells.first_mut() {
             if let Some(shell_mut) = Handle::as_mut(shell) {
                 shell_mut.add_face(face);

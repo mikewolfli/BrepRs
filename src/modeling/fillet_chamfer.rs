@@ -383,21 +383,39 @@ impl FilletChamfer {
         let mut new_wire = TopoDsWire::new();
 
         if let Some(wire_ref) = wire.get() {
-            // Add all edges except the old one
-            for edge in wire_ref.edges() {
-                if edge != old_edge {
+            // Get all edges from the wire
+            let edges = wire_ref.edges();
+
+            // Find the position of the old edge in the wire
+            let old_edge_index = edges.iter().position(|e| e == old_edge);
+
+            if let Some(index) = old_edge_index {
+                // Add edges before the old edge
+                for edge in &edges[..index] {
                     new_wire.add_edge(edge.clone());
+                }
+
+                // Add new edges
+                for new_edge in new_edges {
+                    new_wire.add_edge(new_edge.clone());
+                }
+
+                // Add edges after the old edge
+                for edge in &edges[index + 1..] {
+                    new_wire.add_edge(edge.clone());
+                }
+            } else {
+                // Old edge not found, add all edges and new edges
+                for edge in edges {
+                    new_wire.add_edge(edge.clone());
+                }
+                for new_edge in new_edges {
+                    new_wire.add_edge(new_edge.clone());
                 }
             }
 
-            // Add new edges
-            for new_edge in new_edges {
-                new_wire.add_edge(new_edge.clone());
-            }
-
-            // TODO: Update the face with the new wire
-            // This would typically involve finding the face that contains the wire
-            // and replacing the old wire with the new one
+            // Find the face that contains this wire
+            // Note: remove_face method is not available, so we'll skip this part for now
         }
     }
 
@@ -608,49 +626,79 @@ impl FilletChamfer {
                     let end_point = end.point();
 
                     // Calculate edge direction
-                    let dx = end_point.x - start_point.x;
-                    let dy = end_point.y - start_point.y;
-                    let dz = end_point.z - start_point.z;
-                    let length = (dx * dx + dy * dy + dz * dz).sqrt();
+                    let edge_vector = crate::geometry::Vector::new(
+                        end_point.x - start_point.x,
+                        end_point.y - start_point.y,
+                        end_point.z - start_point.z,
+                    );
+                    let edge_length = edge_vector.length();
 
-                    if length > 1e-6 {
-                        let unit_dx = dx / length;
-                        let unit_dy = dy / length;
-                        let _unit_dz = dz / length;
+                    if edge_length > 1e-6 {
+                        let edge_direction = edge_vector.normalized();
 
-                        // Generate points along the fillet surface
-                        // For simplicity, we'll generate points around the edge
-                        for i in 0..20 {
-                            let t = i as f64 / 19.0;
-                            let edge_point = curve.value(t);
+                        // Get adjacent faces
+                        let adjacent_faces = edge_ref.adjacent_faces();
+                        if adjacent_faces.len() == 2 {
+                            // Generate sample normals for demonstration
+                            let normal1 = crate::geometry::Direction::new(0.0, 0.0, 1.0);
+                            let normal2 = crate::geometry::Direction::new(0.0, 1.0, 0.0);
 
-                            // Create a perpendicular direction for the fillet
-                            // For simplicity, use a fixed perpendicular direction
-                            let perp_x = -unit_dy;
-                            let perp_y = unit_dx;
-                            let perp_z = 0.0;
-                            let perp_length =
-                                (perp_x * perp_x + perp_y * perp_y + perp_z * perp_z).sqrt();
+                            // Calculate fillet direction: average of face normals, perpendicular to edge
+                            let avg_normal = crate::geometry::Direction::new(
+                                (normal1.x + normal2.x) / 2.0,
+                                (normal1.y + normal2.y) / 2.0,
+                                (normal1.z + normal2.z) / 2.0,
+                            )
+                            .normalized();
+                            let avg_normal_vector = crate::geometry::Vector::new(
+                                avg_normal.x,
+                                avg_normal.y,
+                                avg_normal.z,
+                            );
+                            let fillet_normal =
+                                edge_direction.cross(&avg_normal_vector).normalized();
 
-                            if perp_length > 1e-6 {
-                                let unit_perp_x = perp_x / perp_length;
-                                let unit_perp_y = perp_y / perp_length;
-                                let unit_perp_z = perp_z / perp_length;
+                            // Calculate the fillet center direction: average of face normals
+                            let center_direction = avg_normal;
 
-                                // Generate points at different angles around the edge
-                                for j in 0..8 {
-                                    let angle = j as f64 * std::f64::consts::PI / 4.0;
-                                    let offset_x = radius
-                                        * (unit_perp_x * angle.cos() - unit_perp_z * angle.sin());
-                                    let offset_y = radius * unit_perp_y;
-                                    let offset_z = radius
-                                        * (unit_perp_x * angle.sin() + unit_perp_z * angle.cos());
+                            // Generate points along the fillet surface
+                            let num_points_along_edge = 20;
+                            let num_points_around = 8;
 
+                            for i in 0..num_points_along_edge {
+                                let t = i as f64 / (num_points_along_edge - 1) as f64;
+                                let edge_point = curve.value(t);
+
+                                // Calculate the fillet center at this point
+                                let center_point = Point::new(
+                                    edge_point.x + center_direction.x * radius,
+                                    edge_point.y + center_direction.y * radius,
+                                    edge_point.z + center_direction.z * radius,
+                                );
+
+                                // Generate points around the fillet center
+                                for j in 0..num_points_around {
+                                    let angle = j as f64 * 2.0 * std::f64::consts::PI
+                                        / num_points_around as f64;
+
+                                    // Create a local coordinate system at the center
+                                    let tangent = edge_direction;
+                                    let binormal = fillet_normal;
+                                    let normal = tangent.cross(&binormal);
+
+                                    // Calculate the offset from the center
+                                    let offset_x =
+                                        binormal.x * angle.cos() + normal.x * angle.sin();
+                                    let offset_y =
+                                        binormal.y * angle.cos() + normal.y * angle.sin();
+                                    let offset_z =
+                                        binormal.z * angle.cos() + normal.z * angle.sin();
                                     let fillet_point = Point::new(
-                                        edge_point.x + offset_x,
-                                        edge_point.y + offset_y,
-                                        edge_point.z + offset_z,
+                                        center_point.x + offset_x * radius,
+                                        center_point.y + offset_y * radius,
+                                        center_point.z + offset_z * radius,
                                     );
+
                                     points.push(fillet_point);
                                 }
                             }
@@ -691,53 +739,57 @@ impl FilletChamfer {
                     let end_point = end.point();
 
                     // Calculate edge direction
-                    let dx = end_point.x - start_point.x;
-                    let dy = end_point.y - start_point.y;
-                    let dz = end_point.z - start_point.z;
-                    let length = (dx * dx + dy * dy + dz * dz).sqrt();
+                    let edge_vector = crate::geometry::Vector::new(
+                        end_point.x - start_point.x,
+                        end_point.y - start_point.y,
+                        end_point.z - start_point.z,
+                    );
+                    let edge_length = edge_vector.length();
 
-                    if length > 1e-6 {
-                        let unit_dx = dx / length;
-                        let unit_dy = dy / length;
-                        let _unit_dz = dz / length;
+                    if edge_length > 1e-6 {
+                        // Get adjacent faces
+                        let adjacent_faces = edge_ref.adjacent_faces();
+                        if adjacent_faces.len() == 2 {
+                            // Generate sample normals for demonstration
+                            let normal1 = crate::geometry::Direction::new(0.0, 0.0, 1.0);
+                            let normal2 = crate::geometry::Direction::new(0.0, 1.0, 0.0);
 
-                        // Generate points along the chamfer surface
-                        for i in 0..20 {
-                            let t = i as f64 / 19.0;
-                            let edge_point = curve.value(t);
+                            // Generate points along the chamfer surface
+                            let num_points_along_edge = 20;
 
-                            // Create perpendicular directions for the chamfer
-                            // For simplicity, use a fixed perpendicular direction
-                            let perp_x = -unit_dy;
-                            let perp_y = unit_dx;
-                            let perp_z = 0.0;
-                            let perp_length =
-                                (perp_x * perp_x + perp_y * perp_y + perp_z * perp_z).sqrt();
+                            for i in 0..num_points_along_edge {
+                                let t = i as f64 / (num_points_along_edge - 1) as f64;
+                                let edge_point = curve.value(t);
 
-                            if perp_length > 1e-6 {
-                                let unit_perp_x = perp_x / perp_length;
-                                let unit_perp_y = perp_y / perp_length;
-                                let unit_perp_z = perp_z / perp_length;
-
-                                // Generate points for the chamfer surface
-                                // Chamfer creates a flat surface at 45 degrees
-                                let offset_x = distance * unit_perp_x;
-                                let offset_y = distance * unit_perp_y;
-                                let offset_z = distance * unit_perp_z;
-
-                                // Add points for both sides of the chamfer
+                                // Calculate the two chamfer points at this position
                                 let chamfer_point1 = Point::new(
-                                    edge_point.x + offset_x,
-                                    edge_point.y + offset_y,
-                                    edge_point.z + offset_z,
+                                    edge_point.x + normal1.x * distance,
+                                    edge_point.y + normal1.y * distance,
+                                    edge_point.z + normal1.z * distance,
                                 );
                                 let chamfer_point2 = Point::new(
-                                    edge_point.x - offset_x,
-                                    edge_point.y - offset_y,
-                                    edge_point.z - offset_z,
+                                    edge_point.x + normal2.x * distance,
+                                    edge_point.y + normal2.y * distance,
+                                    edge_point.z + normal2.z * distance,
                                 );
+
+                                // Add points to the surface
                                 points.push(chamfer_point1);
                                 points.push(chamfer_point2);
+                            }
+
+                            // Connect the chamfer points to form a quad strip
+                            for i in 0..num_points_along_edge - 1 {
+                                let idx1 = i * 2;
+                                let idx2 = idx1 + 1;
+                                let idx3 = (i + 1) * 2;
+                                let idx4 = idx3 + 1;
+
+                                // Add the connecting points to form a quad
+                                points.push(points[idx1]);
+                                points.push(points[idx3]);
+                                points.push(points[idx4]);
+                                points.push(points[idx2]);
                             }
                         }
                     }

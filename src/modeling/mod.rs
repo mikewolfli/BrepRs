@@ -7,6 +7,7 @@ pub mod brep_builder;
 pub mod bsp_tree;
 pub mod fillet_chamfer;
 pub mod offset_operations;
+pub mod parametric;
 pub mod post_processing;
 pub mod primitives;
 
@@ -15,6 +16,7 @@ pub use brep_builder::BrepBuilder;
 pub use fillet_chamfer::FilletChamfer;
 pub use offset_operations::OffsetOperations;
 pub use offset_operations::{IntersectionType, JoinType};
+pub use parametric::{Parameter, ParameterManager, ParametricShape, ParametricCube, ParametricCylinder};
 pub use post_processing::{
     BooleanOperation, MeshDecimator, MeshSubdivider, PostProcessing, SubdivisionScheme,
 };

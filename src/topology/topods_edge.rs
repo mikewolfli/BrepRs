@@ -3,11 +3,12 @@ use crate::geometry::{Point, Vector};
 use crate::topology::{
     topods_location::TopoDsLocation, topods_shape::TopoDsShape, topods_vertex::TopoDsVertex,
 };
+use serde::{Deserialize, Serialize};
 
 /// Trait for curves that can be associated with edges
 ///
 /// Curves are reference-counted via Handle<T> to allow sharing between multiple edges.
-pub trait Curve: std::fmt::Debug + Send + Sync {
+pub trait Curve: std::fmt::Debug + Send + Sync + Serialize + for<'de> Deserialize<'de> {
     /// Get the point on the curve at a parameter value
     fn value(&self, parameter: f64) -> Point;
 
@@ -42,10 +43,12 @@ pub trait Curve: std::fmt::Debug + Send + Sync {
 /// - Edges can be degenerate (both vertices equal) for representing points
 /// - Edges without a curve represent straight line segments between vertices
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TopoDsEdge {
     shape: TopoDsShape,
     curve: Option<Handle<dyn Curve>>,
     vertices: [Handle<TopoDsVertex>; 2],
+    adjacent_faces: Vec<Handle<TopoDsFace>>,
     tolerance: f64,
     orientation: i32,
 }
@@ -57,6 +60,7 @@ impl TopoDsEdge {
             shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Edge),
             curve: None,
             vertices: [vertex1, vertex2],
+            adjacent_faces: Vec::new(),
             tolerance: 0.001,
             orientation: 1,
         }
@@ -72,6 +76,7 @@ impl TopoDsEdge {
             shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Edge),
             curve: Some(curve),
             vertices: [vertex1, vertex2],
+            adjacent_faces: Vec::new(),
             tolerance: 0.001,
             orientation: 1,
         }
@@ -87,6 +92,7 @@ impl TopoDsEdge {
             shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Edge),
             curve: None,
             vertices: [vertex1, vertex2],
+            adjacent_faces: Vec::new(),
             tolerance,
             orientation: 1,
         }
@@ -246,12 +252,31 @@ impl TopoDsEdge {
         self.shape.set_mutable(mutable);
     }
 
-    /// Get adjacent faces (placeholder - requires face-edge adjacency tracking)
-    pub fn adjacent_faces(&self) -> Vec<Handle<crate::topology::topods_face::TopoDsFace>> {
-        // This is a placeholder implementation
-        // In a full implementation, this would return faces that share this edge
-        // Requires maintaining face-edge adjacency information
-        Vec::new()
+    /// Get adjacent faces
+    pub fn adjacent_faces(&self) -> Vec<Handle<TopoDsFace>> {
+        self.adjacent_faces.clone()
+    }
+
+    /// Add an adjacent face
+    pub fn add_adjacent_face(&mut self, face: Handle<TopoDsFace>) {
+        if !self.adjacent_faces.contains(&face) {
+            self.adjacent_faces.push(face);
+        }
+    }
+
+    /// Remove an adjacent face
+    pub fn remove_adjacent_face(&mut self, face: &Handle<TopoDsFace>) {
+        self.adjacent_faces.retain(|f| f != face);
+    }
+
+    /// Clear all adjacent faces
+    pub fn clear_adjacent_faces(&mut self) {
+        self.adjacent_faces.clear();
+    }
+
+    /// Get the number of adjacent faces
+    pub fn num_adjacent_faces(&self) -> usize {
+        self.adjacent_faces.len()
     }
 
     /// Check if this edge contains a point

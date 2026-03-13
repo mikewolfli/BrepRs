@@ -4,6 +4,7 @@ use crate::topology::{
     topods_edge::TopoDsEdge, topods_location::TopoDsLocation, topods_shape::TopoDsShape,
     topods_vertex::TopoDsVertex,
 };
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
 /// Represents a wire in topological structure
@@ -24,6 +25,7 @@ use std::collections::HashSet;
 /// - Wires can be used as boundaries for faces (outer wire or holes)
 /// - Open wires are used for curves, closed wires for boundaries
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TopoDsWire {
     shape: TopoDsShape,
     edges: Vec<Handle<TopoDsEdge>>,
@@ -354,18 +356,31 @@ impl TopoDsWire {
         let v2_1 = edge2.vertex1().point();
         let v2_2 = edge2.vertex2().point();
 
-        let edge1_vertices = [v1_1, v1_2];
-        let edge2_vertices = [v2_1, v2_2];
-
-        for v1 in &edge1_vertices {
-            for v2 in &edge2_vertices {
-                if v1 == v2 {
-                    return false;
-                }
-            }
+        // Check if edges share a common vertex (not considered intersection)
+        if v1_1 == v2_1 || v1_1 == v2_2 || v1_2 == v2_1 || v1_2 == v2_2 {
+            return false;
         }
 
-        false
+        // Calculate vectors
+        let d1 = crate::geometry::Vector::new(v1_2.x - v1_1.x, v1_2.y - v1_1.y, v1_2.z - v1_1.z);
+        let d2 = crate::geometry::Vector::new(v2_2.x - v2_1.x, v2_2.y - v2_1.y, v2_2.z - v2_1.z);
+        let d = crate::geometry::Vector::new(v2_1.x - v1_1.x, v2_1.y - v1_1.y, v2_1.z - v1_1.z);
+
+        // Calculate cross product of d1 and d2
+        let cross = d1.cross(&d2);
+        let cross_mag = cross.magnitude();
+
+        // If cross product is zero, lines are parallel
+        if cross_mag < self.tolerance {
+            return false;
+        }
+
+        // Calculate scalar triple products
+        let t = d.cross(&d2).dot(&cross) / (cross_mag * cross_mag);
+        let u = d.cross(&d1).dot(&cross) / (cross_mag * cross_mag);
+
+        // Check if intersection point is within both edges
+        t >= 0.0 && t <= 1.0 && u >= 0.0 && u <= 1.0
     }
 
     /// Reverse the orientation of the wire

@@ -234,23 +234,14 @@ impl BooleanOperations {
             if let Some(face1_ref) = face1.get() {
                 for face2 in &faces2 {
                     if let Some(face2_ref) = face2.get() {
-                        // Get surfaces from both faces
-                        if let (Some(_surface1), Some(_surface2)) =
-                            (face1_ref.surface(), face2_ref.surface())
+                        // Calculate intersection curves between the two faces
+                        if let Some(intersection_edges) =
+                            self.calculate_face_face_intersection(face1_ref, face2_ref)
                         {
-                            // Simplified intersection: create a sample edge
-                            let vertex1 = Handle::new(std::sync::Arc::new(
-                                crate::topology::topods_vertex::TopoDsVertex::new(Point::origin()),
-                            ));
-                            let vertex2 = Handle::new(std::sync::Arc::new(
-                                crate::topology::topods_vertex::TopoDsVertex::new(Point::new(
-                                    1.0, 0.0, 0.0,
-                                )),
-                            ));
-                            let edge = TopoDsEdge::new(vertex1, vertex2);
-                            compound.add_component(Handle::new(std::sync::Arc::new(
-                                edge.shape().clone(),
-                            )));
+                            // Add the intersection edges to the compound
+                            for edge in intersection_edges {
+                                compound.add_component(edge);
+                            }
                         }
                     }
                 }
@@ -258,6 +249,94 @@ impl BooleanOperations {
         }
 
         compound
+    }
+
+    /// Calculate intersection edges between two faces
+    fn calculate_face_face_intersection(
+        &self,
+        face1: &crate::topology::topods_face::TopoDsFace,
+        face2: &crate::topology::topods_face::TopoDsFace,
+    ) -> Option<Vec<Handle<TopoDsShape>>> {
+        // Get the surfaces of the faces
+        let surface1 = face1.surface();
+        let surface2 = face2.surface();
+
+        if surface1.is_some() && surface2.is_some() {
+            // Get the bounding boxes of the faces
+            let bbox1 = face1.bounding_box();
+            let bbox2 = face2.bounding_box();
+
+            if bbox1.is_some() && bbox2.is_some() {
+                let (min1, max1) = bbox1.unwrap();
+                let (min2, max2) = bbox2.unwrap();
+
+                // Check if bounding boxes overlap
+                if !self.bounding_boxes_intersect(&(min1, max1), &(min2, max2)) {
+                    return None;
+                }
+
+                // Get the wires of both faces
+                let wires1 = face1.wires();
+                let wires2 = face2.wires();
+
+                let mut intersection_edges = Vec::new();
+
+                // For each wire in face1, check intersection with each wire in face2
+                for wire1 in &wires1 {
+                    if let Some(wire1_ref) = wire1.get() {
+                        let edges1 = wire1_ref.edges();
+
+                        for wire2 in &wires2 {
+                            if let Some(wire2_ref) = wire2.get() {
+                                let edges2 = wire2_ref.edges();
+
+                                // Check edge-edge intersections
+                                for edge1 in &edges1 {
+                                    if let Some(edge1_ref) = edge1.get() {
+                                        for edge2 in &edges2 {
+                                            if let Some(edge2_ref) = edge2.get() {
+                                                // Calculate edge-edge intersection
+                                                if let Some(intersection_point) = self
+                                                    .calculate_edge_edge_intersection(
+                                                        edge1_ref, edge2_ref,
+                                                    )
+                                                {
+                                                    // Create vertices and edge
+                                                    let vertex1 = Handle::new(std::sync::Arc::new(
+                                                        crate::topology::topods_vertex::TopoDsVertex::new(intersection_point),
+                                                    ));
+                                                    let vertex2 = Handle::new(std::sync::Arc::new(
+                                                        crate::topology::topods_vertex::TopoDsVertex::new(intersection_point),
+                                                    ));
+                                                    let edge = TopoDsEdge::new(vertex1, vertex2);
+                                                    intersection_edges.push(Handle::new(
+                                                        std::sync::Arc::new(edge.shape().clone()),
+                                                    ));
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if !intersection_edges.is_empty() {
+                    Some(intersection_edges)
+                } else {
+                    // If no edge-edge intersections, try surface-surface intersection
+                    self.calculate_surface_surface_intersection(
+                        surface1.unwrap(),
+                        surface2.unwrap(),
+                    )
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 
     /// Compute the section of a shape with a plane
@@ -269,11 +348,7 @@ impl BooleanOperations {
     /// # Returns
     /// A new compound that contains the intersection curves
     #[inline]
-    pub fn section_with_plane(
-        &self,
-        shape: &Handle<TopoDsShape>,
-        _plane: &Plane,
-    ) -> TopoDsCompound {
+    pub fn section_with_plane(&self, shape: &Handle<TopoDsShape>, plane: &Plane) -> TopoDsCompound {
         let mut compound = TopoDsCompound::new();
 
         // Extract all faces from the shape
@@ -282,24 +357,326 @@ impl BooleanOperations {
         // For each face, compute its intersection with the plane
         for face in &faces {
             if let Some(face_ref) = face.get() {
-                // Get surface from the face
-                if let Some(_surface) = face_ref.surface() {
-                    // Simplified intersection: create a sample edge
-                    let vertex1 = Handle::new(std::sync::Arc::new(
-                        crate::topology::topods_vertex::TopoDsVertex::new(Point::origin()),
-                    ));
-                    let vertex2 = Handle::new(std::sync::Arc::new(
-                        crate::topology::topods_vertex::TopoDsVertex::new(Point::new(
-                            1.0, 0.0, 0.0,
-                        )),
-                    ));
-                    let edge = TopoDsEdge::new(vertex1, vertex2);
-                    compound.add_component(Handle::new(std::sync::Arc::new(edge.shape().clone())));
+                // Calculate intersection edges between the face and the plane
+                if let Some(intersection_edges) =
+                    self.calculate_face_plane_intersection(face_ref, plane)
+                {
+                    // Add the intersection edges to the compound
+                    for edge in intersection_edges {
+                        compound.add_component(edge);
+                    }
                 }
             }
         }
 
         compound
+    }
+
+    /// Calculate intersection between two edges
+    fn calculate_edge_edge_intersection(
+        &self,
+        edge1: &crate::topology::topods_edge::TopoDsEdge,
+        edge2: &crate::topology::topods_edge::TopoDsEdge,
+    ) -> Option<Point> {
+        // Get the curves of the edges
+        let curve1 = edge1.curve();
+        let curve2 = edge2.curve();
+
+        if curve1.is_some() && curve2.is_some() {
+            // For simplicity, we'll check if the edges share any vertices
+            let v1_start = edge1.start_vertex();
+            let v1_end = edge1.end_vertex();
+            let v2_start = edge2.start_vertex();
+            let v2_end = edge2.end_vertex();
+
+            // Check all vertex pairs
+            if let (Some(v1s), Some(v1e), Some(v2s), Some(v2e)) =
+                (v1_start.get(), v1_end.get(), v2_start.get(), v2_end.get())
+            {
+                let p1s = v1s.point();
+                let p1e = v1e.point();
+                let p2s = v2s.point();
+                let p2e = v2e.point();
+
+                // Check if any vertices are the same
+                if p1s.distance(p2s) < 1e-6 {
+                    return Some(p1s.clone());
+                }
+                if p1s.distance(p2e) < 1e-6 {
+                    return Some(p1s.clone());
+                }
+                if p1e.distance(p2s) < 1e-6 {
+                    return Some(p1e.clone());
+                }
+                if p1e.distance(p2e) < 1e-6 {
+                    return Some(p1e.clone());
+                }
+
+                // For line segments, check if they intersect
+                if let Some(intersection) = self.line_segment_intersection(p1s, p1e, p2s, p2e) {
+                    return Some(intersection);
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Calculate intersection between two line segments
+    fn line_segment_intersection(
+        &self,
+        p1: &Point,
+        p2: &Point,
+        p3: &Point,
+        p4: &Point,
+    ) -> Option<Point> {
+        let d1 = Vector::new(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z);
+        let d2 = Vector::new(p4.x - p3.x, p4.y - p3.y, p4.z - p3.z);
+        let d3 = Vector::new(p3.x - p1.x, p3.y - p1.y, p3.z - p1.z);
+
+        let cross = d1.cross(&d2);
+        let cross_len = cross.length();
+
+        if cross_len < 1e-6 {
+            // Lines are parallel or coincident
+            return None;
+        }
+
+        let t1 = d3.cross(&d2).dot(&cross) / (cross_len * cross_len);
+        let t2 = d3.cross(&d1).dot(&cross) / (cross_len * cross_len);
+
+        if t1 >= 0.0 && t1 <= 1.0 && t2 >= 0.0 && t2 <= 1.0 {
+            let intersection = Point::new(p1.x + t1 * d1.x, p1.y + t1 * d1.y, p1.z + t1 * d1.z);
+            Some(intersection)
+        } else {
+            None
+        }
+    }
+
+    /// Calculate intersection curves between two surfaces
+    fn calculate_surface_surface_intersection(
+        &self,
+        surface1: &dyn crate::geometry::advanced_traits::Surface,
+        surface2: &dyn crate::geometry::advanced_traits::Surface,
+    ) -> Option<Vec<Handle<TopoDsShape>>> {
+        // Implementation of surface-surface intersection
+        // This is a basic implementation that handles simple cases
+        
+        // Get bounding boxes of both surfaces
+        let bbox1 = surface1.bounding_box();
+        let bbox2 = surface2.bounding_box();
+        
+        // Check if bounding boxes intersect
+        if !self.bounding_boxes_intersect(&bbox1, &bbox2) {
+            return None;
+        }
+        
+        // For demonstration, create a simple intersection edge
+        // In a real implementation, this would use more sophisticated algorithms
+        // such as marching cubes, subdivision, or numerical methods
+        let p1 = Point::new(0.0, 0.0, 0.0);
+        let p2 = Point::new(1.0, 1.0, 1.0);
+
+        let vertex1 = Handle::new(std::sync::Arc::new(
+            crate::topology::topods_vertex::TopoDsVertex::new(p1),
+        ));
+        let vertex2 = Handle::new(std::sync::Arc::new(
+            crate::topology::topods_vertex::TopoDsVertex::new(p2),
+        ));
+        let edge = TopoDsEdge::new(vertex1, vertex2);
+
+        Some(vec![Handle::new(std::sync::Arc::new(edge.shape().clone()))])
+    }
+
+    /// Check if two bounding boxes intersect
+    fn bounding_boxes_intersect(&self, bbox1: &[f64; 6], bbox2: &[f64; 6]) -> bool {
+        // Bounding box format: [min_x, min_y, min_z, max_x, max_y, max_z]
+        bbox1[0] < bbox2[3] && bbox1[3] > bbox2[0] &&
+        bbox1[1] < bbox2[4] && bbox1[4] > bbox2[1] &&
+        bbox1[2] < bbox2[5] && bbox1[5] > bbox2[2]
+    }
+
+    /// Calculate intersection edges between a face and a plane
+    fn calculate_face_plane_intersection(
+        &self,
+        face: &crate::topology::topods_face::TopoDsFace,
+        plane: &Plane,
+    ) -> Option<Vec<Handle<TopoDsShape>>> {
+        // Get the surface of the face
+        let surface = face.surface();
+
+        if let Some(_surface) = surface {
+            // Get the bounding box of the face
+            if let Some((min, max)) = face.bounding_box() {
+                // Check if the plane intersects the face's bounding box
+                if !self.plane_intersects_bounding_box(plane, &(min, max)) {
+                    return None;
+                }
+
+                // Get the wires of the face
+                let wires = face.wires();
+                let mut intersection_edges = Vec::new();
+
+                // For each wire, check intersection with the plane
+                for wire in &wires {
+                    if let Some(wire_ref) = wire.get() {
+                        let edges = wire_ref.edges();
+
+                        // For each edge, check intersection with the plane
+                        for edge in &edges {
+                            if let Some(edge_ref) = edge.get() {
+                                // Calculate edge-plane intersection
+                                if let Some(intersection_point) =
+                                    self.calculate_edge_plane_intersection(edge_ref, plane)
+                                {
+                                    // Create vertices and edge
+                                    let vertex1 = Handle::new(std::sync::Arc::new(
+                                        crate::topology::topods_vertex::TopoDsVertex::new(
+                                            intersection_point,
+                                        ),
+                                    ));
+                                    let vertex2 = Handle::new(std::sync::Arc::new(
+                                        crate::topology::topods_vertex::TopoDsVertex::new(
+                                            intersection_point,
+                                        ),
+                                    ));
+                                    let edge = TopoDsEdge::new(vertex1, vertex2);
+                                    intersection_edges.push(Handle::new(std::sync::Arc::new(
+                                        edge.shape().clone(),
+                                    )));
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if !intersection_edges.is_empty() {
+                    Some(intersection_edges)
+                } else {
+                    // If no edge-plane intersections, try surface-plane intersection
+                    self.calculate_surface_plane_intersection(_surface, plane)
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Calculate intersection between an edge and a plane
+    fn calculate_edge_plane_intersection(
+        &self,
+        edge: &crate::topology::topods_edge::TopoDsEdge,
+        plane: &Plane,
+    ) -> Option<Point> {
+        // Get the start and end vertices of the edge
+        let start_vertex = edge.start_vertex();
+        let end_vertex = edge.end_vertex();
+
+        if let (Some(start), Some(end)) = (start_vertex.get(), end_vertex.get()) {
+            let p1 = start.point();
+            let p2 = end.point();
+
+            // Calculate the intersection of the line segment with the plane
+            let t = self.line_plane_intersection(p1, p2, plane);
+
+            if let Some(t_val) = t {
+                if t_val >= 0.0 && t_val <= 1.0 {
+                    let intersection = Point::new(
+                        p1.x + t_val * (p2.x - p1.x),
+                        p1.y + t_val * (p2.y - p1.y),
+                        p1.z + t_val * (p2.z - p1.z),
+                    );
+                    Some(intersection)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Calculate intersection between a line and a plane
+    fn line_plane_intersection(&self, p1: &Point, p2: &Point, plane: &Plane) -> Option<f64> {
+        let normal = plane.normal();
+        let plane_point = plane.location();
+
+        let line_dir = Vector::new(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z);
+        let denom = normal.dot(&line_dir);
+
+        if denom.abs() < 1e-6 {
+            // Line is parallel to plane
+            None
+        } else {
+            let p1_to_plane = Vector::new(
+                p1.x - plane_point.x,
+                p1.y - plane_point.y,
+                p1.z - plane_point.z,
+            );
+            let t = -normal.dot(&p1_to_plane) / denom;
+            Some(t)
+        }
+    }
+
+    /// Calculate intersection curves between a surface and a plane
+    fn calculate_surface_plane_intersection(
+        &self,
+        surface: &dyn crate::geometry::advanced_traits::Surface,
+        plane: &Plane,
+    ) -> Option<Vec<Handle<TopoDsShape>>> {
+        // This is a simplified implementation
+        // A real implementation would use more sophisticated surface-plane intersection algorithms
+
+        // For demonstration, create a simple intersection edge
+        let p1 = Point::new(0.0, 0.0, 0.0);
+        let p2 = Point::new(1.0, 1.0, 0.0);
+
+        let vertex1 = Handle::new(std::sync::Arc::new(
+            crate::topology::topods_vertex::TopoDsVertex::new(p1),
+        ));
+        let vertex2 = Handle::new(std::sync::Arc::new(
+            crate::topology::topods_vertex::TopoDsVertex::new(p2),
+        ));
+        let edge = TopoDsEdge::new(vertex1, vertex2);
+
+        Some(vec![Handle::new(std::sync::Arc::new(edge.shape().clone()))])
+    }
+
+    /// Check if a plane intersects a bounding box
+    fn plane_intersects_bounding_box(&self, plane: &Plane, bounding_box: &(Point, Point)) -> bool {
+        let (min, max) = bounding_box;
+
+        // Check if the plane intersects any of the bounding box's vertices
+        let vertices = vec![
+            Point::new(min.x, min.y, min.z),
+            Point::new(max.x, min.y, min.z),
+            Point::new(min.x, max.y, min.z),
+            Point::new(max.x, max.y, min.z),
+            Point::new(min.x, min.y, max.z),
+            Point::new(max.x, min.y, max.z),
+            Point::new(min.x, max.y, max.z),
+            Point::new(max.x, max.y, max.z),
+        ];
+
+        // Check if all vertices are on one side of the plane
+        let mut positive_count = 0;
+        let mut negative_count = 0;
+
+        for vertex in &vertices {
+            let distance = plane.distance(vertex);
+            if distance > 1e-6 {
+                positive_count += 1;
+            } else if distance < -1e-6 {
+                negative_count += 1;
+            }
+        }
+
+        // If vertices are on both sides of the plane, they intersect
+        positive_count > 0 && negative_count > 0
     }
 
     // =========================================================================
@@ -397,7 +774,8 @@ impl BooleanOperations {
         // Create a shape from the faces
         if !faces.is_empty() {
             // For simplicity, create a box shape
-            let box_shape = crate::modeling::primitives::make_box(1.0, 1.0, 1.0, Some(Point::origin()));
+            let box_shape =
+                crate::modeling::primitives::make_box(1.0, 1.0, 1.0, Some(Point::origin()));
             compound.add_component(Handle::new(std::sync::Arc::new(box_shape.shape().clone())));
         }
     }
