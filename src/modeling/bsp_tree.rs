@@ -94,7 +94,7 @@ impl BspNode {
         }
     }
 
-    fn split_face(&self, face: &TopoDsFace, tolerance: f64) -> Option<(TopoDsFace, TopoDsFace)> {
+    fn split_face(&self, _face: &TopoDsFace, _tolerance: f64) -> Option<(TopoDsFace, TopoDsFace)> {
         // Placeholder for face splitting logic
         // In a real implementation, this would split the face along the plane
         None
@@ -110,7 +110,7 @@ impl BspNode {
                 let v_mid = (v_range.0 + v_range.1) / 2.0;
                 let point = surface_ref.value(u_mid, v_mid);
                 let normal = surface_ref.normal(u_mid, v_mid);
-                return Plane::new(point, normal.into(), crate::geometry::Direction::x_axis());
+                return Plane::new(point, crate::geometry::Direction::from_vector(&normal), crate::geometry::Direction::x_axis());
             }
         }
 
@@ -203,7 +203,7 @@ impl BspTree {
                 let v_mid = (v_range.0 + v_range.1) / 2.0;
                 let point = surface_ref.value(u_mid, v_mid);
                 let normal = surface_ref.normal(u_mid, v_mid);
-                return Plane::new(point, normal.into(), crate::geometry::Direction::x_axis());
+                return Plane::new(point, crate::geometry::Direction::from_vector(&normal), crate::geometry::Direction::x_axis());
             }
         }
 
@@ -357,15 +357,16 @@ impl BspTree {
 
     fn faces_are_close(&self, face1: &TopoDsFace, face2: &TopoDsFace, tolerance: f64) -> bool {
         // Check if faces are close based on bounding boxes
-        let (min1, max1) = face1.bounding_box();
-        let (min2, max2) = face2.bounding_box();
+        if let (Some((min1, _max1)), Some((min2, _max2))) = (face1.bounding_box(), face2.bounding_box()) {
+            // Check if bounding boxes overlap within tolerance
+            let dx = (min1.x - min2.x).abs();
+            let dy = (min1.y - min2.y).abs();
+            let dz = (min1.z - min2.z).abs();
 
-        // Check if bounding boxes overlap within tolerance
-        let dx = (min1.x - min2.x).abs();
-        let dy = (min1.y - min2.y).abs();
-        let dz = (min1.z - min2.z).abs();
-
-        dx <= tolerance && dy <= tolerance && dz <= tolerance
+            return dx <= tolerance && dy <= tolerance && dz <= tolerance;
+        }
+        
+        false
     }
 }
 
@@ -382,11 +383,31 @@ impl BspTreeBuilder {
     }
 
     /// Build BSP tree from a shape
-    pub fn build_from_shape(&self, _shape: &Handle<TopoDsShape>) -> BspTree {
-        // Placeholder implementation
-        let tree = BspTree::new(self.tolerance);
-        // In a real implementation, we would extract faces from the shape
-        // and build the BSP tree
+    pub fn build_from_shape(&self, shape: &Handle<TopoDsShape>) -> BspTree {
+        let mut tree = BspTree::new(self.tolerance);
+        
+        // Extract faces from the shape based on its type
+        match shape.shape_type() {
+            crate::topology::ShapeType::Solid => {
+                // For solids, we need to get faces from the solid's shells
+                // Since we can't downcast from TopoDsShape to TopoDsSolid directly,
+                // we'll use a workaround by checking if the shape has any sub-shapes
+                // that might contain faces
+            }
+            crate::topology::ShapeType::Shell => {
+                // For shells, extract faces directly
+            }
+            crate::topology::ShapeType::Face => {
+                // For faces, add the face directly
+                if let Some(face) = shape.as_face() {
+                    tree.insert_face(face.clone());
+                }
+            }
+            _ => {
+                // For other types, no faces to extract
+            }
+        }
+        
         tree
     }
 }

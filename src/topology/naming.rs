@@ -1,15 +1,13 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
-use crate::foundation::handle::Handle;
 use crate::topology::topods_shape::TopoDsShape;
 
 /// Topological naming system to track shape modifications
 pub struct TopoDsNaming {
     /// Map of shape IDs to their names
-    name_map: HashMap<usize, String>,
+    name_map: HashMap<i32, String>,
     /// Map of names to shape IDs
-    id_map: HashMap<String, usize>,
+    id_map: HashMap<String, i32>,
     /// History of shape modifications
     history: Vec<NamingEvent>,
 }
@@ -17,17 +15,17 @@ pub struct TopoDsNaming {
 /// Naming event types
 pub enum NamingEvent {
     /// Shape created
-    Created { shape_id: usize, name: String },
+    Created { shape_id: i32, name: String },
     /// Shape renamed
     Renamed {
-        shape_id: usize,
+        shape_id: i32,
         old_name: String,
         new_name: String,
     },
     /// Shape modified
-    Modified { shape_id: usize, operation: String },
+    Modified { shape_id: i32, operation: String },
     /// Shape deleted
-    Deleted { shape_id: usize, name: String },
+    Deleted { shape_id: i32, name: String },
 }
 
 impl TopoDsNaming {
@@ -45,11 +43,11 @@ impl TopoDsNaming {
         let shape_id = shape.shape_id();
 
         // Remove old name if exists
-        if let Some(old_name) = self.name_map.get(&shape_id) {
-            self.id_map.remove(old_name);
+        if let Some(old_name) = self.name_map.get(&shape_id).cloned() {
+            self.id_map.remove(&old_name);
             self.history.push(NamingEvent::Renamed {
                 shape_id,
-                old_name: old_name.clone(),
+                old_name,
                 new_name: name.clone(),
             });
         } else {
@@ -69,7 +67,7 @@ impl TopoDsNaming {
     }
 
     /// Get a shape by name
-    pub fn get_shape_by_name(&self, name: &str) -> Option<usize> {
+    pub fn get_shape_by_name(&self, name: &str) -> Option<i32> {
         self.id_map.get(name).copied()
     }
 
@@ -77,14 +75,14 @@ impl TopoDsNaming {
     pub fn rename(&mut self, shape: &TopoDsShape, new_name: String) {
         let shape_id = shape.shape_id();
 
-        if let Some(old_name) = self.name_map.get(&shape_id) {
-            self.id_map.remove(old_name);
+        if let Some(old_name) = self.name_map.get(&shape_id).cloned() {
+            self.id_map.remove(&old_name);
             self.name_map.insert(shape_id, new_name.clone());
             self.id_map.insert(new_name.clone(), shape_id);
 
             self.history.push(NamingEvent::Renamed {
                 shape_id,
-                old_name: old_name.clone(),
+                old_name,
                 new_name,
             });
         }

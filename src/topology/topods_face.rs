@@ -1,5 +1,5 @@
 use crate::foundation::handle::Handle;
-use crate::geometry::Point;
+use crate::geometry::{Point, SurfaceEnum};
 use crate::topology::{
     topods_location::TopoDsLocation, topods_shape::TopoDsShape, topods_wire::TopoDsWire,
 };
@@ -12,7 +12,7 @@ use std::sync::Arc;
 /// The first wire is the outer boundary, and subsequent wires are holes.
 ///
 /// # Surface Ownership and Lifetime
-/// - The face holds a `Handle<dyn Surface>` which is a thread-safe reference-counted pointer
+/// - The face holds a `Handle<SurfaceEnum>` which is a thread-safe reference-counted pointer
 /// - Multiple faces can share the same surface instance
 /// - The surface will be automatically dropped when all handles to it are dropped
 /// - Surfaces must implement `Send + Sync` to be used in a `Handle`
@@ -36,7 +36,7 @@ use std::sync::Arc;
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TopoDsFace {
     shape: TopoDsShape,
-    surface: Option<Handle<dyn Surface>>,
+    surface: Option<Handle<SurfaceEnum>>,
     wires: Vec<Handle<TopoDsWire>>,
     tolerance: f64,
     orientation: i32,
@@ -55,7 +55,7 @@ impl TopoDsFace {
     }
 
     /// Create a new face with specified surface
-    pub fn with_surface(surface: Handle<dyn Surface>) -> Self {
+    pub fn with_surface(surface: Handle<SurfaceEnum>) -> Self {
         Self {
             shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Face),
             surface: Some(surface),
@@ -78,7 +78,7 @@ impl TopoDsFace {
 
     /// Create a new face with surface and wires
     pub fn with_surface_and_wires(
-        surface: Handle<dyn Surface>,
+        surface: Handle<SurfaceEnum>,
         wires: Vec<Handle<TopoDsWire>>,
     ) -> Self {
         Self {
@@ -122,6 +122,11 @@ impl TopoDsFace {
         &self.wires
     }
 
+    /// Get mutable reference to the wires of the face
+    pub fn wires_mut(&mut self) -> &mut [Handle<TopoDsWire>] {
+        &mut self.wires
+    }
+
     /// Get the number of wires in the face
     pub fn num_wires(&self) -> usize {
         self.wires.len()
@@ -157,12 +162,12 @@ impl TopoDsFace {
     }
 
     /// Get the surface of the face
-    pub fn surface(&self) -> Option<&Handle<dyn Surface>> {
+    pub fn surface(&self) -> Option<&Handle<SurfaceEnum>> {
         self.surface.as_ref()
     }
 
     /// Set the surface of the face
-    pub fn set_surface(&mut self, surface: Handle<dyn Surface>) {
+    pub fn set_surface(&mut self, surface: Handle<SurfaceEnum>) {
         self.surface = Some(surface);
     }
 
@@ -425,7 +430,7 @@ impl PartialEq for TopoDsFace {
 /// Trait for surfaces that can be associated with faces
 ///
 /// Surfaces are reference-counted via Handle<T> to allow sharing between multiple faces.
-pub trait Surface: std::fmt::Debug + Send + Sync + Serialize + for<'de> Deserialize<'de> {
+pub trait Surface: std::fmt::Debug + Send + Sync {
     /// Get the point on the surface at (u, v) parameters
     fn value(&self, u: f64, v: f64) -> Point;
 

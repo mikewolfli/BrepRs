@@ -6,6 +6,7 @@
 use crate::foundation::handle::Handle;
 use crate::geometry::{Point, Vector};
 use crate::topology::Curve;
+use serde::{de::Deserializer, ser::Serializer, Deserialize, Serialize};
 use std::f64::consts::PI;
 
 /// Spiral types
@@ -22,6 +23,18 @@ pub enum SpiralType {
     Custom(Box<dyn Fn(f64) -> f64 + Send + Sync>),
 }
 
+impl Clone for SpiralType {
+    fn clone(&self) -> Self {
+        match self {
+            SpiralType::Archimedean => SpiralType::Archimedean,
+            SpiralType::Logarithmic => SpiralType::Logarithmic,
+            SpiralType::Helical => SpiralType::Helical,
+            SpiralType::Conical => SpiralType::Conical,
+            SpiralType::Custom(_) => SpiralType::Custom(Box::new(|_| 0.0)),
+        }
+    }
+}
+
 impl std::fmt::Debug for SpiralType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -29,13 +42,65 @@ impl std::fmt::Debug for SpiralType {
             SpiralType::Logarithmic => write!(f, "Logarithmic"),
             SpiralType::Helical => write!(f, "Helical"),
             SpiralType::Conical => write!(f, "Conical"),
-            SpiralType::Custom(_) => write!(f, "Custom(<function>)"),
+            SpiralType::Custom(_) => write!(f, "Custom(<function>"),
         }
     }
 }
 
+// Custom serialization for SpiralType
+#[cfg(feature = "serde")]
+impl Serialize for SpiralType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            SpiralType::Archimedean => serializer.serialize_unit_variant("SpiralType", 0, "Archimedean"),
+            SpiralType::Logarithmic => serializer.serialize_unit_variant("SpiralType", 1, "Logarithmic"),
+            SpiralType::Helical => serializer.serialize_unit_variant("SpiralType", 2, "Helical"),
+            SpiralType::Conical => serializer.serialize_unit_variant("SpiralType", 3, "Conical"),
+            SpiralType::Custom(_) => serializer.serialize_unit_variant("SpiralType", 4, "Custom"),
+        }
+    }
+}
+
+// Custom deserialization for SpiralType
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for SpiralType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct SpiralTypeVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for SpiralTypeVisitor {
+            type Value = SpiralType;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("variant of SpiralType")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                match value {
+                    "Archimedean" => Ok(SpiralType::Archimedean),
+                    "Logarithmic" => Ok(SpiralType::Logarithmic),
+                    "Helical" => Ok(SpiralType::Helical),
+                    "Conical" => Ok(SpiralType::Conical),
+                    "Custom" => Ok(SpiralType::Custom(Box::new(|_| 0.0))),
+                    _ => Err(E::unknown_variant(value, &["Archimedean", "Logarithmic", "Helical", "Conical", "Custom"])),
+                }
+            }
+        }
+
+        deserializer.deserialize_str(SpiralTypeVisitor)
+    }
+}
+
 /// Spiral curve
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Spiral {
     /// Spiral type
     spiral_type: SpiralType,
@@ -51,6 +116,32 @@ pub struct Spiral {
     growth_rate: f64,
     /// Cone angle (for conical spiral)
     cone_angle: f64,
+}
+
+impl Clone for Spiral {
+    fn clone(&self) -> Self {
+        let spiral_type = match &self.spiral_type {
+            SpiralType::Archimedean => SpiralType::Archimedean,
+            SpiralType::Logarithmic => SpiralType::Logarithmic,
+            SpiralType::Helical => SpiralType::Helical,
+            SpiralType::Conical => SpiralType::Conical,
+            SpiralType::Custom(_) => {
+                // For custom functions, we can't clone the closure directly
+                // Instead, we create a new closure that returns 0.0
+                SpiralType::Custom(Box::new(|_| 0.0))
+            }
+        };
+
+        Self {
+            spiral_type,
+            base_point: self.base_point,
+            axis: self.axis,
+            initial_direction: self.initial_direction,
+            pitch: self.pitch,
+            growth_rate: self.growth_rate,
+            cone_angle: self.cone_angle,
+        }
+    }
 }
 
 impl Spiral {

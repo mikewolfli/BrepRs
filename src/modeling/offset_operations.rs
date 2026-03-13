@@ -170,7 +170,7 @@ impl OffsetOperations {
         let mut result = edge.clone();
 
         // Get the edge's curve and vertices
-        if let Some(curve) = result.curve() {
+        if let Some(_curve) = result.curve() {
             // Get edge vertices
             let start_vertex = edge.start_vertex();
             let end_vertex = edge.end_vertex();
@@ -200,8 +200,8 @@ impl OffsetOperations {
                     let normal = edge_dir.cross(&up).normalized();
 
                     // Calculate offset points
-                    let offset_start = start_point + normal * distance;
-                    let offset_end = end_point + normal * distance;
+                    let offset_start = *start_point + normal * distance;
+                    let offset_end = *end_point + normal * distance;
 
                     // Create new vertices and edge
                     let new_start_vertex = TopoDsVertex::new(offset_start);
@@ -582,7 +582,7 @@ impl OffsetOperations {
     fn create_swept_face(
         &self,
         edge: &TopoDsEdge,
-        path: &Handle<dyn crate::topology::Curve>,
+        path: &Handle<crate::geometry::CurveEnum>,
         scale: f64,
     ) -> TopoDsFace {
         let mut face = TopoDsFace::new();
@@ -943,7 +943,7 @@ impl OffsetOperations {
                     if let Some(wire_ref) = wire.get() {
                         let edges = wire_ref.edges();
                         for edge in edges {
-                            edge_face_map.entry(edge).or_default().push(face.clone());
+                            edge_face_map.entry(edge.clone()).or_default().push(face.clone());
                         }
                     }
                 }
@@ -959,7 +959,7 @@ impl OffsetOperations {
                     let start_vertex = edge_ref.start_vertex();
                     let end_vertex = edge_ref.end_vertex();
 
-                    if let (Some(start_ref), Some(end_ref)) = (start_vertex.get(), end_vertex.get())
+                    if let (Some(_start_ref), Some(_end_ref)) = (start_vertex.get(), end_vertex.get())
                     {
                         // Create a simple closing face
                         let mut closing_face = TopoDsFace::new();
@@ -980,6 +980,7 @@ impl OffsetOperations {
     }
 
     /// Count how many faces share an edge
+    #[allow(dead_code)]
     fn count_edge_shared_faces(
         &self,
         edges: &[Handle<TopoDsEdge>],
@@ -989,6 +990,7 @@ impl OffsetOperations {
     }
 
     /// Count how many faces in a shell share an edge
+    #[allow(dead_code)]
     fn count_shell_edge_shared_faces(
         &self,
         shell: &TopoDsShell,
@@ -1054,16 +1056,16 @@ impl OffsetOperations {
         use std::collections::HashSet;
         let mut vertices: HashSet<Handle<TopoDsVertex>> = HashSet::new();
 
-        for face in &faces {
+        for face in faces {
             if let Some(face_ref) = face.get() {
                 let wires = face_ref.wires();
-                for wire in &wires {
+                for wire in wires {
                     if let Some(wire_ref) = wire.get() {
                         let edges = wire_ref.edges();
-                        for edge in &edges {
+                        for edge in edges {
                             if let Some(edge_ref) = edge.get() {
-                                vertices.insert(edge_ref.start_vertex());
-                                vertices.insert(edge_ref.end_vertex());
+                                vertices.insert(edge_ref.start_vertex().clone());
+                                vertices.insert(edge_ref.end_vertex().clone());
                             }
                         }
                     }
@@ -1086,7 +1088,7 @@ impl OffsetOperations {
 
         // Use the first point as the origin
         let origin = points[0].clone();
-        let mut volume = 0.0;
+        let mut volume: f64 = 0.0;
 
         // Calculate volume using the divergence theorem
         for i in 1..points.len() - 1 {
@@ -1149,19 +1151,15 @@ impl OffsetOperations {
                             let start_vertex = first_edge.start_vertex();
                             let end_vertex = first_edge.end_vertex();
 
-                            if let (Some(start_ref), Some(end_ref)) =
+                            if let (Some(_start_ref), Some(_end_ref)) =
                                 (start_vertex.get(), end_vertex.get())
                             {
-                                let start_point = start_ref.point();
-                                let end_point = end_ref.point();
-
                                 // Calculate a parameter along the edge
                                 let t = 0.5; // Midpoint
 
                                 // Calculate surface normal at this point
-                                if let Some(normal) = surface.normal(t, t) {
-                                    return Some(Vector::new(normal.x, normal.y, normal.z));
-                                }
+                                let normal = surface.normal(t, t);
+                                return Some(Vector::new(normal.x, normal.y, normal.z));
                             }
                         }
                     }

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
-use crate::foundation::handle::Handle;
+use crate::geometry::Point;
 use crate::topology::topods_shape::TopoDsShape;
 
 /// Parameter type
@@ -262,7 +261,7 @@ impl ParametricCube {
 
         let mut cube = Self {
             params,
-            shape: TopoDsShape::new(),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Vertex),
         };
 
         // Initial update
@@ -323,7 +322,7 @@ impl ParametricShape for ParametricCube {
         let half_height = height / 2.0;
         let half_depth = depth / 2.0;
 
-        let vertices = vec![
+        let _vertices = vec![
             Point::new(
                 center_x - half_width,
                 center_y - half_height,
@@ -439,7 +438,7 @@ impl ParametricCylinder {
 
         let mut cylinder = Self {
             params,
-            shape: TopoDsShape::new(),
+            shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Vertex),
         };
 
         // Initial update
@@ -459,7 +458,7 @@ impl ParametricShape for ParametricCylinder {
 
     fn update(&mut self) -> bool {
         // Get parameters
-        let radius = if let Some(Parameter::Float(r)) = self.params.get_parameter("radius") {
+        let _radius = if let Some(Parameter::Float(r)) = self.params.get_parameter("radius") {
             *r
         } else {
             1.0
@@ -490,8 +489,8 @@ impl ParametricShape for ParametricCylinder {
         };
 
         // Calculate cylinder parameters
-        let bottom_center = Point::new(center_x, center_y, center_z - height / 2.0);
-        let top_center = Point::new(center_x, center_y, center_z + height / 2.0);
+        let _bottom_center = Point::new(center_x, center_y, center_z - height / 2.0);
+        let _top_center = Point::new(center_x, center_y, center_z + height / 2.0);
 
         // Create cylinder shape
         // TODO: Implement actual cylinder creation using BRepBuilder

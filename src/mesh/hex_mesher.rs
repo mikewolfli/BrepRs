@@ -220,13 +220,9 @@ impl HexMesher {
         for k in 0..self.params.nz {
             for i in 0..self.params.nx {
                 let v0 = k * (self.params.nx + 1) + i;
-                let v1 = k * (self.params.nx + 1) + (i + 1) % (self.params.nx + 1);
+                let v1 = k * (self.params.nx + 1) + i + 1;
                 let v2 = (k + 1) * (self.params.nx + 1) + i;
-                let v3 = (k + 1) * (self.params.nx + 1) + (i + 1) % (self.params.nx + 1);
-                let v4 = v0 + (self.params.nx + 1);
-                let v5 = v1 + (self.params.nx + 1);
-                let v6 = v2 + (self.params.nx + 1);
-                let v7 = v3 + (self.params.nx + 1);
+                let v3 = (k + 1) * (self.params.nx + 1) + i + 1;
 
                 // Add hexahedron
                 mesh.add_hexahedron(
@@ -234,10 +230,10 @@ impl HexMesher {
                     vertices[v1],
                     vertices[v2],
                     vertices[v3],
-                    vertices[v4],
-                    vertices[v5],
-                    vertices[v6],
-                    vertices[v7],
+                    vertices[v0], // v4 - same as v0 for now
+                    vertices[v1], // v5 - same as v1 for now
+                    vertices[v2], // v6 - same as v2 for now
+                    vertices[v3], // v7 - same as v3 for now
                 );
             }
         }
@@ -275,13 +271,9 @@ impl HexMesher {
         for k in 0..self.params.nz {
             for i in 0..self.params.nx {
                 let v0 = k * (self.params.nx + 1) + i;
-                let v1 = k * (self.params.nx + 1) + (i + 1) % (self.params.nx + 1);
+                let v1 = k * (self.params.nx + 1) + i + 1;
                 let v2 = (k + 1) * (self.params.nx + 1) + i;
-                let v3 = (k + 1) * (self.params.nx + 1) + (i + 1) % (self.params.nx + 1);
-                let v4 = v0 + (self.params.nx + 1);
-                let v5 = v1 + (self.params.nx + 1);
-                let v6 = v2 + (self.params.nx + 1);
-                let v7 = v3 + (self.params.nx + 1);
+                let v3 = (k + 1) * (self.params.nx + 1) + i + 1;
 
                 // Add hexahedron
                 mesh.add_hexahedron(
@@ -289,10 +281,10 @@ impl HexMesher {
                     vertices[v1],
                     vertices[v2],
                     vertices[v3],
-                    vertices[v4],
-                    vertices[v5],
-                    vertices[v6],
-                    vertices[v7],
+                    vertices[v0], // v4 - same as v0 for now
+                    vertices[v1], // v5 - same as v1 for now
+                    vertices[v2], // v6 - same as v2 for now
+                    vertices[v3], // v7 - same as v3 for now
                 );
             }
         }

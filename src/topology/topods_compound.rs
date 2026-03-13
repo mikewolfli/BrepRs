@@ -42,6 +42,11 @@ impl TopoDsCompound {
         &self.components
     }
 
+    /// Get mutable reference to the components of the compound
+    pub fn components_mut(&mut self) -> &mut [Handle<TopoDsShape>] {
+        &mut self.components
+    }
+
     /// Get the number of components in the compound
     pub fn num_components(&self) -> usize {
         self.components.len()
@@ -279,6 +284,11 @@ impl TopoDsCompSolid {
     /// Get the solids of the composite solid
     pub fn solids(&self) -> &[Handle<crate::topology::topods_solid::TopoDsSolid>] {
         &self.solids
+    }
+
+    /// Get mutable reference to the solids of the composite solid
+    pub fn solids_mut(&mut self) -> &mut [Handle<crate::topology::topods_solid::TopoDsSolid>] {
+        &mut self.solids
     }
 
     /// Get the number of solids in the composite solid

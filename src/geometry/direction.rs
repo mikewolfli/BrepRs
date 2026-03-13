@@ -14,8 +14,9 @@ impl SetCoord for Direction {
     }
 }
 use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Direction {
     pub x: StandardReal,
     pub y: StandardReal,

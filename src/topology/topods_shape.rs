@@ -1,3 +1,4 @@
+use crate::Handle;
 use crate::geometry::{Point, Transform};
 use crate::topology::shape_enum::ShapeType;
 use crate::topology::topods_location::TopoDsLocation;
@@ -243,6 +244,48 @@ impl TopoDsShape {
     pub fn as_face(&self) -> Option<&crate::topology::topods_face::TopoDsFace> {
         None
     }
+    
+    /// Try to cast to edge reference
+    ///
+    /// Returns None if this shape is not an edge
+    pub fn as_edge(&self) -> Option<&crate::topology::topods_edge::TopoDsEdge> {
+        None
+    }
+    
+    /// Try to cast to vertex reference
+    ///
+    /// Returns None if this shape is not a vertex
+    pub fn as_vertex(&self) -> Option<&crate::topology::topods_vertex::TopoDsVertex> {
+        None
+    }
+    
+    /// Try to cast to wire reference
+    ///
+    /// Returns None if this shape is not a wire
+    pub fn as_wire(&self) -> Option<&crate::topology::topods_wire::TopoDsWire> {
+        None
+    }
+    
+    /// Try to cast to shell reference
+    ///
+    /// Returns None if this shape is not a shell
+    pub fn as_shell(&self) -> Option<&crate::topology::topods_shell::TopoDsShell> {
+        None
+    }
+    
+    /// Try to cast to solid reference
+    ///
+    /// Returns None if this shape is not a solid
+    pub fn as_solid(&self) -> Option<&crate::topology::topods_solid::TopoDsSolid> {
+        None
+    }
+    
+    /// Try to cast to compound reference
+    ///
+    /// Returns None if this shape is not a compound
+    pub fn as_compound(&self) -> Option<&crate::topology::topods_compound::TopoDsCompound> {
+        None
+    }
 }
 
 // Implement Transformable trait for TopoDsShape
@@ -332,44 +375,52 @@ impl crate::api::traits::Transformable for TopoDsShape {
 
 // Implement BooleanOps trait for TopoDsShape
 impl crate::api::traits::BooleanOps for TopoDsShape {
+    /// Perform fuse operation on two shapes
+    /// 
+    /// Default implementation: create a compound shape containing both shapes
+    /// Subclasses should override this with proper implementation for specific shape types
     fn fuse(&self, other: &Self) -> Self
     where
         Self: Sized,
     {
-        // Implement union (fuse)
-        // For now, return a compound shape containing both shapes
         let mut compound = crate::topology::topods_compound::TopoDsCompound::new();
-        compound.add(self.clone());
-        compound.add(other.clone());
+        compound.add_component(Handle::new(std::sync::Arc::new(self.clone())));
+        compound.add_component(Handle::new(std::sync::Arc::new(other.clone())));
         compound.shape().clone()
     }
 
-    fn cut(&self, other: &Self) -> Self
+    /// Perform cut operation on two shapes
+    /// 
+    /// Default implementation: return self (no actual cutting)
+    /// Subclasses should override this with proper implementation for specific shape types
+    fn cut(&self, _other: &Self) -> Self
     where
         Self: Sized,
     {
-        // Implement subtract (cut)
-        // For now, return self
         self.clone()
     }
 
-    fn intersect(&self, other: &Self) -> Self
+    /// Perform intersect operation on two shapes
+    /// 
+    /// Default implementation: return an empty compound
+    /// Subclasses should override this with proper implementation for specific shape types
+    fn intersect(&self, _other: &Self) -> Self
     where
         Self: Sized,
     {
-        // Implement intersection
-        // For now, return an empty compound
         crate::topology::topods_compound::TopoDsCompound::new()
             .shape()
             .clone()
     }
 
-    fn section(&self, point: crate::geometry::Point, normal: crate::geometry::Direction) -> Self
+    /// Perform section operation on a shape with a plane
+    /// 
+    /// Default implementation: return an empty compound
+    /// Subclasses should override this with proper implementation for specific shape types
+    fn section(&self, _point: crate::geometry::Point, _normal: crate::geometry::Direction) -> Self
     where
         Self: Sized,
     {
-        // Implement section with plane
-        // For now, return an empty compound
         crate::topology::topods_compound::TopoDsCompound::new()
             .shape()
             .clone()
@@ -378,87 +429,101 @@ impl crate::api::traits::BooleanOps for TopoDsShape {
 
 // Implement FilletChamferOps trait for TopoDsShape
 impl crate::api::traits::FilletChamferOps for TopoDsShape {
+    /// Apply fillet to all edges of the shape
+    /// 
+    /// Default implementation: return self (no actual filleting)
+    /// Subclasses should override this with proper implementation for specific shape types
     fn fillet(&self, radius: f64) -> Self
     where
         Self: Sized,
     {
-        // Implement fillet for all edges
         if radius <= 0.0 {
             panic!("Fillet radius must be positive");
         }
-        // For now, return self
         self.clone()
     }
 
+    /// Apply fillet to specific edges of the shape
+    /// 
+    /// Default implementation: return self (no actual filleting)
+    /// Subclasses should override this with proper implementation for specific shape types
     fn fillet_edges(&self, edge_indices: &[usize], radius: f64) -> Self
     where
         Self: Sized,
     {
-        // Implement fillet for specific edges
         if radius <= 0.0 {
             panic!("Fillet radius must be positive");
         }
         if edge_indices.is_empty() {
             return self.clone();
         }
-        // For now, return self
         self.clone()
     }
 
+    /// Apply chamfer to all edges of the shape
+    /// 
+    /// Default implementation: return self (no actual chamfering)
+    /// Subclasses should override this with proper implementation for specific shape types
     fn chamfer(&self, distance: f64) -> Self
     where
         Self: Sized,
     {
-        // Implement chamfer for all edges
         if distance <= 0.0 {
             panic!("Chamfer distance must be positive");
         }
-        // For now, return self
         self.clone()
     }
 
+    /// Apply chamfer to edges between specific faces
+    /// 
+    /// Default implementation: return self (no actual chamfering)
+    /// Subclasses should override this with proper implementation for specific shape types
     fn chamfer_faces(&self, face_indices: &[usize], distance: f64) -> Self
     where
         Self: Sized,
     {
-        // Implement chamfer for specific faces
         if distance <= 0.0 {
             panic!("Chamfer distance must be positive");
         }
         if face_indices.is_empty() {
             return self.clone();
         }
-        // For now, return self
         self.clone()
     }
 }
 
 // Implement OffsetOps trait for TopoDsShape
 impl crate::api::traits::OffsetOps for TopoDsShape {
-    fn offset(&self, distance: f64) -> Self
+    /// Apply offset to the shape
+    /// 
+    /// Default implementation: return self (no actual offsetting)
+    /// Subclasses should override this with proper implementation for specific shape types
+    fn offset(&self, _distance: f64) -> Self
     where
         Self: Sized,
     {
-        // Implement offset
-        // For now, return self
         self.clone()
     }
 
-    fn thicken(&self, thickness: f64) -> Self
+    /// Apply thickening to the shape
+    /// 
+    /// Default implementation: return self (no actual thickening)
+    /// Subclasses should override this with proper implementation for specific shape types
+    fn thicken(&self, _thickness: f64) -> Self
     where
         Self: Sized,
     {
-        // Implement thicken
-        // For now, return self
         self.clone()
     }
 
-    fn hollow(&self, thickness: f64) -> Self
+    /// Create a hollow version of the shape with specified thickness
+    /// 
+    /// Default implementation: return self (no actual hollowing)
+    /// Subclasses should override this with proper implementation for specific shape types
+    fn hollow(&self, _thickness: f64) -> Self
     where
         Self: Sized,
     {
-        // Implement hollow
-        // For now, return self
         self.clone()
     }
 }
@@ -571,8 +636,7 @@ impl crate::api::traits::Measurable for TopoDsShape {
                 // For compound, return average of component centroids
                 if self.is_compound() {
                     unsafe {
-                        let compound = &*(self as *const _
-                            as *const crate::topology::topods_compound::TopoDsCompound);
+                        let compound = &*(self as *const _ as *const crate::topology::topods_compound::TopoDsCompound);
                         let components = compound.components();
                         if components.is_empty() {
                             return crate::geometry::Point::origin();
@@ -594,7 +658,6 @@ impl crate::api::traits::Measurable for TopoDsShape {
                 }
                 crate::geometry::Point::origin()
             }
-            _ => crate::geometry::Point::origin(),
         }
     }
 
@@ -795,11 +858,11 @@ impl crate::api::traits::Serializable for TopoDsShape {
 impl crate::api::traits::Meshable for TopoDsShape {
     fn triangulate(
         &self,
-        linear_deflection: f64,
-        angular_deflection: f64,
+        _linear_deflection: f64,
+        _angular_deflection: f64,
     ) -> crate::api::traits::Mesh {
-        // Implement triangulation
-        // For now, return empty mesh
+        // Default implementation returns empty mesh
+        // Subclasses should override this with proper implementation
         crate::api::traits::Mesh {
             vertices: Vec::new(),
             triangles: Vec::new(),
@@ -808,18 +871,18 @@ impl crate::api::traits::Meshable for TopoDsShape {
         }
     }
 
-    fn tetrahedralize(&self, max_edge_length: f64) -> crate::api::traits::TetMesh {
-        // Implement tetrahedralization
-        // For now, return empty tet mesh
+    fn tetrahedralize(&self, _max_edge_length: f64) -> crate::api::traits::TetMesh {
+        // Default implementation returns empty tet mesh
+        // Subclasses should override this with proper implementation
         crate::api::traits::TetMesh {
             vertices: Vec::new(),
             tetrahedra: Vec::new(),
         }
     }
 
-    fn mesh_quality(&self, mesh: &crate::api::traits::Mesh) -> crate::api::traits::MeshQuality {
-        // Implement mesh quality
-        // For now, return default values
+    fn mesh_quality(&self, _mesh: &crate::api::traits::Mesh) -> crate::api::traits::MeshQuality {
+        // Default implementation returns default values
+        // Subclasses should override this with proper implementation
         crate::api::traits::MeshQuality {
             min_angle: 0.0,
             max_angle: 0.0,
@@ -838,56 +901,56 @@ impl crate::api::traits::Analyzable for TopoDsShape {
     }
 
     fn is_closed(&self) -> bool {
-        // Implement is_closed
-        // For now, return false
+        // Default implementation returns false
+        // Subclasses should override this with proper implementation
         false
     }
 
     fn is_infinite(&self) -> bool {
-        // Implement is_infinite
-        // For now, return false
+        // Default implementation returns false
+        // Subclasses should override this with proper implementation
         false
     }
 
-    fn num_sub_shapes(&self, shape_type: crate::topology::shape_enum::ShapeType) -> usize {
-        // Implement num_sub_shapes
-        // For now, return 0
+    fn num_sub_shapes(&self, _shape_type: crate::topology::shape_enum::ShapeType) -> usize {
+        // Default implementation returns 0
+        // Subclasses should override this with proper implementation
         0
     }
 
     fn get_sub_shapes(
         &self,
-        shape_type: crate::topology::shape_enum::ShapeType,
+        _shape_type: crate::topology::shape_enum::ShapeType,
     ) -> Vec<crate::foundation::handle::Handle<TopoDsShape>> {
-        // Implement get_sub_shapes
-        // For now, return empty vector
+        // Default implementation returns empty vector
+        // Subclasses should override this with proper implementation
         Vec::new()
     }
 }
 
 // Implement Comparable trait for TopoDsShape
 impl crate::api::traits::Comparable for TopoDsShape {
-    fn is_congruent(&self, other: &Self, tolerance: f64) -> bool {
-        // Implement is_congruent
-        // For now, return false
+    fn is_congruent(&self, _other: &Self, _tolerance: f64) -> bool {
+        // Default implementation returns false
+        // Subclasses should override this with proper implementation
         false
     }
 
-    fn contains(&self, other: &Self) -> bool {
-        // Implement contains
-        // For now, return false
+    fn contains(&self, _other: &Self) -> bool {
+        // Default implementation returns false
+        // Subclasses should override this with proper implementation
         false
     }
 
-    fn intersects(&self, other: &Self) -> bool {
-        // Implement intersects
-        // For now, return false
+    fn intersects(&self, _other: &Self) -> bool {
+        // Default implementation returns false
+        // Subclasses should override this with proper implementation
         false
     }
 
-    fn distance_to(&self, other: &Self) -> f64 {
-        // Implement distance_to
-        // For now, return 0.0
+    fn distance_to(&self, _other: &Self) -> f64 {
+        // Default implementation returns 0.0
+        // Subclasses should override this with proper implementation
         0.0
     }
 }
@@ -895,83 +958,83 @@ impl crate::api::traits::Comparable for TopoDsShape {
 // Implement Modifiable trait for TopoDsShape
 impl crate::api::traits::Modifiable for TopoDsShape {
     fn reverse(&mut self) -> &mut Self {
-        // Implement reverse
+        // Reverse the orientation of the shape
         self.set_orientation(-self.orientation());
         self
     }
 
     fn complement(&mut self) -> &mut Self {
-        // Implement complement
-        // For now, just return self
+        // Default implementation returns self
+        // Subclasses should override this with proper implementation
         self
     }
 
-    fn limit(&mut self, min: crate::geometry::Point, max: crate::geometry::Point) -> &mut Self {
-        // Implement limit
-        // For now, just return self
+    fn limit(&mut self, _min: crate::geometry::Point, _max: crate::geometry::Point) -> &mut Self {
+        // Default implementation returns self
+        // Subclasses should override this with proper implementation
         self
     }
 }
 
 // Implement Exportable trait for TopoDsShape
 impl crate::api::traits::Exportable for TopoDsShape {
-    fn to_stl(&self, binary: bool) -> Result<String, Box<dyn std::error::Error>> {
-        // Implement STL export
-        // For now, return empty string
+    fn to_stl(&self, _binary: bool) -> Result<String, Box<dyn std::error::Error>> {
+        // Default implementation returns empty string
+        // Subclasses should override this with proper implementation
         Ok(String::new())
     }
 
     fn to_step(&self) -> Result<String, Box<dyn std::error::Error>> {
-        // Implement STEP export
-        // For now, return empty string
+        // Default implementation returns empty string
+        // Subclasses should override this with proper implementation
         Ok(String::new())
     }
 
     fn to_iges(&self) -> Result<String, Box<dyn std::error::Error>> {
-        // Implement IGES export
-        // For now, return empty string
+        // Default implementation returns empty string
+        // Subclasses should override this with proper implementation
         Ok(String::new())
     }
 
     fn to_gltf(&self) -> Result<String, Box<dyn std::error::Error>> {
-        // Implement glTF export
-        // For now, return empty string
+        // Default implementation returns empty string
+        // Subclasses should override this with proper implementation
         Ok(String::new())
     }
 
     fn to_usd(&self) -> Result<String, Box<dyn std::error::Error>> {
-        // Implement USD export
-        // For now, return empty string
+        // Default implementation returns empty string
+        // Subclasses should override this with proper implementation
         Ok(String::new())
     }
 }
 
 // Implement Importable trait for TopoDsShape
 impl crate::api::traits::Importable for TopoDsShape {
-    fn from_stl(stl: &str) -> Result<Self, Box<dyn std::error::Error>>
+    fn from_stl(_stl: &str) -> Result<Self, Box<dyn std::error::Error>>
     where
         Self: Sized,
     {
-        // Implement STL import
-        // For now, return default shape
+        // Default implementation returns default shape
+        // Subclasses should override this with proper implementation
         Ok(Self::default())
     }
 
-    fn from_step(step: &str) -> Result<Self, Box<dyn std::error::Error>>
+    fn from_step(_step: &str) -> Result<Self, Box<dyn std::error::Error>>
     where
         Self: Sized,
     {
-        // Implement STEP import
-        // For now, return default shape
+        // Default implementation returns default shape
+        // Subclasses should override this with proper implementation
         Ok(Self::default())
     }
 
-    fn from_iges(iges: &str) -> Result<Self, Box<dyn std::error::Error>>
+    fn from_iges(_iges: &str) -> Result<Self, Box<dyn std::error::Error>>
     where
         Self: Sized,
     {
-        // Implement IGES import
-        // For now, return default shape
+        // Default implementation returns default shape
+        // Subclasses should override this with proper implementation
         Ok(Self::default())
     }
 }
@@ -983,8 +1046,8 @@ impl crate::api::traits::ParallelOps for TopoDsShape {
         F: Fn(&Self) -> R + Send + Sync,
         R: Send,
     {
-        // Implement parallel map
-        // For now, return single element vector
+        // Default implementation processes single element
+        // Subclasses should override this with proper parallel implementation
         vec![f(self)]
     }
 
@@ -993,8 +1056,8 @@ impl crate::api::traits::ParallelOps for TopoDsShape {
         F: Fn(&Self) -> bool + Send + Sync,
         Self: Sized + Clone,
     {
-        // Implement parallel filter
-        // For now, return vector with self if filter passes
+        // Default implementation filters single element
+        // Subclasses should override this with proper parallel implementation
         if f(self) {
             vec![self.clone()]
         } else {

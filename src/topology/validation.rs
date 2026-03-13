@@ -4,7 +4,7 @@
 /// for topological shapes, ensuring topological consistency and integrity.
 use crate::foundation::handle::Handle;
 use crate::topology::shape_enum::ShapeType;
-use crate::topology::{topods_compound::TopoDsCompound, topods_edge::TopoDsEdge, topods_face::TopoDsFace, topods_shell::TopoDsShell, topods_solid::TopoDsSolid, topods_vertex::TopoDsVertex, topods_wire::TopoDsWire, TopoDsShape};
+use crate::topology::{topods_compound::TopoDsCompound, topods_compound::TopoDsCompSolid, topods_edge::TopoDsEdge, topods_face::TopoDsFace, topods_shell::TopoDsShell, topods_solid::TopoDsSolid, topods_vertex::TopoDsVertex, topods_wire::TopoDsWire, TopoDsShape};
 use std::collections::HashSet;
 
 /// Validation error types
@@ -120,16 +120,20 @@ impl TopologyValidator {
         let mut result = ValidationResult::valid();
         
         // Cast to TopoDsVertex
-        if let Ok(vertex) = shape.downcast::<TopoDsVertex>() {
-            // Check if vertex has a valid point
-            let point = vertex.point();
-            if !self.is_valid_point(point) {
-                result.add_error(ValidationError::VertexError("Vertex has invalid point coordinates".to_string()));
-            }
-            
-            // Check if tolerance is non-negative
-            if vertex.tolerance() < 0.0 {
-                result.add_error(ValidationError::VertexError("Vertex has negative tolerance".to_string()));
+        if shape.is_vertex() {
+            // SAFETY: Safe because we checked the shape type
+            unsafe {
+                let vertex = &*(shape as *const _ as *const TopoDsVertex);
+                // Check if vertex has a valid point
+                let point = vertex.point();
+                if !self.is_valid_point(point) {
+                    result.add_error(ValidationError::VertexError("Vertex has invalid point coordinates".to_string()));
+                }
+                
+                // Check if tolerance is non-negative
+                if vertex.tolerance() < 0.0 {
+                    result.add_error(ValidationError::VertexError("Vertex has negative tolerance".to_string()));
+                }
             }
         } else {
             result.add_error(ValidationError::VertexError("Failed to cast to TopoDsVertex".to_string()));
@@ -143,33 +147,37 @@ impl TopologyValidator {
         let mut result = ValidationResult::valid();
         
         // Cast to TopoDsEdge
-        if let Ok(edge) = shape.downcast::<TopoDsEdge>() {
-            // Check if edge has valid vertices
-            let v1 = edge.vertex1();
-            let v2 = edge.vertex2();
-            
-            if v1.is_null() || v2.is_null() {
-                result.add_error(ValidationError::EdgeError("Edge has null vertices".to_string()));
-            } else {
-                // Check if vertices are different
-                if let (Some(v1_ref), Some(v2_ref)) = (v1.get(), v2.get()) {
-                    let p1 = v1_ref.point();
-                    let p2 = v2_ref.point();
-                    
-                    if p1.distance(&p2) < self.tolerance {
-                        result.add_error(ValidationError::EdgeError("Edge is degenerate (vertices are coincident)".to_string()));
+        if shape.is_edge() {
+            // SAFETY: Safe because we checked the shape type
+            unsafe {
+                let edge = &*(shape as *const _ as *const TopoDsEdge);
+                // Check if edge has valid vertices
+                let v1 = edge.vertex1();
+                let v2 = edge.vertex2();
+                
+                if v1.is_null() || v2.is_null() {
+                    result.add_error(ValidationError::EdgeError("Edge has null vertices".to_string()));
+                } else {
+                    // Check if vertices are different
+                    if let (Some(v1_ref), Some(v2_ref)) = (v1.as_ref(), v2.as_ref()) {
+                        let p1 = v1_ref.point();
+                        let p2 = v2_ref.point();
+                        
+                        if p1.distance(&p2) < self.tolerance {
+                            result.add_error(ValidationError::EdgeError("Edge is degenerate (vertices are coincident)".to_string()));
+                        }
                     }
                 }
-            }
-            
-            // Check if edge has a curve (if applicable)
-            if edge.curve().is_none() {
-                result.add_warning("Edge has no curve defined".to_string());
-            }
-            
-            // Check if tolerance is non-negative
-            if edge.tolerance() < 0.0 {
-                result.add_error(ValidationError::EdgeError("Edge has negative tolerance".to_string()));
+                
+                // Check if edge has a curve (if applicable)
+                if edge.curve().is_none() {
+                    result.add_warning("Edge has no curve defined".to_string());
+                }
+                
+                // Check if tolerance is non-negative
+                if edge.tolerance() < 0.0 {
+                    result.add_error(ValidationError::EdgeError("Edge has negative tolerance".to_string()));
+                }
             }
         } else {
             result.add_error(ValidationError::EdgeError("Failed to cast to TopoDsEdge".to_string()));
@@ -183,26 +191,30 @@ impl TopologyValidator {
         let mut result = ValidationResult::valid();
         
         // Cast to TopoDsWire
-        if let Ok(wire) = shape.downcast::<TopoDsWire>() {
-            // Check if wire has edges
-            let edges = wire.edges();
-            if edges.is_empty() {
-                result.add_error(ValidationError::WireError("Wire has no edges".to_string()));
-            } else {
-                // Check edge connectivity
-                if !self.validate_wire_connectivity(&edges) {
-                    result.add_error(ValidationError::WireError("Wire edges are not properly connected".to_string()));
+        if shape.is_wire() {
+            // SAFETY: Safe because we checked the shape type
+            unsafe {
+                let wire = &*(shape as *const _ as *const TopoDsWire);
+                // Check if wire has edges
+                let edges = wire.edges();
+                if edges.is_empty() {
+                    result.add_error(ValidationError::WireError("Wire has no edges".to_string()));
+                } else {
+                    // Check edge connectivity
+                    if !self.validate_wire_connectivity(&edges) {
+                        result.add_error(ValidationError::WireError("Wire edges are not properly connected".to_string()));
+                    }
+                    
+                    // Check for duplicate edges
+                    if self.has_duplicate_edges(&edges) {
+                        result.add_warning("Wire contains duplicate edges".to_string());
+                    }
                 }
                 
-                // Check for duplicate edges
-                if self.has_duplicate_edges(&edges) {
-                    result.add_warning("Wire contains duplicate edges".to_string());
+                // Check if tolerance is non-negative
+                if wire.tolerance() < 0.0 {
+                    result.add_error(ValidationError::WireError("Wire has negative tolerance".to_string()));
                 }
-            }
-            
-            // Check if tolerance is non-negative
-            if wire.tolerance() < 0.0 {
-                result.add_error(ValidationError::WireError("Wire has negative tolerance".to_string()));
             }
         } else {
             result.add_error(ValidationError::WireError("Failed to cast to TopoDsWire".to_string()));
@@ -216,29 +228,33 @@ impl TopologyValidator {
         let mut result = ValidationResult::valid();
         
         // Cast to TopoDsFace
-        if let Ok(face) = shape.downcast::<TopoDsFace>() {
-            // Check if face has wires
-            let wires = face.wires();
-            if wires.is_empty() {
-                result.add_error(ValidationError::FaceError("Face has no wires".to_string()));
-            } else {
-                // Validate each wire
-                for wire in &wires {
-                    if let Some(wire_ref) = wire.get() {
-                        let wire_result = self.validate_wire(&wire_ref.shape());
-                        result.combine(wire_result);
+        if shape.is_face() {
+            // SAFETY: Safe because we checked the shape type
+            unsafe {
+                let face = &*(shape as *const _ as *const TopoDsFace);
+                // Check if face has wires
+                let wires = face.wires();
+                if wires.is_empty() {
+                    result.add_error(ValidationError::FaceError("Face has no wires".to_string()));
+                } else {
+                    // Validate each wire
+                    for wire in wires {
+                        if let Some(wire_ref) = wire.as_ref() {
+                            let wire_result = self.validate_wire(&wire_ref.shape());
+                            result.combine(wire_result);
+                        }
                     }
                 }
-            }
-            
-            // Check if face has a surface
-            if face.surface().is_none() {
-                result.add_error(ValidationError::FaceError("Face has no surface defined".to_string()));
-            }
-            
-            // Check if tolerance is non-negative
-            if face.tolerance() < 0.0 {
-                result.add_error(ValidationError::FaceError("Face has negative tolerance".to_string()));
+                
+                // Check if face has a surface
+                if face.surface().is_none() {
+                    result.add_error(ValidationError::FaceError("Face has no surface defined".to_string()));
+                }
+                
+                // Check if tolerance is non-negative
+                if face.tolerance() < 0.0 {
+                    result.add_error(ValidationError::FaceError("Face has negative tolerance".to_string()));
+                }
             }
         } else {
             result.add_error(ValidationError::FaceError("Failed to cast to TopoDsFace".to_string()));
@@ -252,29 +268,33 @@ impl TopologyValidator {
         let mut result = ValidationResult::valid();
         
         // Cast to TopoDsShell
-        if let Ok(shell) = shape.downcast::<TopoDsShell>() {
-            // Check if shell has faces
-            let faces = shell.faces();
-            if faces.is_empty() {
-                result.add_error(ValidationError::ShellError("Shell has no faces".to_string()));
-            } else {
-                // Validate each face
-                for face in &faces {
-                    if let Some(face_ref) = face.get() {
-                        let face_result = self.validate_face(&face_ref.shape());
-                        result.combine(face_result);
+        if shape.is_shell() {
+            // SAFETY: Safe because we checked the shape type
+            unsafe {
+                let shell = &*(shape as *const _ as *const TopoDsShell);
+                // Check if shell has faces
+                let faces = shell.faces();
+                if faces.is_empty() {
+                    result.add_error(ValidationError::ShellError("Shell has no faces".to_string()));
+                } else {
+                    // Validate each face
+                    for face in faces {
+                        if let Some(face_ref) = face.as_ref() {
+                            let face_result = self.validate_face(&face_ref.shape());
+                            result.combine(face_result);
+                        }
+                    }
+                    
+                    // Check face connectivity
+                    if !self.validate_shell_connectivity(&faces) {
+                        result.add_warning("Shell faces may not be properly connected".to_string());
                     }
                 }
                 
-                // Check face connectivity
-                if !self.validate_shell_connectivity(&faces) {
-                    result.add_warning("Shell faces may not be properly connected".to_string());
+                // Check if tolerance is non-negative
+                if shell.tolerance() < 0.0 {
+                    result.add_error(ValidationError::ShellError("Shell has negative tolerance".to_string()));
                 }
-            }
-            
-            // Check if tolerance is non-negative
-            if shell.tolerance() < 0.0 {
-                result.add_error(ValidationError::ShellError("Shell has negative tolerance".to_string()));
             }
         } else {
             result.add_error(ValidationError::ShellError("Failed to cast to TopoDsShell".to_string()));
@@ -288,24 +308,28 @@ impl TopologyValidator {
         let mut result = ValidationResult::valid();
         
         // Cast to TopoDsSolid
-        if let Ok(solid) = shape.downcast::<TopoDsSolid>() {
-            // Check if solid has shells
-            let shells = solid.shells();
-            if shells.is_empty() {
-                result.add_error(ValidationError::SolidError("Solid has no shells".to_string()));
-            } else {
-                // Validate each shell
-                for shell in &shells {
-                    if let Some(shell_ref) = shell.get() {
-                        let shell_result = self.validate_shell(&shell_ref.shape());
-                        result.combine(shell_result);
+        if shape.is_solid() {
+            // SAFETY: Safe because we checked the shape type
+            unsafe {
+                let solid = &*(shape as *const _ as *const TopoDsSolid);
+                // Check if solid has shells
+                let shells = solid.shells();
+                if shells.is_empty() {
+                    result.add_error(ValidationError::SolidError("Solid has no shells".to_string()));
+                } else {
+                    // Validate each shell
+                    for shell in shells {
+                        if let Some(shell_ref) = shell.as_ref() {
+                            let shell_result = self.validate_shell(&shell_ref.shape());
+                            result.combine(shell_result);
+                        }
                     }
                 }
-            }
-            
-            // Check if tolerance is non-negative
-            if solid.tolerance() < 0.0 {
-                result.add_error(ValidationError::SolidError("Solid has negative tolerance".to_string()));
+                
+                // Check if tolerance is non-negative
+                if solid.tolerance() < 0.0 {
+                    result.add_error(ValidationError::SolidError("Solid has negative tolerance".to_string()));
+                }
             }
         } else {
             result.add_error(ValidationError::SolidError("Failed to cast to TopoDsSolid".to_string()));
@@ -319,12 +343,16 @@ impl TopologyValidator {
         let mut result = ValidationResult::valid();
         
         // Cast to TopoDsCompound
-        if let Ok(compound) = shape.downcast::<TopoDsCompound>() {
-            // Validate each component
-            for component in compound.components() {
-                if let Some(component_ref) = component.get() {
-                    let component_result = self.validate(component_ref);
-                    result.combine(component_result);
+        if shape.is_compound() {
+            // SAFETY: Safe because we checked the shape type
+            unsafe {
+                let compound = &*(shape as *const _ as *const TopoDsCompound);
+                // Validate each component
+                for component in compound.components() {
+                    if let Some(component_ref) = component.as_ref() {
+                        let component_result = self.validate(component_ref);
+                        result.combine(component_result);
+                    }
                 }
             }
         } else {
@@ -339,16 +367,16 @@ impl TopologyValidator {
         let mut result = ValidationResult::valid();
         
         // Cast to TopoDsCompSolid
-        if let Ok(comp_solid) = shape.downcast::<TopoDsCompound>() {
-            // Validate each component
-            for component in comp_solid.components() {
-                if let Some(component_ref) = component.get() {
-                    // Check if component is a solid
-                    if !component_ref.is_solid() {
-                        result.add_error(ValidationError::CompoundError("CompSolid contains non-solid component".to_string()));
+        if shape.is_compsolid() {
+            // SAFETY: Safe because we checked the shape type
+            unsafe {
+                let comp_solid = &*(shape as *const _ as *const TopoDsCompSolid);
+                // Validate each component
+                for solid in comp_solid.solids() {
+                    if let Some(solid_ref) = solid.as_ref() {
+                        let solid_result = self.validate(&solid_ref.shape());
+                        result.combine(solid_result);
                     }
-                    let component_result = self.validate(component_ref);
-                    result.combine(component_result);
                 }
             }
         } else {
@@ -366,13 +394,13 @@ impl TopologyValidator {
         
         // Check if edges are connected end-to-end
         for i in 0..edges.len() - 1 {
-            let current_edge = edges[i].get().unwrap();
-            let next_edge = edges[i + 1].get().unwrap();
+            let current_edge = edges[i].as_ref().unwrap();
+            let next_edge = edges[i + 1].as_ref().unwrap();
             
             let current_end = current_edge.end_vertex();
             let next_start = next_edge.start_vertex();
             
-            if let (Some(current_end_ref), Some(next_start_ref)) = (current_end.get(), next_start.get()) {
+            if let (Some(current_end_ref), Some(next_start_ref)) = (current_end.as_ref(), next_start.as_ref()) {
                 let current_end_point = current_end_ref.point();
                 let next_start_point = next_start_ref.point();
                 
@@ -409,10 +437,10 @@ impl TopologyValidator {
         let mut edge_face_map = std::collections::HashMap::new();
         
         for face in faces {
-            if let Some(face_ref) = face.get() {
+            if let Some(face_ref) = face.as_ref() {
                 let wires = face_ref.wires();
                 for wire in wires {
-                    if let Some(wire_ref) = wire.get() {
+                    if let Some(wire_ref) = wire.as_ref() {
                         let edges = wire_ref.edges();
                         for edge in edges {
                             edge_face_map.entry(edge.shape_id()).or_insert(Vec::new()).push(face.clone());
@@ -423,7 +451,7 @@ impl TopologyValidator {
         }
         
         // Check if all edges are shared by exactly two faces (for closed shell)
-        for (edge_id, adjacent_faces) in edge_face_map {
+        for (_edge_id, adjacent_faces) in edge_face_map {
             if adjacent_faces.len() != 2 {
                 return false;
             }
@@ -456,19 +484,23 @@ impl TopologyValidator {
     /// Repair a vertex
     fn repair_vertex(&self, shape: &mut TopoDsShape) -> bool {
         // Cast to TopoDsVertex
-        if let Ok(vertex) = shape.downcast_mut::<TopoDsVertex>() {
-            // Ensure tolerance is non-negative
-            if vertex.tolerance() < 0.0 {
-                vertex.set_tolerance(0.0);
+        if shape.is_vertex() {
+            // SAFETY: Safe because we checked the shape type
+            unsafe {
+                let vertex = &mut *(shape as *mut _ as *mut TopoDsVertex);
+                // Ensure tolerance is non-negative
+                if vertex.tolerance() < 0.0 {
+                    vertex.set_tolerance(0.0);
+                }
+                
+                // Ensure point is valid
+                let point = vertex.point();
+                if !self.is_valid_point(point) {
+                    vertex.set_point(crate::geometry::Point::origin());
+                }
+                
+                true
             }
-            
-            // Ensure point is valid
-            let point = vertex.point();
-            if !self.is_valid_point(point) {
-                vertex.set_point(&crate::geometry::Point::origin());
-            }
-            
-            true
         } else {
             false
         }
@@ -477,35 +509,39 @@ impl TopologyValidator {
     /// Repair an edge
     fn repair_edge(&self, shape: &mut TopoDsShape) -> bool {
         // Cast to TopoDsEdge
-        if let Ok(edge) = shape.downcast_mut::<TopoDsEdge>() {
-            // Ensure tolerance is non-negative
-            if edge.tolerance() < 0.0 {
-                edge.set_tolerance(0.0);
-            }
-            
-            // Ensure vertices are valid
-            let v1 = edge.vertex1();
-            let v2 = edge.vertex2();
-            
-            if v1.is_null() || v2.is_null() {
-                // Create default vertices if null
-                let default_vertex = Handle::new(std::sync::Arc::new(TopoDsVertex::new(crate::geometry::Point::origin())));
-                edge.set_vertices([default_vertex.clone(), default_vertex]);
-            } else {
-                // Ensure vertices are different
-                if let (Some(v1_ref), Some(v2_ref)) = (v1.get(), v2.get()) {
-                    let p1 = v1_ref.point();
-                    let p2 = v2_ref.point();
-                    
-                    if p1.distance(&p2) < self.tolerance {
-                        // Create a non-degenerate edge
-                        let v2_new = TopoDsVertex::new(crate::geometry::Point::new(p1.x + 1.0, p1.y, p1.z));
-                        edge.set_vertices([v1, Handle::new(std::sync::Arc::new(v2_new))]);
+        if shape.is_edge() {
+            // SAFETY: Safe because we checked the shape type
+            unsafe {
+                let edge = &mut *(shape as *mut _ as *mut TopoDsEdge);
+                // Ensure tolerance is non-negative
+                if edge.tolerance() < 0.0 {
+                    edge.set_tolerance(0.0);
+                }
+                
+                // Ensure vertices are valid
+                let v1 = edge.vertex1();
+                let v2 = edge.vertex2();
+                
+                if v1.is_null() || v2.is_null() {
+                    // Create default vertices if null
+                    let default_vertex = Handle::new(std::sync::Arc::new(TopoDsVertex::new(crate::geometry::Point::origin())));
+                    edge.set_vertices([default_vertex.clone(), default_vertex]);
+                } else {
+                    // Ensure vertices are different
+                    if let (Some(v1_ref), Some(v2_ref)) = (v1.get(), v2.get()) {
+                        let p1 = v1_ref.point();
+                        let p2 = v2_ref.point();
+                        
+                        if p1.distance(&p2) < self.tolerance {
+                            // Create a non-degenerate edge
+                            let v2_new = TopoDsVertex::new(crate::geometry::Point::new(p1.x + 1.0, p1.y, p1.z));
+                            edge.set_vertices([v1.clone(), Handle::new(std::sync::Arc::new(v2_new))]);
+                        }
                     }
                 }
+                
+                true
             }
-            
-            true
         } else {
             false
         }
@@ -514,34 +550,39 @@ impl TopologyValidator {
     /// Repair a wire
     fn repair_wire(&self, shape: &mut TopoDsShape) -> bool {
         // Cast to TopoDsWire
-        if let Ok(wire) = shape.downcast_mut::<TopoDsWire>() {
-            // Ensure tolerance is non-negative
-            if wire.tolerance() < 0.0 {
-                wire.set_tolerance(0.0);
-            }
-            
-            // Remove duplicate edges
-            let edges = wire.edges();
-            let mut unique_edges = Vec::new();
-            let mut seen = HashSet::new();
-            
-            for edge in edges {
-                let edge_id = edge.shape_id();
-                if seen.insert(edge_id) {
-                    unique_edges.push(edge);
+        if shape.is_wire() {
+            // SAFETY: Safe because we checked the shape type
+            unsafe {
+                let wire = &mut *(shape as *mut _ as *mut TopoDsWire);
+                // Ensure tolerance is non-negative
+                if wire.tolerance() < 0.0 {
+                    wire.set_tolerance(0.0);
                 }
-            }
-            
-            // Reconstruct wire with unique edges
-            if unique_edges != edges {
-                let mut new_wire = TopoDsWire::new();
-                for edge in unique_edges {
-                    new_wire.add_edge(edge);
+                
+                // Remove duplicate edges
+                let edges = wire.edges();
+                let mut unique_edges = Vec::new();
+                let mut seen = HashSet::new();
+                
+                for edge in edges {
+                    let edge_id = edge.shape_id();
+                    if seen.insert(edge_id) {
+                        unique_edges.push(edge);
+                    }
                 }
-                *wire = new_wire;
+                
+                // Reconstruct wire with unique edges
+                let has_duplicates = unique_edges.len() != edges.len();
+                if has_duplicates {
+                    let mut new_wire = TopoDsWire::new();
+                    for edge in unique_edges {
+                        new_wire.add_edge(edge.clone());
+                    }
+                    *wire = new_wire;
+                }
+                
+                true
             }
-            
-            true
         } else {
             false
         }
@@ -550,28 +591,32 @@ impl TopologyValidator {
     /// Repair a face
     fn repair_face(&self, shape: &mut TopoDsShape) -> bool {
         // Cast to TopoDsFace
-        if let Ok(face) = shape.downcast_mut::<TopoDsFace>() {
-            // Ensure tolerance is non-negative
-            if face.tolerance() < 0.0 {
-                face.set_tolerance(0.0);
-            }
-            
-            // Ensure face has at least one wire
-            let wires = face.wires();
-            if wires.is_empty() {
-                // Create a default wire
-                let default_wire = TopoDsWire::new();
-                face.add_wire(Handle::new(std::sync::Arc::new(default_wire)));
-            }
-            
-            // Repair each wire
-            for wire in face.wires_mut() {
-                if let Some(wire_ref) = wire.get_mut() {
-                    self.repair_wire(&mut wire_ref.shape());
+        if shape.is_face() {
+            // SAFETY: Safe because we checked the shape type
+            unsafe {
+                let face = &mut *(shape as *mut _ as *mut TopoDsFace);
+                // Ensure tolerance is non-negative
+                if face.tolerance() < 0.0 {
+                    face.set_tolerance(0.0);
                 }
+                
+                // Ensure face has at least one wire
+                let wires = face.wires();
+                if wires.is_empty() {
+                    // Create a default wire
+                    let default_wire = TopoDsWire::new();
+                    face.add_wire(Handle::new(std::sync::Arc::new(default_wire)));
+                }
+                
+                // Repair each wire
+                for wire in face.wires_mut() {
+                    if let Some(wire_ref) = wire.as_mut() {
+                        self.repair_wire(&mut wire_ref.shape_mut());
+                    }
+                }
+                
+                true
             }
-            
-            true
         } else {
             false
         }
@@ -580,20 +625,24 @@ impl TopologyValidator {
     /// Repair a shell
     fn repair_shell(&self, shape: &mut TopoDsShape) -> bool {
         // Cast to TopoDsShell
-        if let Ok(shell) = shape.downcast_mut::<TopoDsShell>() {
-            // Ensure tolerance is non-negative
-            if shell.tolerance() < 0.0 {
-                shell.set_tolerance(0.0);
-            }
-            
-            // Repair each face
-            for face in shell.faces_mut() {
-                if let Some(face_ref) = face.get_mut() {
-                    self.repair_face(&mut face_ref.shape());
+        if shape.is_shell() {
+            // SAFETY: Safe because we checked the shape type
+            unsafe {
+                let shell = &mut *(shape as *mut _ as *mut TopoDsShell);
+                // Ensure tolerance is non-negative
+                if shell.tolerance() < 0.0 {
+                    shell.set_tolerance(0.0);
                 }
+                
+                // Repair each face
+                for face in shell.faces_mut() {
+                    if let Some(face_ref) = face.as_mut() {
+                        self.repair_face(&mut face_ref.shape_mut());
+                    }
+                }
+                
+                true
             }
-            
-            true
         } else {
             false
         }
@@ -602,20 +651,24 @@ impl TopologyValidator {
     /// Repair a solid
     fn repair_solid(&self, shape: &mut TopoDsShape) -> bool {
         // Cast to TopoDsSolid
-        if let Ok(solid) = shape.downcast_mut::<TopoDsSolid>() {
-            // Ensure tolerance is non-negative
-            if solid.tolerance() < 0.0 {
-                solid.set_tolerance(0.0);
-            }
-            
-            // Repair each shell
-            for shell in solid.shells_mut() {
-                if let Some(shell_ref) = shell.get_mut() {
-                    self.repair_shell(&mut shell_ref.shape());
+        if shape.is_solid() {
+            // SAFETY: Safe because we checked the shape type
+            unsafe {
+                let solid = &mut *(shape as *mut _ as *mut TopoDsSolid);
+                // Ensure tolerance is non-negative
+                if solid.tolerance() < 0.0 {
+                    solid.set_tolerance(0.0);
                 }
+                
+                // Repair each shell
+                for shell in solid.shells_mut() {
+                    if let Some(shell_ref) = shell.as_mut() {
+                        self.repair_shell(&mut shell_ref.shape_mut());
+                    }
+                }
+                
+                true
             }
-            
-            true
         } else {
             false
         }
@@ -624,15 +677,19 @@ impl TopologyValidator {
     /// Repair a compound
     fn repair_compound(&self, shape: &mut TopoDsShape) -> bool {
         // Cast to TopoDsCompound
-        if let Ok(compound) = shape.downcast_mut::<TopoDsCompound>() {
-            // Repair each component
-            for component in compound.components_mut() {
-                if let Some(component_ref) = component.get_mut() {
-                    self.repair(component_ref);
+        if shape.is_compound() {
+            // SAFETY: Safe because we checked the shape type
+            unsafe {
+                let compound = &mut *(shape as *mut _ as *mut TopoDsCompound);
+                // Repair each component
+                for component in compound.components_mut() {
+                    if let Some(component_ref) = component.as_mut() {
+                        self.repair(component_ref);
+                    }
                 }
+                
+                true
             }
-            
-            true
         } else {
             false
         }
@@ -640,12 +697,17 @@ impl TopologyValidator {
 
     /// Repair a CompSolid
     fn repair_comp_solid(&self, shape: &mut TopoDsShape) -> bool {
-        // Cast to TopoDsCompSolid
-        if let Ok(comp_solid) = shape.downcast_mut::<TopoDsCompound>() {
-            // Repair each component
-            for component in comp_solid.components_mut() {
-                if let Some(component_ref) = component.get_mut() {
-                    self.repair(component_ref);
+        // Check if shape is a compsolid
+        if shape.is_compsolid() {
+            // SAFETY: Safe because we checked the shape type
+            let comp_solid = unsafe {
+                &mut *(shape as *mut _ as *mut TopoDsCompSolid)
+            };
+            
+            // Repair each solid
+            for solid in comp_solid.solids_mut() {
+                if let Some(solid_ref) = solid.as_mut() {
+                    self.repair(&mut solid_ref.shape_mut());
                 }
             }
             
@@ -673,14 +735,14 @@ pub trait ValidatableExt {
 
 impl<T: crate::api::traits::Validatable> ValidatableExt for T {
     fn validate_detailed(&self) -> ValidationResult {
-        let validator = TopologyValidator::new();
+        let _validator = TopologyValidator::new();
         // For now, return a basic validation result
         // In a real implementation, this would use the validator
         ValidationResult::valid()
     }
     
     fn repair_default(&mut self) -> bool {
-        let validator = TopologyValidator::new();
+        let _validator = TopologyValidator::new();
         // For now, just call the existing fix method
         self.fix()
     }

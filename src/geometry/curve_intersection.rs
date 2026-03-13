@@ -740,6 +740,8 @@ mod tests {
         let intersections = CurveIntersection2D::bezier_bezier(&curve1, &curve2, 0.01, 32);
         assert!(!intersections.is_empty());
     }
+
+    #[test]
     fn test_line_line_intersection() {
         let line1 = Line2D::new(Point::new(0.0, 0.0, 0.0), Direction::new(1.0, 0.0, 0.0));
         let line2 = Line2D::new(Point::new(1.0, 0.0, 0.0), Direction::new(0.0, 1.0, 0.0));

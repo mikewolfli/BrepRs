@@ -1,7 +1,8 @@
 use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 use crate::geometry::{Point, Vector};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NurbsCurve2D {
     poles: Vec<Point>,
     weights: Vec<StandardReal>,
@@ -408,6 +409,24 @@ impl Default for NurbsCurve2D {
             multiplicities: vec![2, 2],
             is_rational: false,
             is_periodic: false,
+        }
+    }
+}
+
+impl crate::topology::Curve for NurbsCurve2D {
+    fn value(&self, parameter: f64) -> Point {
+        self.position(parameter as StandardReal)
+    }
+
+    fn derivative(&self, parameter: f64) -> Vector {
+        self.d1(parameter as StandardReal)
+    }
+
+    fn parameter_range(&self) -> (f64, f64) {
+        if self.knots.is_empty() {
+            (0.0, 1.0)
+        } else {
+            (self.knots[0] as f64, *self.knots.last().unwrap() as f64)
         }
     }
 }

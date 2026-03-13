@@ -819,8 +819,9 @@ impl MeshQualityRepairer {
 
                 // Check if face is flipped (negative z-component for 2D)
                 if normal.z < 0.0 {
-                    // Reverse face vertices
-                    face.vertices.reverse();
+                    // Reverse face vertices while keeping the first vertex in place
+                    // [v0, v1, v2] -> [v0, v2, v1]
+                    face.vertices.swap(1, 2);
                 }
             }
         }

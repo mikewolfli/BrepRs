@@ -56,6 +56,11 @@ impl TopoDsSolid {
         &self.shells
     }
 
+    /// Get mutable reference to the shells of the solid
+    pub fn shells_mut(&mut self) -> &mut [Handle<TopoDsShell>] {
+        &mut self.shells
+    }
+
     /// Get the number of shells in the solid
     pub fn num_shells(&self) -> usize {
         self.shells.len()

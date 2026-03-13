@@ -1,14 +1,15 @@
 use crate::foundation::handle::Handle;
-use crate::geometry::{Point, Vector};
+use crate::geometry::{Point, Vector, CurveEnum};
 use crate::topology::{
     topods_location::TopoDsLocation, topods_shape::TopoDsShape, topods_vertex::TopoDsVertex,
+    topods_face::TopoDsFace,
 };
 use serde::{Deserialize, Serialize};
 
 /// Trait for curves that can be associated with edges
 ///
 /// Curves are reference-counted via Handle<T> to allow sharing between multiple edges.
-pub trait Curve: std::fmt::Debug + Send + Sync + Serialize + for<'de> Deserialize<'de> {
+pub trait Curve: std::fmt::Debug + Send + Sync {
     /// Get the point on the curve at a parameter value
     fn value(&self, parameter: f64) -> Point;
 
@@ -26,7 +27,7 @@ pub trait Curve: std::fmt::Debug + Send + Sync + Serialize + for<'de> Deserializ
 /// (infinite curve) or closed (loop).
 ///
 /// # Curve Ownership and Lifetime
-/// - The edge holds a `Handle<dyn Curve>` which is a thread-safe reference-counted pointer
+/// - The edge holds a `Handle<CurveEnum>` which is a thread-safe reference-counted pointer
 /// - Multiple edges can share the same curve instance
 /// - The curve will be automatically dropped when all handles to it are dropped
 /// - Curves must implement `Send + Sync` to be used in a `Handle`
@@ -46,7 +47,7 @@ pub trait Curve: std::fmt::Debug + Send + Sync + Serialize + for<'de> Deserializ
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TopoDsEdge {
     shape: TopoDsShape,
-    curve: Option<Handle<dyn Curve>>,
+    curve: Option<Handle<CurveEnum>>,
     vertices: [Handle<TopoDsVertex>; 2],
     adjacent_faces: Vec<Handle<TopoDsFace>>,
     tolerance: f64,
@@ -70,7 +71,7 @@ impl TopoDsEdge {
     pub fn with_curve(
         vertex1: Handle<TopoDsVertex>,
         vertex2: Handle<TopoDsVertex>,
-        curve: Handle<dyn Curve>,
+        curve: Handle<CurveEnum>,
     ) -> Self {
         Self {
             shape: TopoDsShape::new(crate::topology::shape_enum::ShapeType::Edge),
@@ -124,12 +125,12 @@ impl TopoDsEdge {
     }
 
     /// Get the curve of the edge
-    pub fn curve(&self) -> Option<&Handle<dyn Curve>> {
+    pub fn curve(&self) -> Option<&Handle<CurveEnum>> {
         self.curve.as_ref()
     }
 
     /// Set the curve of the edge
-    pub fn set_curve(&mut self, curve: Option<Handle<dyn Curve>>) {
+    pub fn set_curve(&mut self, curve: Option<Handle<CurveEnum>>) {
         self.curve = curve;
     }
 
@@ -336,6 +337,7 @@ impl Clone for TopoDsEdge {
             shape: self.shape.clone(),
             curve: self.curve.clone(),
             vertices: self.vertices.clone(),
+            adjacent_faces: self.adjacent_faces.clone(),
             tolerance: self.tolerance,
             orientation: self.orientation,
         }

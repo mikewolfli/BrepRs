@@ -100,6 +100,11 @@ impl Point {
         self.distance(other) <= crate::geometry::traits::TOLERANCE as StandardReal
     }
 
+    /// Calculate dot product with a vector
+    pub fn dot(&self, other: &crate::geometry::Vector) -> StandardReal {
+        self.x * other.x + self.y * other.y + self.z * other.z
+    }
+
     pub fn mirror(&mut self, point: &Point) {
         self.x = 2.0 * point.x - self.x;
         self.y = 2.0 * point.y - self.y;

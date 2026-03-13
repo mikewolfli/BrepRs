@@ -1,7 +1,8 @@
 use crate::foundation::types::StandardReal;
 use crate::geometry::{Axis, Direction, Point, Transform};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Cone {
     location: Point,
     direction: Direction,

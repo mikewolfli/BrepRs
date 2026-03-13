@@ -1,7 +1,8 @@
 use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 use crate::geometry::{Point, Vector};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BezierCurve2D {
     poles: Vec<Point>,
     weights: Vec<StandardReal>,
@@ -353,6 +354,20 @@ impl Default for BezierCurve2D {
             poles: vec![Point::origin()],
             weights: vec![1.0],
         }
+    }
+}
+
+impl crate::topology::Curve for BezierCurve2D {
+    fn value(&self, parameter: f64) -> Point {
+        self.position(parameter as StandardReal)
+    }
+
+    fn derivative(&self, parameter: f64) -> Vector {
+        self.d1(parameter as StandardReal)
+    }
+
+    fn parameter_range(&self) -> (f64, f64) {
+        (0.0, 1.0)
     }
 }
 

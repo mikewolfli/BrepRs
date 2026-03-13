@@ -1,6 +1,5 @@
 /// Downcast inner Arc to a specific type if possible
 // Moved to impl block below
-use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
@@ -21,9 +20,51 @@ use std::sync::Arc;
 /// - Use `is_null()` to check if a handle is null
 /// - Use `as_ref()` for safe access to the inner value
 /// - Use `as_mut()` for mutable access (only possible if no other references exist)
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Handle<T: ?Sized> {
     inner: Option<Arc<T>>,
+}
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+#[cfg(feature = "serde")]
+impl<T: ?Sized + Serialize> Serialize for Handle<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match &self.inner {
+            Some(arc) => {
+                // Serialize the inner value, not the Arc itself
+                arc.as_ref().serialize(serializer)
+            }
+            None => {
+                // Serialize a null value
+                serializer.serialize_none()
+            }
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de, T: ?Sized + Deserialize<'de>> Deserialize<'de> for Handle<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        // Deserialize as Option<T>
+        let value: Option<T> = Option::deserialize(deserializer)?;
+        match value {
+            Some(v) => {
+                // Create a new Arc from the deserialized value
+                Ok(Handle::new(Arc::new(v)))
+            }
+            None => {
+                // Create a null handle
+                Ok(Handle::null())
+            }
+        }
+    }
 }
 
 impl<T: ?Sized> Handle<T> {
@@ -294,7 +335,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
+    #[should_panic(expected = "Attempted to dereference null handle")]
     fn test_handle_deref_null() {
         let handle: Handle<i32> = Handle::null();
         // This should panic

@@ -1,4 +1,4 @@
-use crate::geometry::{Axis, Direction, Point, Transform, Vector};
+use crate::geometry::{Axis, Direction, Matrix, Point, Transform, Vector};
 
 /// Represents a location in 3D space
 ///
@@ -165,7 +165,7 @@ impl TopoDsLocation {
 
     /// Rotate the location around an axis
     pub fn rotate(&mut self, axis: Axis, angle: f64) {
-        let rotation = Transform::rotation(axis, angle);
+        let rotation = Transform::from_rotation(&axis, angle);
         self.transformation = rotation.multiply(&self.transformation);
     }
 
@@ -174,7 +174,7 @@ impl TopoDsLocation {
         if factor <= 0.0 {
             panic!("Scale factor must be positive");
         }
-        let scaling = Transform::scaling(factor, factor, factor);
+        let scaling = Transform::from_scale(factor);
         self.transformation = scaling.multiply(&self.transformation);
     }
 
@@ -183,13 +183,17 @@ impl TopoDsLocation {
         if sx <= 0.0 || sy <= 0.0 || sz <= 0.0 {
             panic!("Scale factors must be positive");
         }
-        let scaling = Transform::scaling(sx, sy, sz);
+        // Create a custom transformation for non-uniform scaling
+        let mut scaling = Transform::identity();
+        scaling.set_values(sx, &Vector::zero(), &Matrix::from_array([[1.0, 0.0, 0.0], [0.0, sy/sx, 0.0], [0.0, 0.0, sz/sx]]));
         self.transformation = scaling.multiply(&self.transformation);
     }
 
     /// Mirror the location across a plane
     pub fn mirror(&mut self, point: Point, normal: Direction) {
-        let mirror = Transform::mirror(point, normal);
+        // Create an axis for mirroring
+        let axis = Axis::new(point, normal);
+        let mirror = Transform::from_axis_mirror(&axis);
         self.transformation = mirror.multiply(&self.transformation);
     }
 }

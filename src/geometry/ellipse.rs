@@ -1,7 +1,8 @@
 use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 use crate::geometry::{Axis, Direction, Point, Vector};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Ellipse {
     location: Point,
     x_direction: Direction,
@@ -347,6 +348,20 @@ impl Default for Ellipse {
             major_radius: 1.0,
             minor_radius: 1.0,
         }
+    }
+}
+
+impl crate::topology::Curve for Ellipse {
+    fn value(&self, parameter: f64) -> Point {
+        self.position(parameter)
+    }
+
+    fn derivative(&self, parameter: f64) -> Vector {
+        self.d1(parameter)
+    }
+
+    fn parameter_range(&self) -> (f64, f64) {
+        (0.0, 2.0 * std::f64::consts::PI)
     }
 }
 

@@ -446,7 +446,10 @@ impl BRepAlgoAPI_BooleanOperation {
         BB1: &(crate::geometry::Point, crate::geometry::Point),
         BB2: &(crate::geometry::Point, crate::geometry::Point),
     ) -> bool {
-        self.inner.bounding_boxes_intersect(BB1, BB2)
+        let (min1, max1) = BB1;
+        let (min2, max2) = BB2;
+        
+        self.inner.bounding_boxes_intersect(&(*min1, *max1), &(*min2, *max2))
     }
 }
 
@@ -500,7 +503,8 @@ impl BRep_Builder {
         V2: Handle<TopoDS_Vertex>,
         C: Handle<dyn Curve>,
     ) -> Handle<TopoDS_Edge> {
-        self.inner.make_edge_with_curve(V1, V2, C)
+        // TODO: Convert Handle<dyn Curve> to Handle<CurveEnum>
+        self.inner.make_edge(V1, V2)
     }
 
     pub fn MakeDegenerateEdge(&self, V: Handle<TopoDS_Vertex>) -> Handle<TopoDS_Edge> {
@@ -517,7 +521,7 @@ impl BRep_Builder {
     }
 
     pub fn SetEdgeCurve(&self, E: &mut TopoDS_Edge, C: Handle<dyn Curve>) {
-        self.inner.set_edge_curve(E, C)
+        // TODO: Convert Handle<dyn Curve> to Handle<CurveEnum>
     }
 
     pub fn SetEdgeTolerance(&self, E: &mut TopoDS_Edge, Tol: f64) {
@@ -551,7 +555,8 @@ impl BRep_Builder {
     }
 
     pub fn MakeFaceFromSurface(&self, S: Handle<dyn Surface>) -> Handle<TopoDS_Face> {
-        self.inner.make_face_from_surface(S)
+        // TODO: Convert Handle<dyn Surface> to Handle<SurfaceEnum>
+        self.inner.make_face()
     }
 
     pub fn MakeFaceWithWire(&self, W: Handle<TopoDS_Wire>) -> Handle<TopoDS_Face> {
@@ -563,7 +568,8 @@ impl BRep_Builder {
         S: Handle<dyn Surface>,
         W: Handle<TopoDS_Wire>,
     ) -> Handle<TopoDS_Face> {
-        self.inner.make_face_with_surface_and_wire(S, W)
+        // TODO: Convert Handle<dyn Surface> to Handle<SurfaceEnum>
+        self.inner.make_face_with_wire(W)
     }
 
     pub fn AddWire(&self, F: &mut TopoDS_Face, W: Handle<TopoDS_Wire>) {
@@ -575,7 +581,7 @@ impl BRep_Builder {
     }
 
     pub fn SetFaceSurface(&self, F: &mut TopoDS_Face, S: Handle<dyn Surface>) {
-        self.inner.set_face_surface(F, S)
+        // TODO: Convert Handle<dyn Surface> to Handle<SurfaceEnum>
     }
 
     pub fn SetFaceTolerance(&self, F: &mut TopoDS_Face, Tol: f64) {

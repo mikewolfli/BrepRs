@@ -8,11 +8,11 @@
 //! vertices, edges, wires, faces, shells, solids, and compounds. All operations are thread-safe and ergonomic.
 
 use crate::foundation::handle::Handle;
-use crate::geometry::Point;
+use crate::geometry::{CurveEnum, Point, SurfaceEnum};
 use crate::topology::{
     topods_compound::TopoDsCompound,
-    topods_edge::{Curve, TopoDsEdge},
-    topods_face::{Surface, TopoDsFace},
+    topods_edge::TopoDsEdge,
+    topods_face::TopoDsFace,
     topods_shape::TopoDsShape,
     topods_shell::TopoDsShell,
     topods_solid::TopoDsSolid,
@@ -87,7 +87,7 @@ impl BrepBuilder {
         &self,
         v1: Handle<TopoDsVertex>,
         v2: Handle<TopoDsVertex>,
-        curve: Handle<dyn Curve>,
+        curve: Handle<CurveEnum>,
     ) -> Handle<TopoDsEdge> {
         Handle::new(std::sync::Arc::new(TopoDsEdge::with_curve(v1, v2, curve)))
     }
@@ -111,7 +111,7 @@ impl BrepBuilder {
 
     /// Set edge curve
     #[inline]
-    pub fn set_edge_curve(&self, edge: &mut TopoDsEdge, curve: Handle<dyn Curve>) {
+    pub fn set_edge_curve(&self, edge: &mut TopoDsEdge, curve: Handle<CurveEnum>) {
         edge.set_curve(Some(curve));
     }
 
@@ -169,7 +169,7 @@ impl BrepBuilder {
 
     /// Create a face from a surface
     #[inline]
-    pub fn make_face_from_surface(&self, surface: Handle<dyn Surface>) -> Handle<TopoDsFace> {
+    pub fn make_face_from_surface(&self, surface: Handle<SurfaceEnum>) -> Handle<TopoDsFace> {
         let mut face = TopoDsFace::new();
         face.set_surface(surface);
         Handle::new(std::sync::Arc::new(face))
@@ -187,7 +187,7 @@ impl BrepBuilder {
     #[inline]
     pub fn make_face_with_surface_and_wire(
         &self,
-        surface: Handle<dyn Surface>,
+        surface: Handle<SurfaceEnum>,
         wire: Handle<TopoDsWire>,
     ) -> Handle<TopoDsFace> {
         let mut face = TopoDsFace::with_outer_wire((*wire).clone());
@@ -209,7 +209,7 @@ impl BrepBuilder {
 
     /// Set face surface
     #[inline]
-    pub fn set_face_surface(&self, face: &mut TopoDsFace, surface: Handle<dyn Surface>) {
+    pub fn set_face_surface(&self, face: &mut TopoDsFace, surface: Handle<SurfaceEnum>) {
         face.set_surface(surface);
     }
 

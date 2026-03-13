@@ -168,7 +168,7 @@ pub fn make_sphere(radius: f64, center: Option<Point>) -> TopoDsSolid {
     let sphere = Sphere::new(center, radius);
 
     // Create face with sphere surface
-    let face = TopoDsFace::with_surface(Handle::new(Arc::new(sphere)));
+    let face = TopoDsFace::with_surface(Handle::new(Arc::new(crate::geometry::surface_enum::SurfaceEnum::Sphere(sphere))));
 
     // Create shell
     let mut shell = TopoDsShell::new();
@@ -206,12 +206,12 @@ pub fn make_cylinder(
 
     // Create faces
     // 1. Side face (cylinder surface)
-    let side_face = TopoDsFace::with_surface(Handle::new(Arc::new(cylinder)));
+    let side_face = TopoDsFace::with_surface(Handle::new(Arc::new(crate::geometry::surface_enum::SurfaceEnum::Cylinder(cylinder))));
 
     // 2. Bottom face (circle)
     let bottom_center = center;
     let bottom_plane = Plane::new(bottom_center, *axis.direction(), Direction::x_axis());
-    let bottom_face = TopoDsFace::with_surface(Handle::new(Arc::new(bottom_plane)));
+    let bottom_face = TopoDsFace::with_surface(Handle::new(Arc::new(crate::geometry::surface_enum::SurfaceEnum::Plane(bottom_plane))));
 
     // 3. Top face (circle)
     let top_center = Point::new(
@@ -220,7 +220,7 @@ pub fn make_cylinder(
         axis.location().z + axis.direction().z * height,
     );
     let top_plane = Plane::new(top_center, *axis.direction(), Direction::x_axis());
-    let top_face = TopoDsFace::with_surface(Handle::new(Arc::new(top_plane)));
+    let top_face = TopoDsFace::with_surface(Handle::new(Arc::new(crate::geometry::surface_enum::SurfaceEnum::Plane(top_plane))));
 
     // Create shell
     let mut shell = TopoDsShell::new();
@@ -270,12 +270,12 @@ pub fn make_cone(
 
     // Create faces
     // 1. Side face (cone surface)
-    let side_face = TopoDsFace::with_surface(Handle::new(Arc::new(cone)));
+    let side_face = TopoDsFace::with_surface(Handle::new(Arc::new(crate::geometry::surface_enum::SurfaceEnum::Cone(cone))));
 
     // 2. Bottom face (circle)
     let bottom_center = center;
     let bottom_plane = Plane::new(bottom_center, *axis.direction(), Direction::x_axis());
-    let bottom_face = TopoDsFace::with_surface(Handle::new(Arc::new(bottom_plane)));
+    let bottom_face = TopoDsFace::with_surface(Handle::new(Arc::new(crate::geometry::surface_enum::SurfaceEnum::Plane(bottom_plane))));
 
     // 3. Top face (circle)
     let top_center = Point::new(
@@ -284,7 +284,7 @@ pub fn make_cone(
         center.z + axis.direction().z * height,
     );
     let top_plane = Plane::new(top_center, *axis.direction(), Direction::x_axis());
-    let top_face = TopoDsFace::with_surface(Handle::new(Arc::new(top_plane)));
+    let top_face = TopoDsFace::with_surface(Handle::new(Arc::new(crate::geometry::surface_enum::SurfaceEnum::Plane(top_plane))));
 
     // Create shell
     let mut shell = TopoDsShell::new();
@@ -316,7 +316,7 @@ pub fn make_torus(major_radius: f64, minor_radius: f64, center: Option<Point>) -
     let torus = Torus::new(center, Direction::z_axis(), major_radius, minor_radius);
 
     // Create face with torus surface
-    let face = TopoDsFace::with_surface(Handle::new(Arc::new(torus)));
+    let face = TopoDsFace::with_surface(Handle::new(Arc::new(crate::geometry::surface_enum::SurfaceEnum::Torus(torus))));
 
     // Create shell
     let mut shell = TopoDsShell::new();
