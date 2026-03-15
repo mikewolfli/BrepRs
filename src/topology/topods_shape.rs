@@ -286,6 +286,7 @@ impl TopoDsShape {
     pub fn as_compound(&self) -> Option<&crate::topology::topods_compound::TopoDsCompound> {
         None
     }
+
 }
 
 // Implement Transformable trait for TopoDsShape

@@ -741,6 +741,8 @@ pub struct RepairParams {
     pub min_hole_area: f64,
     /// Maximum hole area to fill
     pub max_hole_area: f64,
+    /// Tolerance for geometric operations
+    pub tolerance: f64,
 }
 
 impl Default for RepairParams {
@@ -753,6 +755,7 @@ impl Default for RepairParams {
             max_hole_edge_length: 1.0,
             min_hole_area: 0.001,
             max_hole_area: 10.0,
+            tolerance: 1e-6,
         }
     }
 }
@@ -1185,9 +1188,67 @@ impl MeshQualityRepairer {
     }
 
     /// Remove overlapping elements in 3D mesh
-    fn remove_overlapping_elements_3d(&self, _mesh: &mut Mesh3D) {
-        // This is a simplified implementation
-        // In a real implementation, we would check for overlapping tetrahedrons
+    fn remove_overlapping_elements_3d(&self, mesh: &mut Mesh3D) {
+        if mesh.tetrahedrons.len() < 2 {
+            return;
+        }
+
+        let mut to_remove = std::collections::HashSet::new();
+        let tolerance = self.params.tolerance;
+
+        // Check each pair of tetrahedrons for overlap
+        for i in 0..mesh.tetrahedrons.len() {
+            if to_remove.contains(&i) {
+                continue;
+            }
+
+            let tetra_i = &mesh.tetrahedrons[i];
+            let vertices_i: Vec<_> = tetra_i
+                .vertices
+                .iter()
+                .map(|&v| &mesh.vertices[v].point)
+                .collect();
+
+            for j in (i + 1)..mesh.tetrahedrons.len() {
+                if to_remove.contains(&j) {
+                    continue;
+                }
+
+                let tetra_j = &mesh.tetrahedrons[j];
+                let vertices_j: Vec<_> = tetra_j
+                    .vertices
+                    .iter()
+                    .map(|&v| &mesh.vertices[v].point)
+                    .collect();
+
+                // Check if tetrahedrons share all four vertices (duplicate)
+                let mut shared_vertices = 0;
+                for vi in &vertices_i {
+                    for vj in &vertices_j {
+                        let dx = vi.x - vj.x;
+                        let dy = vi.y - vj.y;
+                        let dz = vi.z - vj.z;
+                        let dist_sq = dx * dx + dy * dy + dz * dz;
+                        if dist_sq < tolerance * tolerance {
+                            shared_vertices += 1;
+                            break;
+                        }
+                    }
+                }
+
+                // If all 4 vertices are shared, it's a duplicate
+                if shared_vertices >= 4 {
+                    to_remove.insert(j);
+                }
+            }
+        }
+
+        // Remove overlapping tetrahedrons (in reverse order to maintain indices)
+        let mut indices: Vec<_> = to_remove.into_iter().collect();
+        indices.sort_by(|a, b| b.cmp(a));
+        for idx in indices {
+            mesh.tetrahedrons.remove(idx);
+        }
     }
 
     /// Smooth 3D mesh using Taubin smoothing
@@ -1253,9 +1314,173 @@ impl MeshQualityRepairer {
     }
 
     /// Fix normal consistency in 3D mesh
-    fn fix_normal_consistency_3d(&self, _mesh: &mut Mesh3D) {
-        // This is a simplified implementation
-        // In a real implementation, we would check and fix normal consistency for faces
+    fn fix_normal_consistency_3d(&self, mesh: &mut Mesh3D) {
+        if mesh.tetrahedrons.is_empty() {
+            return;
+        }
+
+        // Build adjacency information for tetrahedrons
+        let num_tetra = mesh.tetrahedrons.len();
+        let mut adjacency: Vec<std::collections::HashSet<usize>> =
+            vec![std::collections::HashSet::new(); num_tetra];
+
+        // Find shared faces between tetrahedrons
+        for i in 0..num_tetra {
+            let tetra_i = &mesh.tetrahedrons[i];
+            let faces_i = [
+                [tetra_i.vertices[0], tetra_i.vertices[1], tetra_i.vertices[2]],
+                [tetra_i.vertices[0], tetra_i.vertices[1], tetra_i.vertices[3]],
+                [tetra_i.vertices[0], tetra_i.vertices[2], tetra_i.vertices[3]],
+                [tetra_i.vertices[1], tetra_i.vertices[2], tetra_i.vertices[3]],
+            ];
+
+            for j in (i + 1)..num_tetra {
+                let tetra_j = &mesh.tetrahedrons[j];
+                let faces_j = [
+                    [tetra_j.vertices[0], tetra_j.vertices[1], tetra_j.vertices[2]],
+                    [tetra_j.vertices[0], tetra_j.vertices[1], tetra_j.vertices[3]],
+                    [tetra_j.vertices[0], tetra_j.vertices[2], tetra_j.vertices[3]],
+                    [tetra_j.vertices[1], tetra_j.vertices[2], tetra_j.vertices[3]],
+                ];
+
+                // Check if any faces are shared
+                for face_i in &faces_i {
+                    for face_j in &faces_j {
+                        let mut shared = 0;
+                        for &vi in face_i {
+                            if face_j.contains(&vi) {
+                                shared += 1;
+                            }
+                        }
+                        if shared == 3 {
+                            adjacency[i].insert(j);
+                            adjacency[j].insert(i);
+                        }
+                    }
+                }
+            }
+        }
+
+        // BFS to ensure consistent orientation
+        let mut visited = vec![false; num_tetra];
+        let mut to_flip = vec![false; num_tetra];
+        let mut queue = std::collections::VecDeque::new();
+
+        // Start from first tetrahedron
+        queue.push_back(0);
+        visited[0] = true;
+
+        while let Some(current) = queue.pop_front() {
+            let current_tetra = &mesh.tetrahedrons[current];
+            let current_faces = [
+                [
+                    current_tetra.vertices[0],
+                    current_tetra.vertices[1],
+                    current_tetra.vertices[2],
+                ],
+                [
+                    current_tetra.vertices[0],
+                    current_tetra.vertices[1],
+                    current_tetra.vertices[3],
+                ],
+                [
+                    current_tetra.vertices[0],
+                    current_tetra.vertices[2],
+                    current_tetra.vertices[3],
+                ],
+                [
+                    current_tetra.vertices[1],
+                    current_tetra.vertices[2],
+                    current_tetra.vertices[3],
+                ],
+            ];
+
+            for &neighbor in &adjacency[current] {
+                if visited[neighbor] {
+                    continue;
+                }
+
+                let neighbor_tetra = &mesh.tetrahedrons[neighbor];
+                let neighbor_faces = [
+                    [
+                        neighbor_tetra.vertices[0],
+                        neighbor_tetra.vertices[1],
+                        neighbor_tetra.vertices[2],
+                    ],
+                    [
+                        neighbor_tetra.vertices[0],
+                        neighbor_tetra.vertices[1],
+                        neighbor_tetra.vertices[3],
+                    ],
+                    [
+                        neighbor_tetra.vertices[0],
+                        neighbor_tetra.vertices[2],
+                        neighbor_tetra.vertices[3],
+                    ],
+                    [
+                        neighbor_tetra.vertices[1],
+                        neighbor_tetra.vertices[2],
+                        neighbor_tetra.vertices[3],
+                    ],
+                ];
+
+                // Find shared face
+                for (fi, face_i) in current_faces.iter().enumerate() {
+                    for (fj, face_j) in neighbor_faces.iter().enumerate() {
+                        let mut shared_vertices = 0;
+                        let mut i_in_j = [false; 3];
+                        let mut j_in_i = [false; 3];
+
+                        for (ii, &vi) in face_i.iter().enumerate() {
+                            for (ij, &vj) in face_j.iter().enumerate() {
+                                if vi == vj {
+                                    shared_vertices += 1;
+                                    i_in_j[ii] = true;
+                                    j_in_i[ij] = true;
+                                }
+                            }
+                        }
+
+                        if shared_vertices == 3 {
+                            // Check if orientations are consistent
+                            // In a properly oriented mesh, shared faces should have opposite winding
+                            let mut consistent = true;
+                            for ii in 0..3 {
+                                let vi = face_i[ii];
+                                let vj = face_j[ii];
+                                // Find position of vi in face_j
+                                let pos_in_j = face_j.iter().position(|&v| v == vi).unwrap();
+                                // In consistent orientation, the order should be reversed
+                                if ii == pos_in_j {
+                                    consistent = false;
+                                    break;
+                                }
+                            }
+
+                            if !consistent {
+                                to_flip[neighbor] = !to_flip[neighbor];
+                            }
+
+                            visited[neighbor] = true;
+                            queue.push_back(neighbor);
+                            break;
+                        }
+                    }
+                    if visited[neighbor] {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Apply flips
+        for (i, should_flip) in to_flip.iter().enumerate() {
+            if *should_flip {
+                // Swap two vertices to flip orientation
+                let tetra = &mut mesh.tetrahedrons[i];
+                tetra.vertices.swap(0, 1);
+            }
+        }
     }
 }
 
