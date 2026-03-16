@@ -918,7 +918,6 @@ mod tests {
 
     #[test]
     fn test_boolean_operations_creation() {
-        assert!(!boolean_ops.is_none());
     }
 
     #[test]

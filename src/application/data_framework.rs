@@ -1,30 +1,15 @@
 //! Data framework for application
-//!
+//! 
 //! This module provides the data framework for BrepRs applications,
 //! including data storage, management, and synchronization.
 
-use crate::topology::TopoDsShape;
+use std::any::Any;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
-
-/// Trait to enable downcasting
-pub trait AsAny {
-    fn as_any(&self) -> &dyn std::any::Any;
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
-}
-
-impl<T: 'static> AsAny for T {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-}
+use crate::topology::TopoDsShape;
 
 /// Data object trait
-pub trait DataObject: Send + Sync + AsAny {
+pub trait DataObject: Send + Sync {
     /// Get object ID
     fn id(&self) -> String;
     /// Get object name
@@ -35,6 +20,10 @@ pub trait DataObject: Send + Sync + AsAny {
     fn type_name(&self) -> String;
     /// Clone the object
     fn clone_object(&self) -> Box<dyn DataObject>;
+    /// Get as Any for downcasting
+    fn as_any(&self) -> &dyn Any;
+    /// Get mutable as Any for downcasting
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
 /// Data container for holding data objects
@@ -56,16 +45,15 @@ impl DataContainer {
     pub fn add_object(&mut self, object: Box<dyn DataObject>) -> String {
         let id = object.id();
         let name = object.name();
-
-        self.objects
-            .insert(id.clone(), Arc::new(RwLock::new(object)));
-
+        
+        self.objects.insert(id.clone(), Arc::new(RwLock::new(object)));
+        
         // Update name index
         self.name_index
             .entry(name)
             .or_insert_with(HashSet::new)
             .insert(id.clone());
-
+        
         id
     }
 
@@ -126,7 +114,6 @@ impl Default for DataContainer {
 }
 
 /// Shape data object
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ShapeData {
     id: String,
     name: String,
@@ -196,6 +183,14 @@ impl DataObject for ShapeData {
             attributes: self.attributes.clone(),
         })
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 /// Data transaction for atomic operations
@@ -228,14 +223,12 @@ impl<'a> DataTransaction<'a> {
 
     /// Remove an object
     pub fn remove(&mut self, id: &str) {
-        self.operations
-            .push(TransactionOperation::Remove(id.to_string()));
+        self.operations.push(TransactionOperation::Remove(id.to_string()));
     }
 
     /// Update an object
     pub fn update(&mut self, id: &str, object: Box<dyn DataObject>) {
-        self.operations
-            .push(TransactionOperation::Update(id.to_string(), object));
+        self.operations.push(TransactionOperation::Update(id.to_string(), object));
     }
 
     /// Commit the transaction
@@ -243,7 +236,6 @@ impl<'a> DataTransaction<'a> {
         for op in self.operations {
             match op {
                 TransactionOperation::Add(id, object) => {
-                    // id 未被使用，可直接忽略
                     self.container.add_object(object);
                 }
                 TransactionOperation::Remove(id) => {
@@ -266,26 +258,30 @@ impl<'a> DataTransaction<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::topology::ShapeType;
     use crate::topology::TopoDsShape;
+    use crate::topology::ShapeType;
 
     #[test]
     fn test_data_container() {
         let mut container = DataContainer::new();
-
+        
         let shape = TopoDsShape::new(ShapeType::Vertex);
-        let shape_data = ShapeData::new("shape1".to_string(), "Test Shape".to_string(), shape);
-
+        let shape_data = ShapeData::new(
+            "shape1".to_string(),
+            "Test Shape".to_string(),
+            shape
+        );
+        
         let id = container.add_object(Box::new(shape_data));
         assert_eq!(id, "shape1");
         assert_eq!(container.count(), 1);
-
+        
         let retrieved = container.get_object(&id);
         assert!(retrieved.is_some());
-
+        
         let objects_by_name = container.get_objects_by_name("Test Shape");
         assert_eq!(objects_by_name.len(), 1);
-
+        
         container.remove_object(&id);
         assert_eq!(container.count(), 0);
     }
@@ -293,15 +289,19 @@ mod tests {
     #[test]
     fn test_shape_data() {
         let shape = TopoDsShape::new(ShapeType::Vertex);
-        let mut shape_data = ShapeData::new("shape1".to_string(), "Test Shape".to_string(), shape);
-
+        let mut shape_data = ShapeData::new(
+            "shape1".to_string(),
+            "Test Shape".to_string(),
+            shape
+        );
+        
         assert_eq!(shape_data.id(), "shape1");
         assert_eq!(shape_data.name(), "Test Shape");
         assert_eq!(shape_data.type_name(), "ShapeData");
-
+        
         shape_data.add_attribute("color", "red");
         assert_eq!(shape_data.get_attribute("color"), Some(&"red".to_string()));
-
+        
         shape_data.set_name("Renamed Shape".to_string());
         assert_eq!(shape_data.name(), "Renamed Shape");
     }
@@ -309,18 +309,26 @@ mod tests {
     #[test]
     fn test_data_transaction() {
         let mut container = DataContainer::new();
-
+        
         let shape1 = TopoDsShape::new(ShapeType::Vertex);
-        let shape_data1 = ShapeData::new("shape1".to_string(), "Shape 1".to_string(), shape1);
-
+        let shape_data1 = ShapeData::new(
+            "shape1".to_string(),
+            "Shape 1".to_string(),
+            shape1
+        );
+        
         let shape2 = TopoDsShape::new(ShapeType::Edge);
-        let shape_data2 = ShapeData::new("shape2".to_string(), "Shape 2".to_string(), shape2);
-
+        let shape_data2 = ShapeData::new(
+            "shape2".to_string(),
+            "Shape 2".to_string(),
+            shape2
+        );
+        
         let mut transaction = DataTransaction::new(&mut container);
         transaction.add(Box::new(shape_data1));
         transaction.add(Box::new(shape_data2));
         transaction.commit();
-
+        
         assert_eq!(container.count(), 2);
     }
 }

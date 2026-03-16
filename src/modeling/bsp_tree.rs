@@ -220,8 +220,8 @@ impl BspNode {
         for edge_handle in edges_slice.iter() {
             if let Some(edge) = edge_handle.get() {
                 if let (Some(start), Some(end)) = (edge.start_vertex().get(), edge.end_vertex().get()) {
-                    let start_point = start.point();
-                    let end_point = end.point();
+                    let start_point = *start.point();
+                    let end_point = *end.point();
                     let start_dist = plane.distance(&start_point);
                     let end_dist = plane.distance(&end_point);
                     
@@ -260,7 +260,7 @@ impl BspNode {
             
             // Create face from wire
             let wire_handle = crate::foundation::handle::Handle::new(std::sync::Arc::new(wire));
-            Some(builder.make_face_with_wire(wire_handle))
+            builder.make_face_with_wire(wire_handle).as_ref().map(|f| f.clone())
         } else {
             None
         }
@@ -407,8 +407,9 @@ impl BspTree {
 
         // Insert remaining faces in parallel
         if let Some(ref mut root) = self.root {
-            // Create a vector to hold results from parallel processing
-            let mut subtrees = Vec::new();
+            // Create a thread-safe vector to hold results from parallel processing
+            use std::sync::{Arc, Mutex};
+            let subtrees = Arc::new(Mutex::new(Vec::new()));
             
             // Process faces in chunks in parallel
             faces[1..].par_chunks(100).for_each(|chunk| {
@@ -426,11 +427,11 @@ impl BspTree {
                 }
                 
                 // Add subtree to results
-                subtrees.push(subtree);
+                subtrees.lock().unwrap().push(subtree);
             });
             
             // Merge all subtrees back into the main tree
-            for subtree in subtrees {
+            for subtree in Arc::try_unwrap(subtrees).unwrap().into_inner().unwrap() {
                 if let Some(sub_root) = subtree.root {
                     self.merge_tree(&sub_root);
                 }
@@ -448,7 +449,7 @@ impl BspTree {
         }
 
         // Add all faces from other
-
+        let other_faces = other.collect_all_faces();
         for face in other_faces {
             result.insert_face(face);
         }
@@ -619,7 +620,7 @@ impl BspTree {
                     let end_point = end.point();
                     
                     // Check if ray intersects this edge
-                    if self.ray_intersects_edge(*point, ray_dir, start_point, end_point) {
+                    if self.ray_intersects_edge(point, &ray_dir, &start_point, &end_point) {
                         intersection_count += 1;
                     }
                 }
@@ -631,13 +632,13 @@ impl BspTree {
     }
     
     /// Check if a ray intersects an edge
-    fn ray_intersects_edge(&self, origin: crate::geometry::Point, dir: crate::geometry::Vector, p1: crate::geometry::Point, p2: crate::geometry::Point) -> bool {
+    fn ray_intersects_edge(&self, origin: &crate::geometry::Point, dir: &crate::geometry::Vector, p1: &crate::geometry::Point, p2: &crate::geometry::Point) -> bool {
         // Implementation of ray-edge intersection
         let edge_vec = crate::geometry::Vector::new(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z);
         let ray_vec = dir;
         
         let cross = edge_vec.cross(&ray_vec);
-        let denom = cross.length();
+        let denom = cross.magnitude();
         
         if denom < 1e-6 {
             return false; // Ray and edge are parallel

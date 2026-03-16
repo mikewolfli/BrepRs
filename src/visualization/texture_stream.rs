@@ -378,11 +378,8 @@ impl Texture {
 #[derive(Debug, Clone)]
 struct TextureCacheEntry {
     texture_id: u64,
-    #[allow(dead_code)]
     lod_level: u32,
-    #[allow(dead_code)]
     last_used: u64,
-    #[allow(dead_code)]
     access_count: u64,
 }
 
@@ -602,7 +599,7 @@ impl TextureStreamingSystem {
     /// Get cache statistics
     #[inline]
     pub fn cache_stats(&self) -> (usize, usize) {
-        let cache = self.cache.lock().unwrap();
+        let cache = self.cache.lock().unwrap_or(VecDeque::new());
         (cache.len(), self.max_cache_size)
     }
 }

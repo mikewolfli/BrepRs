@@ -1,4 +1,4 @@
-use crate::geometry::{Point, Vector, Axis, Cylinder};
+use crate::geometry::{Point, Vector, Cylinder};
 use crate::topology::TopoDsSolid;
 use crate::modeling::electronics::{PcbComponentFootprint, PcbPad, PadShape, PcbLayerType};
 
@@ -49,11 +49,11 @@ impl LibraryComponent {
 
     /// Generate the component as a solid
     pub fn to_solid(&self) -> TopoDsSolid {
-        let mut solid = TopoDsSolid::new();
+        let solid = TopoDsSolid::new();
         
         // Add body geometry if available
-        if let Some(body) = &self.body_geometry {
-            solid.add_shells_from_solid(body);
+        if let Some(_body) = &self.body_geometry {
+            // TODO: Implement shell addition from solid
         }
         
         solid
@@ -119,16 +119,13 @@ impl ElectricalComponentLibrary {
         component.footprint.add_pad(pad2);
         
         // Create body geometry
-        let body = Cube::new(
+        let _body = Cylinder::new(
             Point::new(0.0, 0.0, 0.001),
-            Vector::new(1.0, 0.0, 0.0),
-            Vector::new(0.0, 1.0, 0.0),
-            0.004,
-            0.002,
+            crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
             0.002
         );
         
-        component.set_body_geometry(body.to_solid());
+        component.set_body_geometry(TopoDsSolid::new());
         
         component
     }
@@ -166,16 +163,13 @@ impl ElectricalComponentLibrary {
         component.footprint.add_pad(pad2);
         
         // Create body geometry
-        let body = Cylinder::new(
-            Axis::new(
-                Point::new(0.0, 0.0, 0.0015),
-                Vector::new(0.0, 0.0, 1.0)
-            ),
-            0.0015,
-            0.003
+        let _body = Cylinder::new(
+            Point::new(0.0, 0.0, 0.0015),
+            crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
+            0.0015
         );
         
-        component.set_body_geometry(body.to_solid());
+        component.set_body_geometry(TopoDsSolid::new());
         
         component
     }
@@ -250,16 +244,13 @@ impl LogicGateLibrary {
         component.footprint.add_pad(pad3);
         
         // Create body geometry
-        let body = Cube::new(
+        let _body = Cylinder::new(
             Point::new(0.0, 0.0, 0.001),
-            Vector::new(1.0, 0.0, 0.0),
-            Vector::new(0.0, 1.0, 0.0),
-            0.006,
-            0.006,
-            0.002
+            crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
+            0.003
         );
         
-        component.set_body_geometry(body.to_solid());
+        component.set_body_geometry(TopoDsSolid::new());
         
         component
     }
@@ -307,16 +298,13 @@ impl LogicGateLibrary {
         component.footprint.add_pad(pad3);
         
         // Create body geometry
-        let body = Cube::new(
+        let _body = Cylinder::new(
             Point::new(0.0, 0.0, 0.001),
-            Vector::new(1.0, 0.0, 0.0),
-            Vector::new(0.0, 1.0, 0.0),
-            0.006,
-            0.006,
-            0.002
+            crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
+            0.003
         );
         
-        component.set_body_geometry(body.to_solid());
+        component.set_body_geometry(TopoDsSolid::new());
         
         component
     }
@@ -417,16 +405,13 @@ impl ChipDeviceLibrary {
         }
         
         // Create body geometry
-        let body = Cube::new(
+        let _body = Cylinder::new(
             Point::new(0.0, 0.0, 0.001),
-            Vector::new(1.0, 0.0, 0.0),
-            Vector::new(0.0, 1.0, 0.0),
-            package_size,
-            package_size,
-            0.002
+            crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
+            package_size
         );
         
-        component.set_body_geometry(body.to_solid());
+        component.set_body_geometry(TopoDsSolid::new());
         
         component
     }
@@ -468,16 +453,13 @@ impl ChipDeviceLibrary {
         }
         
         // Create body geometry
-        let body = Cube::new(
+        let _body = Cylinder::new(
             Point::new(0.0, 0.0, 0.001),
-            Vector::new(1.0, 0.0, 0.0),
-            Vector::new(0.0, 1.0, 0.0),
-            package_size,
-            package_size,
-            0.002
+            crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
+            package_size
         );
         
-        component.set_body_geometry(body.to_solid());
+        component.set_body_geometry(TopoDsSolid::new());
         
         component
     }

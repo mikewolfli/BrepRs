@@ -67,6 +67,8 @@ impl<'de, T: ?Sized + Deserialize<'de>> Deserialize<'de> for Handle<T> {
     }
 }
 
+use std::any::Any;
+
 impl<T: ?Sized> Handle<T> {
     #[inline]
     pub fn new(obj: Arc<T>) -> Self {
@@ -120,6 +122,13 @@ impl<T: ?Sized> Handle<T> {
             Some(arc) => Arc::get_mut(arc),
             None => None,
         }
+    }
+}
+
+// Provide as_any for Handle<T> where T: Any + 'static
+impl<T: Any + 'static> Handle<T> {
+    pub fn as_any(&self) -> Option<&dyn Any> {
+        self.as_ref().map(|v| v as &dyn Any)
     }
 }
 

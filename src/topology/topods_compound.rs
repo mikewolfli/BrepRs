@@ -42,11 +42,6 @@ impl TopoDsCompound {
         &self.components
     }
 
-    /// Get mutable reference to the components of the compound
-    pub fn components_mut(&mut self) -> &mut [Handle<TopoDsShape>] {
-        &mut self.components
-    }
-
     /// Get the number of components in the compound
     pub fn num_components(&self) -> usize {
         self.components.len()
@@ -215,22 +210,6 @@ impl TopoDsCompound {
     }
 
     /// Get all components of a specific type
-    ///
-    /// Returns a vector of cloned handles for all components matching the specified shape type.
-    /// This method creates new Handle instances, which increases memory usage but provides
-    /// ownership of the handles.
-    ///
-    /// # Arguments
-    /// * `shape_type` - The type of shape to filter for (e.g., ShapeType::Vertex, ShapeType::Edge)
-    ///
-    /// # Returns
-    /// A vector of cloned Handle<TopoDsShape> instances matching the specified type
-    ///
-    /// # Example
-    /// ```
-    /// let compound = TopoDsCompound::new();
-    /// let vertices = compound.components_of_type(ShapeType::Vertex);
-    /// ```
     pub fn components_of_type(
         &self,
         shape_type: crate::topology::shape_enum::ShapeType,
@@ -238,41 +217,7 @@ impl TopoDsCompound {
         self.components
             .iter()
             .filter(|c| c.shape_type() == shape_type)
-            .map(|c| c.clone())
-            .collect()
-    }
-
-    /// Get all components of a specific type as references
-    ///
-    /// Returns a vector of references to handles for all components matching the specified shape type.
-    /// This method is more memory-efficient than components_of_type() as it doesn't clone the handles,
-    /// but the references are only valid as long as the compound exists.
-    ///
-    /// # Arguments
-    /// * `shape_type` - The type of shape to filter for (e.g., ShapeType::Vertex, ShapeType::Edge)
-    ///
-    /// # Returns
-    /// A vector of references to Handle<TopoDsShape> instances matching the specified type
-    ///
-    /// # Performance
-    /// This method is preferred over components_of_type() when you only need to read the components
-    /// and don't need ownership, as it avoids unnecessary memory allocations.
-    ///
-    /// # Example
-    /// ```
-    /// let compound = TopoDsCompound::new();
-    /// let vertices = compound.components_of_type_refs(ShapeType::Vertex);
-    /// for vertex in vertices {
-    ///     // Read vertex data without cloning
-    /// }
-    /// ```
-    pub fn components_of_type_refs(
-        &self,
-        shape_type: crate::topology::shape_enum::ShapeType,
-    ) -> Vec<&Handle<TopoDsShape>> {
-        self.components
-            .iter()
-            .filter(|c| c.shape_type() == shape_type)
+            .cloned()
             .collect()
     }
 }
@@ -334,11 +279,6 @@ impl TopoDsCompSolid {
     /// Get the solids of the composite solid
     pub fn solids(&self) -> &[Handle<crate::topology::topods_solid::TopoDsSolid>] {
         &self.solids
-    }
-
-    /// Get mutable reference to the solids of the composite solid
-    pub fn solids_mut(&mut self) -> &mut [Handle<crate::topology::topods_solid::TopoDsSolid>] {
-        &mut self.solids
     }
 
     /// Get the number of solids in the composite solid

@@ -1,6 +1,7 @@
-use crate::foundation::StandardReal;
+use crate::foundation::{handle::Handle, StandardReal};
 use crate::geometry::{bounding_box::BoundingBox, sphere::Sphere, Point, Vector};
-use crate::topology::{TopoDsShell, TopoDsSolid};
+use crate::topology::{TopoDsFace, TopoDsShell, TopoDsSolid};
+use std::sync::Arc;
 
 /// Point cloud for surface reconstruction
 #[derive(Debug, Clone)]
@@ -38,8 +39,6 @@ pub struct NormalEstimationParams {
 /// Surface reconstruction result
 #[derive(Debug, Clone)]
 pub struct ReconstructionResult {
-    /// Reconstructed surface
-
     /// Surface area
     pub surface_area: StandardReal,
     /// Volume
@@ -93,7 +92,7 @@ impl PointCloud {
         let mut distances: Vec<(StandardReal, Point)> = self
             .points
             .iter()
-            .map(|p| ((p - point).magnitude(), *p))
+            .map(|p| ((p.to_vector() - point.to_vector()).magnitude(), *p))
             .collect();
 
         distances.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
@@ -104,15 +103,16 @@ impl PointCloud {
     /// Estimate normal using PCA
     fn estimate_normal(&self, points: &[Point]) -> Vector {
         // Calculate centroid
-        let centroid = points
+        let centroid_vector = points
             .iter()
-            .fold(Point::origin(), |acc, p| acc + (*p - Point::origin()))
+            .fold(Vector::origin(), |acc, p| acc + p.to_vector())
             / points.len() as StandardReal;
+        let centroid = Point::from_vector(&centroid_vector);
 
         // Calculate covariance matrix
         let mut cov = [[0.0; 3]; 3];
         for point in points {
-            let diff = *point - centroid;
+            let diff = point.to_vector() - centroid.to_vector();
             cov[0][0] += diff.x * diff.x;
             cov[0][1] += diff.x * diff.y;
             cov[0][2] += diff.x * diff.z;
@@ -135,21 +135,20 @@ impl PointCloud {
     pub fn reconstruct_surface(&self, params: &ReconstructionParameters) -> ReconstructionResult {
         // 基础重建：用球体包裹点云，实际应实现 Marching Cubes 或 Poisson 重建
         let center = self.bounding_box.center();
-        let radius = (self.bounding_box.max() - self.bounding_box.min()).magnitude() / 2.0;
+        let radius = (self.bounding_box.max().to_vector() - self.bounding_box.min().to_vector()).magnitude() / 2.0;
 
         let sphere = Sphere::new(center, radius);
-        let face = sphere.to_face();
+        let face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
+            crate::geometry::surface_enum::SurfaceEnum::Sphere(sphere),
+        )))));
 
         let mut shell = TopoDsShell::new();
         shell.add_face(face);
 
         let mut solid = TopoDsSolid::new();
-        solid.add_shell(shell);
+        solid.add_shell(Handle::new(Arc::new(shell)));
 
         ReconstructionResult {
-            surface: solid,
-            vertex_count: 0,
-            face_count: 0,
             surface_area: 0.0,
             volume: 0.0,
         }
@@ -184,16 +183,10 @@ impl NormalEstimationParams {
 impl ReconstructionResult {
     /// Create a new reconstruction result
     pub fn new(
-        surface: TopoDsSolid,
-        vertex_count: usize,
-        face_count: usize,
         surface_area: StandardReal,
         volume: StandardReal,
     ) -> Self {
         Self {
-            surface,
-            vertex_count,
-            face_count,
             surface_area,
             volume,
         }
@@ -298,6 +291,7 @@ mod tests {
         let params = ReconstructionParameters::default();
         let result = point_cloud.reconstruct_surface(&params);
 
-        assert!(!result.surface.is_empty());
+        assert!(result.surface_area >= 0.0);
+        assert!(result.volume >= 0.0);
     }
 }

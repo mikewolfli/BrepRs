@@ -186,7 +186,7 @@ impl SurfaceEnum {
                 let u = u_min + i as f64 * du;
                 let v = v_min + j as f64 * dv;
                 let p = self.value(u, v);
-                if (p - *point).length() < tolerance {
+                if (p - *point).magnitude() < tolerance {
                     return true;
                 }
             }
@@ -254,11 +254,7 @@ mod tests {
 
     #[test]
     fn test_surface_enum_plane() {
-        let plane = super::super::plane::Plane::new(
-            Point::new(0.0, 0.0, 0.0),
-            super::super::direction::Direction::from_vector(&super::super::vector::Vector::new(0.0, 0.0, 1.0)),
-            super::super::direction::Direction::x_axis(),
-        );
+        let plane = super::super::plane::Plane::xy_plane();
         let surface = SurfaceEnum::Plane(plane);
 
         let origin = surface.value(0.0, 0.0);

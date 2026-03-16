@@ -1,7 +1,7 @@
 use crate::foundation::handle::Handle;
 use crate::foundation::StandardReal;
 
-use crate::geometry::{axis::Axis, cylinder::Cylinder, sphere::Sphere, Point};
+use crate::geometry::{axis::Axis, cylinder::Cylinder, sphere::Sphere, Point, Vector, Direction};
 use crate::topology::{TopoDsFace, TopoDsShell, TopoDsSolid};
 use std::sync::Arc;
 
@@ -118,47 +118,31 @@ impl DraftTube {
 
         // Create outer cylinder
         let outer_cylinder = Cylinder::new(
-            Axis::new(
-                self.origin
-                    + Vector::new(
-                        self.axis.direction().x,
-                        self.axis.direction().y,
-                        self.axis.direction().z,
-                    ) * self.bottom_clearance,
-                *self.axis.direction(),
-            ),
+            self.origin + self.axis.direction().to_vector() * self.bottom_clearance,
+            *self.axis.direction(),
             self.diameter / 2.0,
-            self.height,
         );
 
         // Create inner cylinder (hollow)
         let inner_cylinder = Cylinder::new(
-            Axis::new(
-                self.origin
-                    + Vector::new(
-                        self.axis.direction().x,
-                        self.axis.direction().y,
-                        self.axis.direction().z,
-                    ) * self.bottom_clearance,
-                *self.axis.direction(),
-            ),
+            self.origin + self.axis.direction().to_vector() * self.bottom_clearance,
+            *self.axis.direction(),
             (self.diameter - 2.0 * self.wall_thickness) / 2.0,
-            self.height,
         );
 
         // Create shell from cylinders
         let mut shell = TopoDsShell::new();
-        let outer_face = TopoDsFace::with_surface(Handle::new(Arc::new(
+        let outer_face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
             crate::geometry::surface_enum::SurfaceEnum::Cylinder(outer_cylinder),
-        )));
-        let inner_face = TopoDsFace::with_surface(Handle::new(Arc::new(
+        )))));
+        let inner_face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
             crate::geometry::surface_enum::SurfaceEnum::Cylinder(inner_cylinder),
-        )));
+        )))));
 
         shell.add_face(outer_face);
         shell.add_face(inner_face);
 
-        solid.add_shell(shell);
+        solid.add_shell(Handle::new(Arc::new(shell)));
         solid
     }
 }
@@ -197,16 +181,13 @@ impl Baffle {
         // Create baffle as a rectangular prism
         // TODO: Implement proper baffle geometry
         let baffle_cylinder = Cylinder::new(
-            Axis::new(
-                baffle_origin,
-                crate::geometry::direction::Direction::new(
-                    -self.angle_position.sin(),
-                    self.angle_position.cos(),
-                    0.0,
-                ),
+            baffle_origin,
+            Direction::new(
+                -self.angle_position.sin(),
+                self.angle_position.cos(),
+                0.0,
             ),
             self.thickness / 2.0,
-            self.width,
         );
 
         let mut shell = TopoDsShell::new();
@@ -250,12 +231,9 @@ impl SprayArm {
 
         // Create arm
         let arm_cylinder = Cylinder::new(
-            Axis::new(
-                self.origin,
-                crate::geometry::direction::Direction::new(1.0, 0.0, 0.0), // Horizontal arm
-            ),
+            self.origin,
+            Direction::new(1.0, 0.0, 0.0), // Horizontal arm
             self.diameter / 2.0,
-            self.length,
         );
 
         let mut shell = TopoDsShell::new();
@@ -270,12 +248,9 @@ impl SprayArm {
                 self.origin + Vector::new((i + 1) as StandardReal * self.nozzle_spacing, 0.0, 0.0);
 
             let nozzle_cylinder = Cylinder::new(
-                Axis::new(
-                    nozzle_position,
-                    crate::geometry::direction::Direction::new(0.0, 0.0, -1.0), // Downward facing
-                ),
+                nozzle_position,
+                Direction::new(0.0, 0.0, -1.0), // Downward facing
                 self.nozzle_diameter / 2.0,
-                self.diameter,
             );
 
             let nozzle_face = TopoDsFace::with_surface(Handle::new(Arc::new(
@@ -314,7 +289,11 @@ impl AerationNozzle {
         let mut solid = TopoDsSolid::new();
 
         // Create nozzle body
-        let nozzle_cylinder = Cylinder::new(self.axis, self.diameter / 2.0, self.diameter * 2.0);
+        let nozzle_cylinder = Cylinder::new(
+            *self.axis.location(),
+            *self.axis.direction(),
+            self.diameter / 2.0,
+        );
 
         let mut shell = TopoDsShell::new();
         let nozzle_face = TopoDsFace::with_surface(Handle::new(Arc::new(
@@ -326,8 +305,11 @@ impl AerationNozzle {
         match self.nozzle_type {
             NozzleType::Orifice => {
                 // Single central hole
-                let hole_cylinder =
-                    Cylinder::new(self.axis, self.hole_diameter / 2.0, self.diameter * 2.0);
+                let hole_cylinder = Cylinder::new(
+                    self.origin,
+                    *self.axis.direction(),
+                    self.hole_diameter / 2.0,
+                );
                 let hole_face = TopoDsFace::with_surface(Handle::new(Arc::new(
                     crate::geometry::surface_enum::SurfaceEnum::Cylinder(hole_cylinder),
                 )));
@@ -350,8 +332,11 @@ impl AerationNozzle {
                         ),
                     );
 
-                    let hole_cylinder =
-                        Cylinder::new(hole_axis, self.hole_diameter / 2.0, self.diameter);
+                    let hole_cylinder = Cylinder::new(
+                        *hole_axis.location(),
+                        *hole_axis.direction(),
+                        self.hole_diameter / 2.0,
+                    );
 
                     let hole_face = TopoDsFace::with_surface(Handle::new(Arc::new(
                         crate::geometry::surface_enum::SurfaceEnum::Cylinder(hole_cylinder),
@@ -375,8 +360,11 @@ impl AerationNozzle {
                         crate::geometry::direction::Direction::new(angle.cos(), angle.sin(), 0.0),
                     );
 
-                    let hole_cylinder =
-                        Cylinder::new(hole_axis, self.hole_diameter / 2.0, self.diameter * 0.5);
+                    let hole_cylinder = Cylinder::new(
+                        *hole_axis.location(),
+                        *hole_axis.direction(),
+                        self.hole_diameter / 2.0,
+                    );
 
                     let hole_face = TopoDsFace::with_surface(Handle::new(Arc::new(
                         crate::geometry::surface_enum::SurfaceEnum::Cylinder(hole_cylinder),
@@ -387,12 +375,7 @@ impl AerationNozzle {
             NozzleType::Frit => {
                 // Porous material representation (simplified as solid)
                 let frit_sphere = Sphere::new(
-                    self.origin
-                        + Vector::new(
-                            self.axis.direction().x,
-                            self.axis.direction().y,
-                            self.axis.direction().z,
-                        ) * self.diameter,
+                    self.origin + self.axis.direction().to_vector() * self.diameter,
                     self.diameter / 2.0,
                 );
 
@@ -411,12 +394,12 @@ impl AerationNozzle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::geometry::{axis::Axis, Point, Vector};
+    use crate::geometry::{axis::Axis, Direction, Point, Vector};
 
     #[test]
     fn test_draft_tube_creation() {
         let origin = Point::new(0.0, 0.0, 0.0);
-        let axis = Axis::new(origin, Vector::new(0.0, 0.0, 1.0));
+        let axis = Axis::new(origin, Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)));
 
         let draft_tube = DraftTube::new(1.0, 2.0, 0.2, 0.05, origin, axis);
 
@@ -429,7 +412,7 @@ mod tests {
     #[test]
     fn test_baffle_creation() {
         let origin = Point::new(0.0, 0.0, 0.0);
-        let axis = Axis::new(origin, Vector::new(0.0, 0.0, 1.0));
+        let axis = Axis::new(origin, Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)));
 
         let baffle = Baffle::new(0.1, 2.0, 0.02, 0.05, 0.0, origin, axis);
 
@@ -443,7 +426,7 @@ mod tests {
     #[test]
     fn test_spray_arm_creation() {
         let origin = Point::new(0.0, 0.0, 2.0);
-        let axis = Axis::new(origin, Vector::new(0.0, 0.0, 1.0));
+        let axis = Axis::new(origin, Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)));
 
         let spray_arm = SprayArm::new(1.0, 0.05, 5, 0.01, 0.2, 10.0, origin, axis);
 
@@ -458,7 +441,7 @@ mod tests {
     #[test]
     fn test_aeration_nozzle_creation() {
         let origin = Point::new(0.0, 0.0, 0.1);
-        let axis = Axis::new(origin, Vector::new(0.0, 0.0, 1.0));
+        let axis = Axis::new(origin, Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)));
 
         let nozzle = AerationNozzle::new(NozzleType::Sparger, 0.05, 8, 0.005, origin, axis);
 

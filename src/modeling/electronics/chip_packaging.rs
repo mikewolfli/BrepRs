@@ -1,6 +1,6 @@
 use crate::foundation::StandardReal;
 use crate::geometry::{cylinder::Cylinder, sphere::Sphere, Point, Vector};
-use crate::topology::{TopoDsShell, TopoDsSolid};
+use crate::topology::TopoDsSolid;
 
 /// Chip package type
 #[derive(Debug, Clone, PartialEq)]
@@ -89,15 +89,11 @@ impl SolderBall {
 
     /// Generate the solder ball as a solid
     pub fn to_solid(&self) -> TopoDsSolid {
-        let mut solid = TopoDsSolid::new();
+        let solid = TopoDsSolid::new();
 
         // Create ball
-        let sphere = Sphere::new(self.position, self.diameter / 2.0);
-        let face = sphere.to_face();
-
-        let mut shell = TopoDsShell::new();
-        shell.add_face(face);
-        solid.add_shell(shell);
+        let _sphere = Sphere::new(self.position, self.diameter / 2.0);
+        // TODO: Implement surface conversion
 
         solid
     }
@@ -125,54 +121,42 @@ impl Pin {
 
     /// Generate the pin as a solid
     pub fn to_solid(&self) -> TopoDsSolid {
-        let mut solid = TopoDsSolid::new();
+        let solid = TopoDsSolid::new();
 
         match self.pin_type {
             PinType::ThroughHole => {
                 // Through-hole pin is a cylinder
-                let cylinder = Cylinder::new(
-                    crate::geometry::axis::Axis::new(self.position, self.orientation),
+                let _cylinder = Cylinder::new(
+                    self.position,
+                    crate::geometry::Direction::from_vector(&self.orientation),
                     self.width / 2.0,
-                    self.length,
                 );
-                let face = cylinder.to_face();
-                let mut shell = TopoDsShell::new();
-                shell.add_face(face);
-                solid.add_shell(shell);
+                // TODO: Implement surface conversion
             }
             PinType::SurfaceMount => {
                 // Surface mount pin is a rectangular prism
                 // TODO: Implement proper rectangular prism geometry
-                let cylinder = Cylinder::new(
-                    crate::geometry::axis::Axis::new(self.position, self.orientation),
+                let _cylinder = Cylinder::new(
+                    self.position,
+                    crate::geometry::Direction::from_vector(&self.orientation),
                     self.width / 2.0,
-                    self.length,
                 );
-                let face = cylinder.to_face();
-                let mut shell = TopoDsShell::new();
-                shell.add_face(face);
-                solid.add_shell(shell);
+                // TODO: Implement surface conversion
             }
             PinType::BGABall => {
                 // BGA ball is a sphere
-                let sphere = Sphere::new(self.position, self.width / 2.0);
-                let face = sphere.to_face();
-                let mut shell = TopoDsShell::new();
-                shell.add_face(face);
-                solid.add_shell(shell);
+                let _sphere = Sphere::new(self.position, self.width / 2.0);
+                // TODO: Implement surface conversion
             }
             PinType::LeadFrame => {
                 // Lead frame pin is a thin rectangular prism
                 // TODO: Implement proper lead frame geometry
-                let cylinder = Cylinder::new(
-                    crate::geometry::axis::Axis::new(self.position, self.orientation),
+                let _cylinder = Cylinder::new(
+                    self.position,
+                    crate::geometry::Direction::from_vector(&self.orientation),
                     self.width / 2.0,
-                    self.length,
                 );
-                let face = cylinder.to_face();
-                let mut shell = TopoDsShell::new();
-                shell.add_face(face);
-                solid.add_shell(shell);
+                // TODO: Implement surface conversion
             }
         }
 
@@ -352,26 +336,27 @@ impl ChipPackage {
         let mut solid = TopoDsSolid::new();
 
         // Create package body
-        let (width, length, height) = self.dimensions;
-        let package_origin = self.origin - Vector::new(0.0, 0.0, height / 2.0);
+        let (width, _length, height) = self.dimensions;
+        let package_origin = Point::new(
+            self.origin.x,
+            self.origin.y,
+            self.origin.z - height / 2.0
+        );
 
         // TODO: Implement package body geometry
         // For now, create a simple cylinder as placeholder
-        let cylinder = Cylinder::new(
-            crate::geometry::axis::Axis::new(package_origin, Vector::new(0.0, 0.0, 1.0)),
+        let _cylinder = Cylinder::new(
+            package_origin,
+            crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
             width / 2.0,
-            height,
         );
-        let face = cylinder.to_face();
-        let mut shell = TopoDsShell::new();
-        shell.add_face(face);
-        solid.add_shell(shell);
+        // TODO: Implement surface conversion
 
         // Add pins
         for pin in &self.pins {
             let pin_solid = pin.to_solid();
             for shell in pin_solid.shells() {
-                solid.add_shell(shell);
+                solid.add_shell(shell.clone());
             }
         }
 
@@ -379,7 +364,7 @@ impl ChipPackage {
         for ball in &self.solder_balls {
             let ball_solid = ball.to_solid();
             for shell in ball_solid.shells() {
-                solid.add_shell(shell);
+                solid.add_shell(shell.clone());
             }
         }
 
@@ -390,8 +375,16 @@ impl ChipPackage {
     pub fn bounding_box(&self) -> (Point, Point) {
         let (width, length, height) = self.dimensions;
 
-        let min_point = self.origin - Vector::new(width / 2.0, length / 2.0, height / 2.0);
-        let max_point = self.origin + Vector::new(width / 2.0, length / 2.0, height / 2.0);
+        let min_point = Point::new(
+            self.origin.x - width / 2.0,
+            self.origin.y - length / 2.0,
+            self.origin.z - height / 2.0
+        );
+        let max_point = Point::new(
+            self.origin.x + width / 2.0,
+            self.origin.y + length / 2.0,
+            self.origin.z + height / 2.0
+        );
 
         (min_point, max_point)
     }

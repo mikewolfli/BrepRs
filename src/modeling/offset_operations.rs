@@ -185,7 +185,7 @@ impl OffsetOperations {
                     end_point.y - start_point.y,
                     end_point.z - start_point.z,
                 );
-                let edge_length = edge_vector.length();
+                let edge_length = edge_vector.magnitude();
 
                 if edge_length > 1e-6 {
                     // Calculate normal direction for offset (perpendicular to edge)
@@ -820,7 +820,7 @@ impl OffsetOperations {
             end_point.y - start_point.y,
             end_point.z - start_point.z,
         );
-        let length = direction.length();
+        let length = direction.magnitude();
 
         if length < 1e-6 {
             return (start_point.clone(), end_point.clone());
@@ -1095,7 +1095,7 @@ impl OffsetOperations {
             let v1 = points[i] - origin;
             let v2 = points[i + 1] - origin;
             let cross = v1.cross(&v2);
-            volume += origin.dot(&cross) / 6.0;
+            volume += (origin.x * cross.x + origin.y * cross.y + origin.z * cross.z) / 6.0;
         }
 
         volume.abs()

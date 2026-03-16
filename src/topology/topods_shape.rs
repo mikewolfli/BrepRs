@@ -1,7 +1,7 @@
+use crate::Handle;
 use crate::geometry::{Point, Transform};
 use crate::topology::shape_enum::ShapeType;
 use crate::topology::topods_location::TopoDsLocation;
-use crate::Handle;
 use bincode;
 use std::sync::atomic::{AtomicI32, Ordering};
 
@@ -244,46 +244,53 @@ impl TopoDsShape {
     pub fn as_face(&self) -> Option<&crate::topology::topods_face::TopoDsFace> {
         None
     }
-
+    
     /// Try to cast to edge reference
     ///
     /// Returns None if this shape is not an edge
     pub fn as_edge(&self) -> Option<&crate::topology::topods_edge::TopoDsEdge> {
         None
     }
-
+    
     /// Try to cast to vertex reference
     ///
     /// Returns None if this shape is not a vertex
     pub fn as_vertex(&self) -> Option<&crate::topology::topods_vertex::TopoDsVertex> {
         None
     }
-
+    
     /// Try to cast to wire reference
     ///
     /// Returns None if this shape is not a wire
     pub fn as_wire(&self) -> Option<&crate::topology::topods_wire::TopoDsWire> {
         None
     }
-
+    
     /// Try to cast to shell reference
     ///
     /// Returns None if this shape is not a shell
     pub fn as_shell(&self) -> Option<&crate::topology::topods_shell::TopoDsShell> {
         None
     }
-
+    
     /// Try to cast to solid reference
     ///
     /// Returns None if this shape is not a solid
     pub fn as_solid(&self) -> Option<&crate::topology::topods_solid::TopoDsSolid> {
         None
     }
-
+    
     /// Try to cast to compound reference
     ///
     /// Returns None if this shape is not a compound
     pub fn as_compound(&self) -> Option<&crate::topology::topods_compound::TopoDsCompound> {
+        None
+    }
+
+    /// Try to cast to compsolid reference
+    ///
+    /// Returns None if this shape is not a compsolid
+    pub fn as_compsolid(&self) -> Option<&crate::topology::topods_compsolid::TopoDsCompSolid> {
         None
     }
 }
@@ -376,7 +383,7 @@ impl crate::api::traits::Transformable for TopoDsShape {
 // Implement BooleanOps trait for TopoDsShape
 impl crate::api::traits::BooleanOps for TopoDsShape {
     /// Perform fuse operation on two shapes
-    ///
+    /// 
     /// Default implementation: create a compound shape containing both shapes
     /// Subclasses should override this with proper implementation for specific shape types
     fn fuse(&self, other: &Self) -> Self
@@ -390,7 +397,7 @@ impl crate::api::traits::BooleanOps for TopoDsShape {
     }
 
     /// Perform cut operation on two shapes
-    ///
+    /// 
     /// Default implementation: return self (no actual cutting)
     /// Subclasses should override this with proper implementation for specific shape types
     fn cut(&self, _other: &Self) -> Self
@@ -401,7 +408,7 @@ impl crate::api::traits::BooleanOps for TopoDsShape {
     }
 
     /// Perform intersect operation on two shapes
-    ///
+    /// 
     /// Default implementation: return an empty compound
     /// Subclasses should override this with proper implementation for specific shape types
     fn intersect(&self, _other: &Self) -> Self
@@ -414,7 +421,7 @@ impl crate::api::traits::BooleanOps for TopoDsShape {
     }
 
     /// Perform section operation on a shape with a plane
-    ///
+    /// 
     /// Default implementation: return an empty compound
     /// Subclasses should override this with proper implementation for specific shape types
     fn section(&self, _point: crate::geometry::Point, _normal: crate::geometry::Direction) -> Self
@@ -430,7 +437,7 @@ impl crate::api::traits::BooleanOps for TopoDsShape {
 // Implement FilletChamferOps trait for TopoDsShape
 impl crate::api::traits::FilletChamferOps for TopoDsShape {
     /// Apply fillet to all edges of the shape
-    ///
+    /// 
     /// Default implementation: return self (no actual filleting)
     /// Subclasses should override this with proper implementation for specific shape types
     fn fillet(&self, radius: f64) -> Self
@@ -444,7 +451,7 @@ impl crate::api::traits::FilletChamferOps for TopoDsShape {
     }
 
     /// Apply fillet to specific edges of the shape
-    ///
+    /// 
     /// Default implementation: return self (no actual filleting)
     /// Subclasses should override this with proper implementation for specific shape types
     fn fillet_edges(&self, edge_indices: &[usize], radius: f64) -> Self
@@ -461,7 +468,7 @@ impl crate::api::traits::FilletChamferOps for TopoDsShape {
     }
 
     /// Apply chamfer to all edges of the shape
-    ///
+    /// 
     /// Default implementation: return self (no actual chamfering)
     /// Subclasses should override this with proper implementation for specific shape types
     fn chamfer(&self, distance: f64) -> Self
@@ -475,7 +482,7 @@ impl crate::api::traits::FilletChamferOps for TopoDsShape {
     }
 
     /// Apply chamfer to edges between specific faces
-    ///
+    /// 
     /// Default implementation: return self (no actual chamfering)
     /// Subclasses should override this with proper implementation for specific shape types
     fn chamfer_faces(&self, face_indices: &[usize], distance: f64) -> Self
@@ -495,7 +502,7 @@ impl crate::api::traits::FilletChamferOps for TopoDsShape {
 // Implement OffsetOps trait for TopoDsShape
 impl crate::api::traits::OffsetOps for TopoDsShape {
     /// Apply offset to the shape
-    ///
+    /// 
     /// Default implementation: return self (no actual offsetting)
     /// Subclasses should override this with proper implementation for specific shape types
     fn offset(&self, _distance: f64) -> Self
@@ -506,7 +513,7 @@ impl crate::api::traits::OffsetOps for TopoDsShape {
     }
 
     /// Apply thickening to the shape
-    ///
+    /// 
     /// Default implementation: return self (no actual thickening)
     /// Subclasses should override this with proper implementation for specific shape types
     fn thicken(&self, _thickness: f64) -> Self
@@ -517,7 +524,7 @@ impl crate::api::traits::OffsetOps for TopoDsShape {
     }
 
     /// Create a hollow version of the shape with specified thickness
-    ///
+    /// 
     /// Default implementation: return self (no actual hollowing)
     /// Subclasses should override this with proper implementation for specific shape types
     fn hollow(&self, _thickness: f64) -> Self
@@ -636,8 +643,7 @@ impl crate::api::traits::Measurable for TopoDsShape {
                 // For compound, return average of component centroids
                 if self.is_compound() {
                     unsafe {
-                        let compound = &*(self as *const _
-                            as *const crate::topology::topods_compound::TopoDsCompound);
+                        let compound = &*(self as *const _ as *const crate::topology::topods_compound::TopoDsCompound);
                         let components = compound.components();
                         if components.is_empty() {
                             return crate::geometry::Point::origin();
@@ -817,11 +823,7 @@ impl crate::api::traits::Validatable for TopoDsShape {
     fn validation_errors(&self) -> Vec<String> {
         let validator = crate::topology::validation::TopologyValidator::new();
         let result = validator.validate(self);
-        result
-            .errors
-            .into_iter()
-            .map(|e| format!("{:?}", e))
-            .collect()
+        result.errors.into_iter().map(|e| format!("{:?}", e)).collect()
     }
 
     fn fix(&mut self) -> bool {

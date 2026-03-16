@@ -36,7 +36,7 @@ pub struct Mesher2DParams {
     /// Proximity refinement factor
     pub proximity_factor: f64,
     /// Size field control
-    pub size_field: Option<Box<dyn Fn(&Point) -> f64>>,
+    pub size_field: Option<Box<dyn Fn(&Point) -> f64 + Send + Sync>>,
     /// Maximum edge length
     pub max_edge_length: f64,
     /// Minimum edge length
@@ -337,58 +337,21 @@ impl Mesher2D {
 
     /// Refine mesh
     fn refine_mesh(&self, mesh: &mut Mesh2D) {
-        let edges_to_split: Vec<usize> = {
-            #[cfg(feature = "rayon")]
-            {
-                let max_edge_length = self.params.max_edge_length;
-                let input_vertices = &self.input_vertices;
-                let vertex_sizes = &self.vertex_sizes;
+        let mut edges_to_split = Vec::new();
 
-                mesh
-                    .edges
-                    .par_iter()
-                    .enumerate()
-                    .filter_map(|(edge_id, edge)| {
-                        let v0 = &mesh.vertices[edge.vertices[0]];
-                        let v1 = &mesh.vertices[edge.vertices[1]];
-                        let length = ((v1.point.x - v0.point.x).powi(2)
-                            + (v1.point.y - v0.point.y).powi(2))
-                        .sqrt();
-
-                        // Determine appropriate edge length based on vertices
-                        let mut current_max_edge_length = max_edge_length;
-
-                        // Check if vertices are in the input polygon
-                        for (i, input_vertex) in input_vertices.iter().enumerate() {
-                            if (input_vertex.x - v0.point.x).abs() < 1e-6
-                                && (input_vertex.y - v0.point.y).abs() < 1e-6
-                            {
-                                current_max_edge_length = current_max_edge_length.min(vertex_sizes[i]);
-                            }
-                            if (input_vertex.x - v1.point.x).abs() < 1e-6
-                                && (input_vertex.y - v1.point.y).abs() < 1e-6
-                            {
-                                current_max_edge_length = current_max_edge_length.min(vertex_sizes[i]);
-                            }
-                        }
-
-                        if length > current_max_edge_length {
-                            Some(edge_id)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect()
-            }
-
-            #[cfg(not(feature = "rayon"))]
-            {
-                let mut edges = Vec::new();
-                for (edge_id, edge) in mesh.edges.iter().enumerate() {
+        // Identify edges that need splitting
+        #[cfg(feature = "rayon")]
+        {
+            edges_to_split = mesh
+                .edges
+                .par_iter()
+                .enumerate()
+                .filter_map(|(edge_id, edge)| {
                     let v0 = &mesh.vertices[edge.vertices[0]];
                     let v1 = &mesh.vertices[edge.vertices[1]];
-                    let length =
-                        ((v1.point.x - v0.point.x).powi(2) + (v1.point.y - v0.point.y).powi(2)).sqrt();
+                    let length = ((v1.point.x - v0.point.x).powi(2)
+                        + (v1.point.y - v0.point.y).powi(2))
+                    .sqrt();
 
                     // Determine appropriate edge length based on vertices
                     let mut max_edge_length = self.params.max_edge_length;
@@ -408,12 +371,44 @@ impl Mesher2D {
                     }
 
                     if length > max_edge_length {
-                        edges.push(edge_id);
+                        Some(edge_id)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+        }
+
+        #[cfg(not(feature = "rayon"))]
+        {
+            for (edge_id, edge) in mesh.edges.iter().enumerate() {
+                let v0 = &mesh.vertices[edge.vertices[0]];
+                let v1 = &mesh.vertices[edge.vertices[1]];
+                let length =
+                    ((v1.point.x - v0.point.x).powi(2) + (v1.point.y - v0.point.y).powi(2)).sqrt();
+
+                // Determine appropriate edge length based on vertices
+                let mut max_edge_length = self.params.max_edge_length;
+
+                // Check if vertices are in the input polygon
+                for (i, input_vertex) in self.input_vertices.iter().enumerate() {
+                    if (input_vertex.x - v0.point.x).abs() < 1e-6
+                        && (input_vertex.y - v0.point.y).abs() < 1e-6
+                    {
+                        max_edge_length = max_edge_length.min(self.vertex_sizes[i]);
+                    }
+                    if (input_vertex.x - v1.point.x).abs() < 1e-6
+                        && (input_vertex.y - v1.point.y).abs() < 1e-6
+                    {
+                        max_edge_length = max_edge_length.min(self.vertex_sizes[i]);
                     }
                 }
-                edges
+
+                if length > max_edge_length {
+                    edges_to_split.push(edge_id);
+                }
             }
-        };
+        }
 
         // Split edges
         for edge_id in edges_to_split {

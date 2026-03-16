@@ -1,8 +1,8 @@
 use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 use crate::geometry::{Point, Vector};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct NurbsSurface {
     poles: Vec<Vec<Point>>,
     weights: Vec<Vec<StandardReal>>,
@@ -500,6 +500,24 @@ impl NurbsSurface {
             self.v_knots[self.v_knots.len() - 1]
         }
     }
+
+    /// Get the point on the surface at (u, v) parameters
+    pub fn value(&self, u: f64, v: f64) -> Point {
+        self.position(u as StandardReal, v as StandardReal)
+    }
+
+    /// Get the normal at (u, v) parameters
+    pub fn normal(&self, u: f64, v: f64) -> Vector {
+        let u_dir = self.d1(u as StandardReal, v as StandardReal, true);
+        let v_dir = self.d1(u as StandardReal, v as StandardReal, false);
+        u_dir.cross(&v_dir).normalized()
+    }
+
+    /// Get the parameter range of the surface
+    pub fn parameter_range(&self) -> ((f64, f64), (f64, f64)) {
+        ((self.first_u_parameter() as f64, self.last_u_parameter() as f64), 
+         (self.first_v_parameter() as f64, self.last_v_parameter() as f64))
+    }
 }
 
 impl Default for NurbsSurface {
@@ -517,27 +535,6 @@ impl Default for NurbsSurface {
             is_u_periodic: false,
             is_v_periodic: false,
         }
-    }
-}
-
-impl crate::topology::Surface for NurbsSurface {
-    fn value(&self, u: f64, v: f64) -> Point {
-        self.position(u as StandardReal, v as StandardReal)
-    }
-
-    fn normal(&self, u: f64, v: f64) -> Vector {
-        let du = self.d1(u as StandardReal, v as StandardReal, true);
-        let dv = self.d1(u as StandardReal, v as StandardReal, false);
-        let normal = du.cross(&dv);
-        normal.normalized()
-    }
-
-    fn parameter_range(&self) -> ((f64, f64), (f64, f64)) {
-        let u_min = if self.u_knots.is_empty() { 0.0 } else { self.u_knots[0] as f64 };
-        let u_max = if self.u_knots.is_empty() { 1.0 } else { *self.u_knots.last().unwrap() as f64 };
-        let v_min = if self.v_knots.is_empty() { 0.0 } else { self.v_knots[0] as f64 };
-        let v_max = if self.v_knots.is_empty() { 1.0 } else { *self.v_knots.last().unwrap() as f64 };
-        ((u_min, u_max), (v_min, v_max))
     }
 }
 

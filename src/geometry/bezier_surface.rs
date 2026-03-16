@@ -1,8 +1,8 @@
 use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 use crate::geometry::{Point, Vector};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BezierSurface {
     poles: Vec<Vec<Point>>,
     weights: Vec<Vec<StandardReal>>,
@@ -292,6 +292,23 @@ impl BezierSurface {
             0
         }
     }
+
+    /// Get the point on the surface at (u, v) parameters
+    pub fn value(&self, u: f64, v: f64) -> Point {
+        self.position(u as StandardReal, v as StandardReal)
+    }
+
+    /// Get the normal at (u, v) parameters
+    pub fn normal(&self, u: f64, v: f64) -> Vector {
+        let u_dir = self.d1(u as StandardReal, v as StandardReal, true);
+        let v_dir = self.d1(u as StandardReal, v as StandardReal, false);
+        u_dir.cross(&v_dir).normalized()
+    }
+
+    /// Get the parameter range of the surface
+    pub fn parameter_range(&self) -> ((f64, f64), (f64, f64)) {
+        ((0.0, 1.0), (0.0, 1.0))
+    }
 }
 
 impl Default for BezierSurface {
@@ -300,23 +317,6 @@ impl Default for BezierSurface {
             poles: vec![vec![Point::origin()]],
             weights: vec![vec![1.0]],
         }
-    }
-}
-
-impl crate::topology::Surface for BezierSurface {
-    fn value(&self, u: f64, v: f64) -> Point {
-        self.position(u as StandardReal, v as StandardReal)
-    }
-
-    fn normal(&self, u: f64, v: f64) -> Vector {
-        let du = self.d1(u as StandardReal, v as StandardReal, true);
-        let dv = self.d1(u as StandardReal, v as StandardReal, false);
-        let normal = du.cross(&dv);
-        normal.normalized()
-    }
-
-    fn parameter_range(&self) -> ((f64, f64), (f64, f64)) {
-        ((0.0, 1.0), (0.0, 1.0))
     }
 }
 

@@ -94,7 +94,6 @@ impl WebRtcStreamer {
 }
 
 /// Cloud storage integration
-#[allow(dead_code)]
 pub struct CloudStorage {
     // Cloud storage configuration
     provider: String,

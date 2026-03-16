@@ -1,34 +1,28 @@
 pub mod shape_enum;
+pub mod topods_shape;
+pub mod topods_location;
+pub mod topods_vertex;
+pub mod topods_edge;
+pub mod topods_wire;
+pub mod topods_face;
+pub mod topods_shell;
+pub mod topods_solid;
+pub mod topods_compound;
+pub mod topods_compsolid;
+pub mod validation;
 pub mod top_exp_explorer;
 pub mod top_exp_tools;
 pub mod top_tools;
-pub mod topods_compound;
-pub mod topods_edge;
-pub mod topods_face;
-pub mod topods_location;
-pub mod topods_shape;
-pub mod topods_shell;
-pub mod topods_solid;
-pub mod topods_vertex;
-pub mod topods_wire;
-pub mod validation;
-pub mod naming;
 
 pub use shape_enum::ShapeType;
-pub use top_exp_explorer::TopExpExplorer;
-pub use top_exp_tools::{TopExpTools, TopToolsAnalyzer};
-pub use top_tools::{
-    DataMapOfShapeInteger, DataMapOfShapeShape, IndexedMapOfShape, ListOfShape, SequenceOfShape,
-    ShapeSet,
-};
-pub use topods_compound::{TopoDsCompSolid, TopoDsCompound};
-pub use topods_edge::{Curve, TopoDsEdge};
-pub use topods_face::{Surface, TopoDsFace};
-pub use topods_location::TopoDsLocation;
 pub use topods_shape::TopoDsShape;
+pub use topods_location::TopoDsLocation;
+pub use topods_vertex::TopoDsVertex;
+pub use topods_edge::{TopoDsEdge, Curve};
+pub use topods_wire::TopoDsWire;
+pub use topods_face::{TopoDsFace, Surface};
 pub use topods_shell::TopoDsShell;
 pub use topods_solid::TopoDsSolid;
-pub use topods_vertex::TopoDsVertex;
-pub use topods_wire::TopoDsWire;
-pub use validation::{TopologyValidator, ValidatableExt, ValidationError, ValidationResult};
-pub use naming::{TopoDsNaming, TopoHistory, Nameable, NamingExt};
+pub use topods_compound::{TopoDsCompound, TopoDsCompSolid};
+pub use top_exp_explorer::TopExpExplorer;
+pub use top_exp_tools::{TopExpTools, TopToolsAnalyzer};

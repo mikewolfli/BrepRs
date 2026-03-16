@@ -4,15 +4,15 @@
 //! Provides OpenCASCADE-compatible TopTools API for topology utilities.
 
 use crate::foundation::handle::Handle;
-use crate::topology::{
+use crate::topology::top_tools::{
     IndexedMapOfShape,
     ListOfShape,
     SequenceOfShape,
     DataMapOfShapeShape,
     DataMapOfShapeInteger,
     ShapeSet,
-    TopoDsShape,
 };
+use crate::topology::TopoDsShape;
 
 /// Indexed map of shapes (OpenCASCADE compatible)
 pub struct TopTools_IndexedMapOfShape {

@@ -1,8 +1,8 @@
 use crate::foundation::types::StandardReal;
 use crate::geometry::{Point, Direction, Axis, Transform};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Sphere {
     location: Point,
     radius: StandardReal,

@@ -122,11 +122,6 @@ impl TopoDsFace {
         &self.wires
     }
 
-    /// Get mutable reference to the wires of the face
-    pub fn wires_mut(&mut self) -> &mut [Handle<TopoDsWire>] {
-        &mut self.wires
-    }
-
     /// Get the number of wires in the face
     pub fn num_wires(&self) -> usize {
         self.wires.len()

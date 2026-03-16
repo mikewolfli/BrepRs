@@ -221,7 +221,7 @@ impl FilletChamfer {
         let normal = v1.cross(&v2);
 
         // Check if normal is zero (colinear points)
-        if normal.length() < 1e-6 {
+        if normal.magnitude() < 1e-6 {
             return true;
         }
 
@@ -249,7 +249,7 @@ impl FilletChamfer {
         let v2 = points[2] - points[0];
         let normal_vector = v1.cross(&v2);
 
-        if normal_vector.length() < 1e-6 {
+        if normal_vector.magnitude() < 1e-6 {
             return None;
         }
 
@@ -332,7 +332,7 @@ impl FilletChamfer {
     ) -> (Point, Point) {
         // Calculate the direction vector of the edge
         let edge_vector = end_point - start_point;
-        let edge_length = edge_vector.length();
+        let edge_length = edge_vector.magnitude();
 
         // Calculate the distance from vertices to fillet start/end points
         let trim_distance = radius;
@@ -631,7 +631,7 @@ impl FilletChamfer {
                         end_point.y - start_point.y,
                         end_point.z - start_point.z,
                     );
-                    let edge_length = edge_vector.length();
+                    let edge_length = edge_vector.magnitude();
 
                     if edge_length > 1e-6 {
                         let edge_direction = edge_vector.normalized();
@@ -744,7 +744,7 @@ impl FilletChamfer {
                         end_point.y - start_point.y,
                         end_point.z - start_point.z,
                     );
-                    let edge_length = edge_vector.length();
+                    let edge_length = edge_vector.magnitude();
 
                     if edge_length > 1e-6 {
                         // Get adjacent faces

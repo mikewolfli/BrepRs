@@ -901,9 +901,9 @@ impl MeshGenerator {
         let v2 = vertices[face.vertices[2]];
 
         // Calculate side lengths
-        let a = (v1 - v0).length();
-        let b = (v2 - v1).length();
-        let c = (v0 - v2).length();
+        let a = (v1 - v0).magnitude();
+        let b = (v2 - v1).magnitude();
+        let c = (v0 - v2).magnitude();
 
         // Calculate semi-perimeter
         let s = (a + b + c) / 2.0;
@@ -936,7 +936,7 @@ impl MeshGenerator {
         let a = v1 - v0;
         let b = v2 - v0;
         let cross = a.cross(&b);
-        cross.length() / 2.0
+        cross.magnitude() / 2.0
     }
 
     /// Check overall mesh quality

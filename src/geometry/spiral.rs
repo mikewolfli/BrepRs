@@ -257,11 +257,13 @@ impl Spiral {
         let radius = self.pitch * angle;
 
         // Calculate position in the plane perpendicular to the axis
-        let radial_direction = self.initial_direction.rotate_around_axis(self.axis, angle);
-        let planar_position = radial_direction * radius;
+        let axis_dir = crate::geometry::Direction::from_vector(&self.axis);
+        let axis_obj = crate::geometry::Axis::new(self.base_point, axis_dir);
+        let radial_direction = self.initial_direction.rotated(&axis_obj, angle);
+        let planar_position = radial_direction.scaled(radius);
 
         // Calculate position along the axis
-        let axial_position = self.axis * (self.pitch * t);
+        let axial_position = self.axis.scaled(self.pitch * t);
 
         self.base_point + planar_position + axial_position
     }
@@ -272,11 +274,13 @@ impl Spiral {
         let radius = self.pitch * (self.growth_rate * angle).exp();
 
         // Calculate position in the plane perpendicular to the axis
-        let radial_direction = self.initial_direction.rotate_around_axis(self.axis, angle);
-        let planar_position = radial_direction * radius;
+        let axis_dir = crate::geometry::Direction::from_vector(&self.axis);
+        let axis_obj = crate::geometry::Axis::new(self.base_point, axis_dir);
+        let radial_direction = self.initial_direction.rotated(&axis_obj, angle);
+        let planar_position = radial_direction.scaled(radius);
 
         // Calculate position along the axis
-        let axial_position = self.axis * (self.pitch * t);
+        let axial_position = self.axis.scaled(self.pitch * t);
 
         self.base_point + planar_position + axial_position
     }
@@ -287,11 +291,13 @@ impl Spiral {
         let radius = self.growth_rate; // For helical, growth_rate is the radius
 
         // Calculate position in the plane perpendicular to the axis
-        let radial_direction = self.initial_direction.rotate_around_axis(self.axis, angle);
-        let planar_position = radial_direction * radius;
+        let axis_dir = crate::geometry::Direction::from_vector(&self.axis);
+        let axis_obj = crate::geometry::Axis::new(self.base_point, axis_dir);
+        let radial_direction = self.initial_direction.rotated(&axis_obj, angle);
+        let planar_position = radial_direction.scaled(radius);
 
         // Calculate position along the axis
-        let axial_position = self.axis * (self.pitch * t);
+        let axial_position = self.axis.scaled(self.pitch * t);
 
         self.base_point + planar_position + axial_position
     }
@@ -302,11 +308,13 @@ impl Spiral {
         let radius = self.pitch * angle * (self.cone_angle).tan();
 
         // Calculate position in the plane perpendicular to the axis
-        let radial_direction = self.initial_direction.rotate_around_axis(self.axis, angle);
-        let planar_position = radial_direction * radius;
+        let axis_dir = crate::geometry::Direction::from_vector(&self.axis);
+        let axis_obj = crate::geometry::Axis::new(self.base_point, axis_dir);
+        let radial_direction = self.initial_direction.rotated(&axis_obj, angle);
+        let planar_position = radial_direction.scaled(radius);
 
         // Calculate position along the axis
-        let axial_position = self.axis * (self.pitch * angle);
+        let axial_position = self.axis.scaled(self.pitch * angle);
 
         self.base_point + planar_position + axial_position
     }
@@ -317,11 +325,13 @@ impl Spiral {
         let radius = pitch_function(t);
 
         // Calculate position in the plane perpendicular to the axis
-        let radial_direction = self.initial_direction.rotate_around_axis(self.axis, angle);
-        let planar_position = radial_direction * radius;
+        let axis_dir = crate::geometry::Direction::from_vector(&self.axis);
+        let axis_obj = crate::geometry::Axis::new(self.base_point, axis_dir);
+        let radial_direction = self.initial_direction.rotated(&axis_obj, angle);
+        let planar_position = radial_direction.scaled(radius);
 
         // Calculate position along the axis
-        let axial_position = self.axis * (self.pitch * t);
+        let axial_position = self.axis.scaled(self.pitch * t);
 
         self.base_point + planar_position + axial_position
     }
@@ -341,8 +351,8 @@ impl Spiral {
         let h = 1e-6;
         let t1 = self.tangent(t - h);
         let t2 = self.tangent(t + h);
-        let dt = (t2 - t1) / (2.0 * h);
-        dt.length()
+        let dt = (t2 - t1).scaled(1.0 / (2.0 * h));
+        dt.magnitude()
     }
 
     /// Calculate the arc length from t=0 to t=t
@@ -363,7 +373,7 @@ impl Spiral {
             };
 
             let velocity = self.tangent(ti);
-            sum += weight * velocity.length();
+            sum += weight * velocity.magnitude();
         }
 
         (h / 3.0) * sum
@@ -378,7 +388,7 @@ impl Spiral {
             let t = i as f64 / n as f64;
             let p = self.evaluate(t);
             let q = other.value(t);
-            if (p - q).length() < tolerance {
+            if (p - q).magnitude() < tolerance {
                 intersections.push(p);
             }
         }

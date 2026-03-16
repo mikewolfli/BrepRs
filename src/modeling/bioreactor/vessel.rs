@@ -160,7 +160,7 @@ impl BioreactorVessel {
                 // Dish head height: sqrt(radius² - cylinder_radius²)
                 (radius * radius - self.cylinder_radius * self.cylinder_radius).sqrt()
             }
-            HeadType::Elliptical(_, _) => {
+            HeadType::Elliptical(_, minor) => {
                 // Elliptical head height: minor axis
                 *minor
             }
@@ -188,39 +188,40 @@ impl BioreactorVessel {
 
         // Combine all shells into a solid
         let mut solid = TopoDsSolid::new();
-        solid.add_shell(cylinder);
-        solid.add_shell(top_head);
-        solid.add_shell(bottom_head);
+        solid.add_shell(Handle::new(std::sync::Arc::new(cylinder)));
+        solid.add_shell(Handle::new(std::sync::Arc::new(top_head)));
+        solid.add_shell(Handle::new(std::sync::Arc::new(bottom_head)));
 
         solid
     }
 
     /// Create the cylinder section shell
     fn create_cylinder_shell(&self) -> TopoDsShell {
-        let cylinder = Cylinder::new(self.axis, self.cylinder_radius, self.cylinder_height);
+        let cylinder = Cylinder::from_axis(&self.axis, self.cylinder_radius);
 
         // Create shell from cylinder
         let mut shell = TopoDsShell::new();
 
         // Add lateral face
-        let lateral_face = TopoDsFace::with_surface(Handle::new(Arc::new(
+        let lateral_face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
             crate::geometry::surface_enum::SurfaceEnum::Cylinder(cylinder),
-        )));
+        )))));
         shell.add_face(lateral_face);
 
         // Add top and bottom faces (will be replaced by heads)
-        let top_plane = Plane::new(
+        let top_plane = Plane::from_point_normal(
             *self.axis.location() + self.axis.direction().to_vector() * self.cylinder_height,
-            self.axis.direction(),
+            *self.axis.direction(),
         );
-        let bottom_plane = Plane::new(*self.axis.location(), -*self.axis.direction());
+        let bottom_direction = self.axis.direction().reversed();
+        let bottom_plane = Plane::from_point_normal(*self.axis.location(), bottom_direction);
 
-        let top_face = TopoDsFace::with_surface(Handle::new(Arc::new(
+        let top_face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
             crate::geometry::surface_enum::SurfaceEnum::Plane(top_plane),
-        )));
-        let bottom_face = TopoDsFace::with_surface(Handle::new(Arc::new(
+        )))));
+        let bottom_face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
             crate::geometry::surface_enum::SurfaceEnum::Plane(bottom_plane),
-        )));
+        )))));
 
         shell.add_face(top_face);
         shell.add_face(bottom_face);
@@ -238,13 +239,14 @@ impl BioreactorVessel {
             *self.axis.location()
                 + self.axis.direction().to_vector() * (self.cylinder_height + head_height / 2.0)
         } else {
-            *self.axis.location() - self.axis.direction().to_vector() * head_height / 2.0
+            *self.axis.location()
+                + self.axis.direction().to_vector() * (-head_height / 2.0)
         };
 
         match head {
             HeadType::Flat => {
                 // Flat head is just a plane
-                let plane = Plane::new(
+                let plane = Plane::from_point_normal(
                     if is_top {
                         *self.axis.location()
                             + self.axis.direction().to_vector() * self.cylinder_height
@@ -252,23 +254,23 @@ impl BioreactorVessel {
                         *self.axis.location()
                     },
                     if is_top {
-                        self.axis.direction()
+                        *self.axis.direction()
                     } else {
-                        -self.axis.direction()
+                        self.axis.direction().reversed()
                     },
                 );
 
-                let face = TopoDsFace::with_surface(Handle::new(Arc::new(
+                let face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
                     crate::geometry::surface_enum::SurfaceEnum::Plane(plane),
-                )));
+                )))));
                 shell.add_face(face);
             }
-            HeadType::Dish(_) => {
+            HeadType::Dish(radius) => {
                 // Dish head is a portion of a sphere
                 let sphere = Sphere::new(head_origin, *radius);
 
                 // Create a cutting plane to get the dish shape
-                let cutting_plane = Plane::new(
+                let cutting_plane = Plane::from_point_normal(
                     if is_top {
                         *self.axis.location()
                             + self.axis.direction().to_vector() * self.cylinder_height
@@ -276,16 +278,16 @@ impl BioreactorVessel {
                         *self.axis.location()
                     },
                     if is_top {
-                        -self.axis.direction()
+                        self.axis.direction().reversed()
                     } else {
-                        self.axis.direction()
+                        *self.axis.direction()
                     },
                 );
 
                 // Cut the sphere with the plane to get the dish head
-                let face = TopoDsFace::with_surface(Handle::new(Arc::new(
+                let face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
                     crate::geometry::surface_enum::SurfaceEnum::Sphere(sphere),
-                )));
+                )))));
                 // 简化：直接添加球面，实际切割逻辑需后续补全
                 shell.add_face(face);
             }
@@ -293,9 +295,9 @@ impl BioreactorVessel {
                 // Elliptical head
                 // 简化：用椭球近似，实际应构造椭球面
                 let ellipsoid = Sphere::new(head_origin, self.cylinder_radius); // 椭球需自定义类型
-                let face = TopoDsFace::with_surface(Handle::new(Arc::new(
+                let face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
                     crate::geometry::surface_enum::SurfaceEnum::Sphere(ellipsoid),
-                )));
+                )))));
                 shell.add_face(face);
             }
             HeadType::Hemispherical => {
@@ -303,7 +305,7 @@ impl BioreactorVessel {
                 let sphere = Sphere::new(head_origin, self.cylinder_radius);
 
                 // Create a cutting plane to get the hemisphere
-                let cutting_plane = Plane::new(
+                let cutting_plane = Plane::from_point_normal(
                     if is_top {
                         *self.axis.location()
                             + self.axis.direction().to_vector() * self.cylinder_height
@@ -311,38 +313,36 @@ impl BioreactorVessel {
                         *self.axis.location()
                     },
                     if is_top {
-                        -self.axis.direction()
+                        self.axis.direction().reversed()
                     } else {
-                        self.axis.direction()
+                        *self.axis.direction()
                     },
                 );
 
                 // Cut the sphere with the plane to get the hemisphere
-                let face = TopoDsFace::with_surface(Handle::new(Arc::new(
+                let face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
                     crate::geometry::surface_enum::SurfaceEnum::Sphere(sphere),
-                )));
+                )))));
                 // TODO: Implement cutting logic
                 shell.add_face(face);
             }
-            HeadType::Conical(_) => {
+            HeadType::Conical(half_angle) => {
                 // Conical head
+                let direction = if is_top {
+                    *self.axis.direction()
+                } else {
+                    self.axis.direction().reversed()
+                };
                 let cone = Cone::new(
-                    Axis::new(
-                        head_origin,
-                        if is_top {
-                            self.axis.direction()
-                        } else {
-                            -self.axis.direction()
-                        },
-                    ),
+                    head_origin,
+                    direction,
+                    *half_angle,
                     self.cylinder_radius,
-                    0.0,
-                    head_height,
                 );
 
-                let face = TopoDsFace::with_surface(Handle::new(Arc::new(
+                let face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
                     crate::geometry::surface_enum::SurfaceEnum::Cone(cone),
-                )));
+                )))));
                 shell.add_face(face);
             }
         }
@@ -424,12 +424,12 @@ impl BioreactorVessel {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::geometry::{axis::Axis, Point, Vector};
+    use crate::geometry::{axis::Axis, Direction, Point, Vector};
 
     #[test]
     fn test_vessel_creation() {
         let origin = Point::new(0.0, 0.0, 0.0);
-        let axis = Axis::new(origin, Vector::new(0.0, 0.0, 1.0));
+        let axis = Axis::new(origin, Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)));
 
         let vessel = BioreactorVessel::with_elliptical_heads(
             1.0, 2.0, 2.0, // 2:1 elliptical head
@@ -445,7 +445,7 @@ mod tests {
     #[test]
     fn test_vessel_total_height() {
         let origin = Point::new(0.0, 0.0, 0.0);
-        let axis = Axis::new(origin, Vector::new(0.0, 0.0, 1.0));
+        let axis = Axis::new(origin, Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)));
 
         let vessel = BioreactorVessel::with_hemispherical_heads(1.0, 2.0, origin, axis);
 
@@ -456,7 +456,7 @@ mod tests {
     #[test]
     fn test_vessel_volume() {
         let origin = Point::new(0.0, 0.0, 0.0);
-        let axis = Axis::new(origin, Vector::new(0.0, 0.0, 1.0));
+        let axis = Axis::new(origin, Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)));
 
         let vessel = BioreactorVessel::with_flat_heads(1.0, 2.0, origin, axis);
 

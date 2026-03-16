@@ -1,3 +1,13 @@
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Direction {
+    pub x: StandardReal,
+    pub y: StandardReal,
+    pub z: StandardReal,
+}
+
 use crate::geometry::traits::{GetCoord, SetCoord, TOLERANCE};
 impl GetCoord for Direction {
     fn coord(&self) -> (f64, f64, f64) {
@@ -12,15 +22,6 @@ impl SetCoord for Direction {
         self.z = z as StandardReal;
         self.normalize();
     }
-}
-use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct Direction {
-    pub x: StandardReal,
-    pub y: StandardReal,
-    pub z: StandardReal,
 }
 
 impl Direction {
@@ -284,6 +285,11 @@ impl Direction {
 
     pub fn to_vec(&self) -> crate::geometry::Vector {
         crate::geometry::Vector::new(self.x, self.y, self.z)
+    }
+
+    /// Alias for to_vec()
+    pub fn to_vector(&self) -> crate::geometry::Vector {
+        self.to_vec()
     }
 
     pub fn coord_ref(&self) -> &Direction {

@@ -91,7 +91,7 @@ impl<W: std::io::Write> JsonStreamSerializer<W> {
     }
 
     pub fn begin_object(&mut self) -> std::io::Result<()> {
-        self.writer.write_all(b"{")?;
+        self.writer.write_all(b"{");
         self.first = true;
         Ok(())
     }
@@ -317,7 +317,6 @@ pub fn json_path<'a>(value: &'a serde_json::Value, path: &str) -> Option<&'a ser
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::geometry::Point;
 
     #[test]
     fn test_json_config() {

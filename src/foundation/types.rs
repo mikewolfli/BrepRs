@@ -87,22 +87,22 @@ pub const STANDARD_REAL_MAX: StandardReal = f64::MAX;
 pub const STANDARD_REAL_MIN: StandardReal = f64::MIN;
 pub const STANDARD_REAL_EPSILON: StandardReal = f64::EPSILON;
 
-#[inline(always)]
+#[inline]
 pub fn standard_is_nan(value: StandardReal) -> StandardBoolean {
     value.is_nan()
 }
 
-#[inline(always)]
+#[inline]
 pub fn standard_is_infinite(value: StandardReal) -> StandardBoolean {
     value.is_infinite()
 }
 
-#[inline(always)]
+#[inline]
 pub fn standard_is_finite(value: StandardReal) -> StandardBoolean {
     value.is_finite()
 }
 
-#[inline(always)]
+#[inline]
 pub fn standard_approximate(
     value1: StandardReal,
     value2: StandardReal,
@@ -111,45 +111,9 @@ pub fn standard_approximate(
     (value1 - value2).abs() <= tolerance
 }
 
-#[inline(always)]
+#[inline]
 pub fn standard_real_hash(value: StandardReal) -> usize {
     value.to_bits() as usize
-}
-
-/// Fast comparison of two real numbers with tolerance
-///
-/// This function is optimized for performance and should be used
-/// when comparing floating-point values in performance-critical code.
-#[inline(always)]
-pub fn standard_fast_approximate(
-    value1: StandardReal,
-    value2: StandardReal,
-    tolerance: StandardReal,
-) -> StandardBoolean {
-    // Fast path for exact equality
-    if value1 == value2 {
-        return true;
-    }
-    // Otherwise use absolute difference
-    (value1 - value2).abs() <= tolerance
-}
-
-/// Clamp a value to a specified range
-#[inline(always)]
-pub fn standard_clamp<T: PartialOrd>(value: T, min: T, max: T) -> T {
-    if value < min {
-        min
-    } else if value > max {
-        max
-    } else {
-        value
-    }
-}
-
-/// Linear interpolation between two values
-#[inline(always)]
-pub fn standard_lerp(a: StandardReal, b: StandardReal, t: StandardReal) -> StandardReal {
-    a + (b - a) * t
 }
 
 #[cfg(test)]

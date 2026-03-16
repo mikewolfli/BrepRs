@@ -1,4 +1,14 @@
+use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 use crate::geometry::traits::{GetCoord, SetCoord};
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Vector {
+    pub x: StandardReal,
+    pub y: StandardReal,
+    pub z: StandardReal,
+}
+
 impl GetCoord for Vector {
     fn coord(&self) -> (f64, f64, f64) {
         (self.x as f64, self.y as f64, self.z as f64)
@@ -11,15 +21,6 @@ impl SetCoord for Vector {
         self.y = y as StandardReal;
         self.z = z as StandardReal;
     }
-}
-use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Vector {
-    pub x: StandardReal,
-    pub y: StandardReal,
-    pub z: StandardReal,
 }
 
 impl Vector {
@@ -96,21 +97,10 @@ impl Vector {
         self.magnitude() <= tolerance
     }
 
-    /// 使用全局容差判断零向量
-    pub fn is_zero_tol(&self) -> bool {
-        self.magnitude() <= crate::geometry::traits::TOLERANCE as StandardReal
-    }
-
     #[inline]
     pub fn is_equal(&self, other: &Vector, tolerance: StandardReal) -> bool {
         let diff = *self - *other;
         diff.magnitude() <= tolerance
-    }
-
-    /// 使用全局容差判断相等
-    pub fn is_equal_tol(&self, other: &Vector) -> bool {
-        let diff = *self - *other;
-        diff.magnitude() <= crate::geometry::traits::TOLERANCE as StandardReal
     }
 
     pub fn normalize(&mut self) {
@@ -281,6 +271,19 @@ impl Vector {
         }
     }
 
+    /// Get a perpendicular vector
+    pub fn perpendicular(&self) -> Vector {
+        // Find a vector that is not parallel to self
+        let candidate = if self.x.abs() > self.y.abs() {
+            Vector::new(self.y, -self.x, 0.0)
+        } else {
+            Vector::new(0.0, self.z, -self.y)
+        };
+        
+        // Cross product gives a perpendicular vector
+        self.cross(&candidate).normalized()
+    }
+
     pub fn scale(&mut self, factor: StandardReal) {
         self.x *= factor;
         self.y *= factor;
@@ -337,37 +340,6 @@ impl Vector {
 
     pub fn to_dir(&self) -> crate::geometry::Direction {
         crate::geometry::Direction::new(self.x, self.y, self.z)
-    }
-
-    /// Get the length of the vector (alias for magnitude)
-    #[inline]
-    pub fn length(&self) -> StandardReal {
-        self.magnitude()
-    }
-
-    /// Rotate the vector around an axis by a given angle
-    ///
-    /// # Arguments
-    /// * `axis` - The axis to rotate around (as a Vector)
-    /// * `angle` - The angle in radians
-    ///
-    /// # Returns
-    /// The rotated vector
-    pub fn rotate_around_axis(&self, axis: Vector, angle: StandardReal) -> Vector {
-        let axis = axis.normalized();
-        let cos_a = angle.cos();
-        let sin_a = angle.sin();
-        let dot = axis.x * self.x + axis.y * self.y + axis.z * self.z;
-
-        let cross_x = axis.y * self.z - axis.z * self.y;
-        let cross_y = axis.z * self.x - axis.x * self.z;
-        let cross_z = axis.x * self.y - axis.y * self.x;
-
-        Vector {
-            x: self.x * cos_a + cross_x * sin_a + axis.x * dot * (1.0 - cos_a),
-            y: self.y * cos_a + cross_y * sin_a + axis.y * dot * (1.0 - cos_a),
-            z: self.z * cos_a + cross_z * sin_a + axis.z * dot * (1.0 - cos_a),
-        }
     }
 }
 

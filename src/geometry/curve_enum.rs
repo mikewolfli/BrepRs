@@ -141,7 +141,7 @@ impl CurveEnum {
     pub fn is_closed(&self) -> bool {
         let start = self.start_point();
         let end = self.end_point();
-        (start - end).length() < 1e-10
+        (start - end).magnitude() < 1e-10
     }
 
     /// Get the bounding box of the curve
@@ -218,10 +218,9 @@ mod tests {
 
     #[test]
     fn test_curve_enum_line() {
-        let line = super::super::line::Line::from_points(
-            &Point::new(0.0, 0.0, 0.0),
-            &Point::new(1.0, 1.0, 1.0),
-        );
+        let p1 = Point::new(0.0, 0.0, 0.0);
+        let p2 = Point::new(1.0, 1.0, 1.0);
+        let line = super::super::line::Line::from_points(&p1, &p2);
         let curve = CurveEnum::Line(line);
 
         let start = curve.start_point();

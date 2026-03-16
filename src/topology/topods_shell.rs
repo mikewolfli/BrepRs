@@ -61,11 +61,6 @@ impl TopoDsShell {
         &self.faces
     }
 
-    /// Get mutable reference to the faces of the shell
-    pub fn faces_mut(&mut self) -> &mut [Handle<TopoDsFace>] {
-        &mut self.faces
-    }
-
     /// Get the number of faces in the shell
     pub fn num_faces(&self) -> usize {
         self.faces.len()

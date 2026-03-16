@@ -1,8 +1,8 @@
 use crate::foundation::types::StandardReal;
 use crate::geometry::{Axis, Direction, Point, Vector};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Circle {
     location: Point,
     x_direction: Direction,

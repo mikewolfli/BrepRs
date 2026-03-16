@@ -116,13 +116,13 @@ impl StirrerShaft {
 
         // Add shaft
         let shaft_shell = self.create_shaft_shell();
-        solid.add_shell(shaft_shell);
+        solid.add_shell(Handle::new(Arc::new(shaft_shell)));
 
         // Add impellers
         for (i, impeller) in self.impellers.iter().enumerate() {
             let position = self.impeller_positions[i];
             let impeller_shell = self.create_impeller_shell(impeller, position);
-            solid.add_shell(impeller_shell);
+            solid.add_shell(Handle::new(Arc::new(impeller_shell)));
         }
 
         solid
@@ -130,13 +130,13 @@ impl StirrerShaft {
 
     /// Create the shaft shell
     fn create_shaft_shell(&self) -> TopoDsShell {
-        let cylinder = Cylinder::new(self.axis, self.diameter / 2.0, self.length);
+        let cylinder = Cylinder::from_axis(&self.axis, self.diameter / 2.0);
 
         let mut shell = TopoDsShell::new();
         let face = TopoDsFace::with_surface(Handle::new(Arc::new(
             crate::geometry::surface_enum::SurfaceEnum::Cylinder(cylinder),
         )));
-        shell.add_face(face);
+        shell.add_face(Handle::new(Arc::new(face)));
 
         shell
     }
@@ -149,15 +149,11 @@ impl StirrerShaft {
         let mut shell = TopoDsShell::new();
 
         // Add hub
-        let hub_cylinder = Cylinder::new(
-            impeller_axis,
-            impeller.hub_diameter / 2.0,
-            impeller.blade_thickness,
-        );
+        let hub_cylinder = Cylinder::from_axis(&impeller_axis, impeller.hub_diameter / 2.0);
         let hub_face = TopoDsFace::with_surface(Handle::new(Arc::new(
             crate::geometry::surface_enum::SurfaceEnum::Cylinder(hub_cylinder),
         )));
-        shell.add_face(hub_face);
+        shell.add_face(Handle::new(Arc::new(hub_face)));
 
         // Add blades based on impeller type
         match &impeller.impeller_type {
@@ -217,15 +213,14 @@ impl StirrerShaft {
 
             // Create blade as a rectangular prism
             // TODO: Implement proper blade geometry
-            let blade_cylinder = Cylinder::new(
-                Axis::new(blade_origin, Vector::new(angle.cos(), angle.sin(), 0.0)),
+            let blade_cylinder = Cylinder::from_axis(
+                &Axis::new(blade_origin, crate::geometry::Direction::from_vector(&Vector::new(angle.cos(), angle.sin(), 0.0))),
                 impeller.blade_thickness / 2.0,
-                impeller.blade_width,
             );
             let blade_face = TopoDsFace::with_surface(Handle::new(Arc::new(
                 crate::geometry::surface_enum::SurfaceEnum::Cylinder(blade_cylinder),
             )));
-            shell.add_face(blade_face);
+            shell.add_face(Handle::new(Arc::new(blade_face)));
         }
     }
 
@@ -248,18 +243,17 @@ impl StirrerShaft {
 
             // Create pitched blade
             // TODO: Implement proper pitched blade geometry
-            let blade_cylinder = Cylinder::new(
-                Axis::new(
+            let blade_cylinder = Cylinder::from_axis(
+                &Axis::new(
                     blade_origin,
-                    Vector::new(angle.cos(), angle.sin(), pitch_angle.sin()),
+                    crate::geometry::Direction::from_vector(&Vector::new(angle.cos(), angle.sin(), pitch_angle.sin())),
                 ),
                 impeller.blade_thickness / 2.0,
-                impeller.blade_width,
             );
             let blade_face = TopoDsFace::with_surface(Handle::new(Arc::new(
                 crate::geometry::surface_enum::SurfaceEnum::Cylinder(blade_cylinder),
             )));
-            shell.add_face(blade_face);
+            shell.add_face(Handle::new(Arc::new(blade_face)));
         }
     }
 
@@ -285,11 +279,11 @@ impl StirrerShaft {
         axis: Axis,
     ) {
         // TODO: Implement anchor blade geometry
-        let blade_cylinder = Cylinder::new(axis, impeller.diameter / 2.0, impeller.blade_thickness);
+        let blade_cylinder = Cylinder::from_axis(&axis, impeller.diameter / 2.0);
         let blade_face = TopoDsFace::with_surface(Handle::new(Arc::new(
             crate::geometry::surface_enum::SurfaceEnum::Cylinder(blade_cylinder),
         )));
-        shell.add_face(blade_face);
+        shell.add_face(Handle::new(Arc::new(blade_face)));
     }
 
     /// Add propeller impeller blades
@@ -314,7 +308,7 @@ mod tests {
     #[test]
     fn test_stirrer_creation() {
         let origin = Point::new(0.0, 0.0, 0.0);
-        let axis = Axis::new(origin, Vector::new(0.0, 0.0, 1.0));
+        let axis = Axis::new(origin, crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)));
 
         let stirrer = StirrerShaft::with_single_rushton(0.1, 2.0, 0.5, 1.0, origin, axis);
 
@@ -330,7 +324,7 @@ mod tests {
     #[test]
     fn test_stirrer_with_multiple_impellers() {
         let origin = Point::new(0.0, 0.0, 0.0);
-        let axis = Axis::new(origin, Vector::new(0.0, 0.0, 1.0));
+        let axis = Axis::new(origin, crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)));
 
         let impeller1 = Impeller {
             impeller_type: ImpellerType::RushtonTurbine,

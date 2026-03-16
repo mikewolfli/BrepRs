@@ -499,7 +499,7 @@ pub mod incremental {
         pub async fn start_watching(&mut self) -> crate::foundation::exception::Result<()> {
             // Implementation of file watching using std::sync
             use std::path::Path;
-            use std::sync::mpsc;
+            // use std::sync::mpsc;
             use std::thread;
             use std::time::Duration;
 
@@ -521,7 +521,6 @@ pub mod incremental {
             // Create a channel to receive events
 
             // Store sender for later use
-            let _tx = tx;
 
             // Start a watcher thread
             let watch_paths = self.watch_paths.clone();

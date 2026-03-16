@@ -1,6 +1,5 @@
-#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals, dead_code, unused_imports, unused_variables)]
 //! OpenCASCADE Geometry Compatibility Module
-//! 
+//!
 //! Provides OpenCASCADE-compatible type aliases and wrappers
 //! for geometric entities.
 
@@ -8,9 +7,9 @@
 pub use crate::geometry::{
     ax2::Ax2 as gp_Ax2, axis::Axis as gp_Ax1, circle::Circle as gp_Circ,
     circle2d::Circle2D as gp_Circ2d, coordinate_system::CoordinateSystem as gp_Ax22d,
-    cone::Cone as gp_Cone, cylinder::Cylinder as gp_Cylinder, direction::Direction as gp_Dir,
-    ellipse::Ellipse as gp_Elips, ellipse2d::Ellipse2D as gp_Elips2d, line::Line as gp_Lin,
-    line2d::Line2D as gp_Lin2d, matrix::Matrix as gp_Mat, plane::Plane as gp_Pln,
-    point::Point as gp_Pnt, quaternion::Quaternion as gp_Quaternion, sphere::Sphere as gp_Sphere,
-    torus::Torus as gp_Torus, transform::Transform as gp_Trsf, vector::Vector as gp_Vec,
+    cylinder::Cylinder as gp_Cylinder, direction::Direction as gp_Dir, ellipse::Ellipse as gp_Elips,
+    ellipse2d::Ellipse2D as gp_Elips2d, line::Line as gp_Lin, line2d::Line2D as gp_Lin2d,
+    matrix::Matrix as gp_Mat, plane::Plane as gp_Pln, point::Point as gp_Pnt,
+    quaternion::Quaternion as gp_Quaternion, sphere::Sphere as gp_Sphere, transform::Transform as gp_Trsf,
+    vector::Vector as gp_Vec,
 };

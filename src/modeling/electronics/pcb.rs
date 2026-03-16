@@ -1,5 +1,6 @@
-use crate::geometry::{Axis, Circle, Cylinder, Line, Point, Vector};
-use crate::topology::{TopoDsEdge, TopoDsFace, TopoDsShell, TopoDsSolid, TopoDsWire};
+use crate::foundation::handle::Handle;
+use crate::geometry::{Axis, Circle, Cylinder, Direction, Line, Point, Vector};
+use crate::topology::{TopoDsEdge, TopoDsFace, TopoDsShell, TopoDsSolid, TopoDsVertex, TopoDsWire};
 
 /// PCB layer type
 #[derive(Debug, Clone, PartialEq)]

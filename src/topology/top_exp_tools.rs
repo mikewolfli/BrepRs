@@ -3,6 +3,10 @@ use crate::topology::{
     TopoDsSolid, TopoDsVertex, TopoDsWire,
 };
 
+// Add missing imports for types used in this file
+use crate::geometry::Point;
+use crate::foundation::handle::Handle;
+
 /// Collection of tools for topological exploration
 pub struct TopExpTools;
 
@@ -202,7 +206,9 @@ impl TopExpTools {
             ShapeType::CompSolid => {
                 if let Some(compsolid) = shape.as_compsolid() {
                     for solid_handle in compsolid.solids() {
+                        let solid_handle: &Handle<TopoDsSolid> = solid_handle;
                         if let Some(solid) = solid_handle.get() {
+                            let solid: &TopoDsSolid = solid;
                             Self::collect_wires_recursive(solid.shape(), result);
                         }
                     }
@@ -255,7 +261,9 @@ impl TopExpTools {
             ShapeType::CompSolid => {
                 if let Some(compsolid) = shape.as_compsolid() {
                     for solid_handle in compsolid.solids() {
+                        let solid_handle: &Handle<TopoDsSolid> = solid_handle;
                         if let Some(solid) = solid_handle.get() {
+                            let solid: &TopoDsSolid = solid;
                             Self::collect_faces_recursive(solid.shape(), result);
                         }
                     }
@@ -299,7 +307,9 @@ impl TopExpTools {
             ShapeType::CompSolid => {
                 if let Some(compsolid) = shape.as_compsolid() {
                     for solid_handle in compsolid.solids() {
+                        let solid_handle: &Handle<TopoDsSolid> = solid_handle;
                         if let Some(solid) = solid_handle.get() {
+                            let solid: &TopoDsSolid = solid;
                             Self::collect_shells_recursive(solid.shape(), result);
                         }
                     }
@@ -334,7 +344,9 @@ impl TopExpTools {
             ShapeType::CompSolid => {
                 if let Some(compsolid) = shape.as_compsolid() {
                     for solid_handle in compsolid.solids() {
+                        let solid_handle: &Handle<TopoDsSolid> = solid_handle;
                         if let Some(solid) = solid_handle.get() {
+                            let solid: &TopoDsSolid = solid;
                             result.push(solid.clone());
                         }
                     }

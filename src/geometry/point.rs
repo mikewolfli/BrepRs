@@ -1,3 +1,15 @@
+use crate::foundation::types::StandardReal;
+#[cfg(test)]
+use crate::foundation::types::STANDARD_REAL_EPSILON;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Point {
+    pub x: StandardReal,
+    pub y: StandardReal,
+    pub z: StandardReal,
+}
+
 use crate::geometry::traits::{GetCoord, SetCoord};
 impl GetCoord for Point {
     fn coord(&self) -> (f64, f64, f64) {
@@ -11,17 +23,6 @@ impl SetCoord for Point {
         self.y = y as StandardReal;
         self.z = z as StandardReal;
     }
-}
-use crate::foundation::types::StandardReal;
-#[cfg(test)]
-use crate::foundation::types::STANDARD_REAL_EPSILON;
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Point {
-    pub x: StandardReal,
-    pub y: StandardReal,
-    pub z: StandardReal,
 }
 
 impl Point {
@@ -98,11 +99,6 @@ impl Point {
     /// 使用全局容差判断相等
     pub fn is_equal_tol(&self, other: &Point) -> bool {
         self.distance(other) <= crate::geometry::traits::TOLERANCE as StandardReal
-    }
-
-    /// Calculate dot product with a vector
-    pub fn dot(&self, other: &crate::geometry::Vector) -> StandardReal {
-        self.x * other.x + self.y * other.y + self.z * other.z
     }
 
     pub fn mirror(&mut self, point: &Point) {
