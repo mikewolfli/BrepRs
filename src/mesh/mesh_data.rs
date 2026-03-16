@@ -340,9 +340,62 @@ impl Mesh2D {
     }
 
     /// Add a vertex
+    /// Add a vertex to the mesh
+    ///
+    /// Adds a new vertex at the specified point without updating the bounding box.
+    /// This method is optimized for batch operations where multiple vertices are added
+    /// sequentially, as it avoids the overhead of updating the bounding box on each call.
+    ///
+    /// # Arguments
+    /// * `point` - The 3D coordinates of the vertex to add
+    ///
+    /// # Returns
+    /// The index of the newly added vertex
+    ///
+    /// # Performance
+    /// This method is O(1) for adding a single vertex. When adding multiple vertices,
+    /// use this method for all vertices and then call update_bbox() once at the end
+    /// for better performance.
+    ///
+    /// # Example
+    /// ```
+    /// let mut mesh = Mesh2D::new();
+    /// let v0 = mesh.add_vertex(Point::new(0.0, 0.0, 0.0));
+    /// let v1 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0));
+    /// let v2 = mesh.add_vertex(Point::new(0.0, 1.0, 0.0));
+    /// mesh.update_bbox(); // Update bounding box once after all vertices are added
+    /// ```
     pub fn add_vertex(&mut self, point: Point) -> usize {
         let id = self.vertices.len();
         self.vertices.push(MeshVertex::new(id, point));
+        id
+    }
+
+    /// Add a vertex and update bounding box
+    ///
+    /// Adds a new vertex at the specified point and immediately updates the mesh's bounding box.
+    /// This method is useful when vertices are added infrequently or when the bounding box
+    /// needs to be kept up-to-date after each addition.
+    ///
+    /// # Arguments
+    /// * `point` - The 3D coordinates of the vertex to add
+    ///
+    /// # Returns
+    /// The index of the newly added vertex
+    ///
+    /// # Performance
+    /// This method is O(n) where n is the number of vertices, due to the bounding box update.
+    /// For batch operations, consider using add_vertex() followed by a single update_bbox() call.
+    ///
+    /// # Example
+    /// ```
+    /// let mut mesh = Mesh2D::new();
+    /// let v0 = mesh.add_vertex_with_bbox(Point::new(0.0, 0.0, 0.0));
+    /// let v1 = mesh.add_vertex_with_bbox(Point::new(1.0, 0.0, 0.0));
+    /// // Bounding box is automatically updated after each addition
+    /// ```
+    pub fn add_vertex_with_bbox(&mut self, point: Point) -> usize {
+        let id = self.add_vertex(point);
         self.update_bbox();
         id
     }
@@ -538,24 +591,53 @@ impl Mesh2D {
     }
 
     /// Merge another mesh into this one
+    ///
+    /// Combines the vertices and faces from another mesh into this mesh.
+    /// This method is optimized for performance by:
+    /// - Reserving space upfront to avoid reallocations
+    /// - Batch adding vertices without immediate bounding box updates
+    /// - Updating vertex indices for faces to maintain connectivity
+    /// - Updating bounding box only once after all operations complete
+    ///
+    /// # Arguments
+    /// * `other` - Reference to the mesh to merge into this one
+    ///
+    /// # Performance
+    /// This method is O(n + m) where n is the number of vertices and m is the number
+    /// of faces in the other mesh. The bounding box update is O(n) but only performed once.
+    ///
+    /// # Example
+    /// ```
+    /// let mut mesh1 = Mesh2D::new();
+    /// let mesh2 = Mesh2D::new();
+    /// mesh1.merge(&mesh2);
+    /// ```
     pub fn merge(&mut self, other: &Mesh2D) {
         let vertex_offset = self.vertices.len();
 
+        // Reserve space for new vertices and faces to avoid reallocations
+        self.vertices.reserve(other.vertices.len());
+        self.faces.reserve(other.faces.len());
+
         // Add vertices from other mesh
         for vertex in &other.vertices {
-            self.add_vertex(vertex.point);
+            self.vertices
+                .push(MeshVertex::new(self.vertices.len(), vertex.point));
         }
 
         // Add faces from other mesh with updated vertex indices
         for face in &other.faces {
-            let mut new_vertices = Vec::new();
-            for &v in &face.vertices {
-                new_vertices.push(v + vertex_offset);
-            }
-            if new_vertices.len() == 3 {
-                self.add_face(new_vertices[0], new_vertices[1], new_vertices[2]);
+            if face.vertices.len() == 3 {
+                let v0 = face.vertices[0] + vertex_offset;
+                let v1 = face.vertices[1] + vertex_offset;
+                let v2 = face.vertices[2] + vertex_offset;
+                self.faces
+                    .push(MeshFace::new(self.faces.len(), vec![v0, v1, v2]));
             }
         }
+
+        // Update bounding box once after all vertices are added
+        self.update_bbox();
     }
 }
 
@@ -711,6 +793,12 @@ impl Mesh3D {
     pub fn add_vertex(&mut self, point: Point) -> usize {
         let id = self.vertices.len();
         self.vertices.push(MeshVertex::new(id, point));
+        id
+    }
+
+    /// Add a vertex and update bounding box
+    pub fn add_vertex_with_bbox(&mut self, point: Point) -> usize {
+        let id = self.add_vertex(point);
         self.update_bbox();
         id
     }

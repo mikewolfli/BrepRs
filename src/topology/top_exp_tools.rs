@@ -1,5 +1,3 @@
-use crate::foundation::handle::Handle;
-use crate::geometry::Point;
 use crate::topology::{
     ShapeType, TopoDsCompSolid, TopoDsCompound, TopoDsEdge, TopoDsFace, TopoDsShape, TopoDsShell,
     TopoDsSolid, TopoDsVertex, TopoDsWire,
@@ -508,9 +506,10 @@ impl TopToolsAnalyzer {
             }
             ShapeType::Shell => {
                 if let Some(shell) = shape.as_shell() {
-                    shell.faces().iter().all(|f| {
-                        f.get().map(|face| face.orientation() != 0).unwrap_or(false)
-                    })
+                    shell
+                        .faces()
+                        .iter()
+                        .all(|f| f.get().map(|face| face.orientation() != 0).unwrap_or(false))
                 } else {
                     false
                 }
@@ -591,7 +590,10 @@ impl TopToolsAnalyzer {
             max_z = max_z.max(point.z);
         }
 
-        Some((Point::new(min_x, min_y, min_z), Point::new(max_x, max_y, max_z)))
+        Some((
+            Point::new(min_x, min_y, min_z),
+            Point::new(max_x, max_y, max_z),
+        ))
     }
 
     /// Get the center of mass of a shape
@@ -653,7 +655,7 @@ impl TopToolsAnalyzer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::foundation::handle::Handle;
+
     use crate::geometry::Point;
     use std::sync::Arc;
 

@@ -1,20 +1,20 @@
-#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals, dead_code, unused_imports, unused_variables)]
+#![allow(
+    non_camel_case_types,
+    non_snake_case,
+    non_upper_case_globals,
+    dead_code,
+    unused_imports,
+    unused_variables
+)]
 //! Topology Explorer Compatibility Module
 //!
 //! Provides OpenCASCADE-compatible TopExp API for topology exploration.
 
 use crate::foundation::handle::Handle;
 use crate::topology::{
-    topods_compound::TopoDsCompound,
-    topods_edge::TopoDsEdge,
-    topods_face::TopoDsFace,
-    topods_shape::TopoDsShape,
-    topods_shell::TopoDsShell,
-    topods_solid::TopoDsSolid,
-    topods_vertex::TopoDsVertex,
-    topods_wire::TopoDsWire,
-    ShapeType,
-    TopExpExplorer,
+    topods_compound::TopoDsCompound, topods_edge::TopoDsEdge, topods_face::TopoDsFace,
+    topods_shape::TopoDsShape, topods_shell::TopoDsShell, topods_solid::TopoDsSolid,
+    topods_vertex::TopoDsVertex, topods_wire::TopoDsWire, ShapeType, TopExpExplorer,
 };
 
 /// Topology Explorer for exploring sub-shapes (OpenCASCADE compatible)
@@ -29,22 +29,22 @@ impl TopExp_Explorer {
             inner: TopExpExplorer::new(S, ToFind),
         }
     }
-    
+
     /// Get the current shape
     pub fn Current(&self) -> Option<&TopoDsShape> {
         self.inner.current()
     }
-    
+
     /// Move to the next shape
     pub fn Next(&mut self) {
         self.inner.next()
     }
-    
+
     /// Check if there are more shapes
     pub fn More(&self) -> bool {
         self.inner.more()
     }
-    
+
     /// Reset the explorer
     pub fn ReInit(&mut self, S: &TopoDsShape) {
         // Note: OpenCascade's ReInit only takes the shape, not the shape type
@@ -56,7 +56,7 @@ impl TopExp_Explorer {
             self.inner.init(S, ShapeType::Vertex);
         }
     }
-    
+
     /// Get the number of shapes
     pub fn NbShapes(&self) -> usize {
         // Count the number of shapes by iterating through the explorer
@@ -77,17 +77,26 @@ pub struct TopExp;
 
 impl TopExp {
     /// Count the number of vertices in a shape
+    /// Count the number of vertices in a shape
+    /// Traverses the shape and returns the number of Vertex-type subshapes.
     pub fn NbVertices(S: &TopoDsShape) -> usize {
-        // TODO: Implement proper vertex counting
-        // For now, return 2 for edges (temporary fix for test)
-        if S.shape_type() == ShapeType::Edge {
-            2
-        } else {
-            0
+        // 遍历 shape 统计顶点数
+        let mut explorer = TopExpExplorer::new(S, ShapeType::Vertex);
+        let mut count = 0;
+        while explorer.more() {
+            explorer.next();
+            if let Some(current) = explorer.current() {
+                if current.shape_type() == ShapeType::Vertex {
+                    count += 1;
+                }
+            }
         }
+        count
     }
-    
+
     /// Count the number of edges in a shape
+    /// Count the number of edges in a shape
+    /// Traverses the shape and returns the number of Edge-type subshapes.
     pub fn NbEdges(S: &TopoDsShape) -> usize {
         let mut explorer = TopExpExplorer::new(S, ShapeType::Edge);
         let mut count = 0;
@@ -101,7 +110,7 @@ impl TopExp {
         }
         count
     }
-    
+
     /// Count the number of wires in a shape
     pub fn NbWires(S: &TopoDsShape) -> usize {
         let mut explorer = TopExpExplorer::new(S, ShapeType::Wire);
@@ -116,7 +125,7 @@ impl TopExp {
         }
         count
     }
-    
+
     /// Count the number of faces in a shape
     pub fn NbFaces(S: &TopoDsShape) -> usize {
         let mut explorer = TopExpExplorer::new(S, ShapeType::Face);
@@ -131,7 +140,7 @@ impl TopExp {
         }
         count
     }
-    
+
     /// Count the number of shells in a shape
     pub fn NbShells(S: &TopoDsShape) -> usize {
         let mut explorer = TopExpExplorer::new(S, ShapeType::Shell);
@@ -146,7 +155,7 @@ impl TopExp {
         }
         count
     }
-    
+
     /// Count the number of solids in a shape
     pub fn NbSolids(S: &TopoDsShape) -> usize {
         let mut explorer = TopExpExplorer::new(S, ShapeType::Solid);
@@ -161,7 +170,7 @@ impl TopExp {
         }
         count
     }
-    
+
     /// Get the first vertex of a shape
     pub fn FirstVertex(S: &TopoDsShape) -> Option<Handle<TopoDsVertex>> {
         let mut explorer = TopExpExplorer::new(S, ShapeType::Vertex);
@@ -170,14 +179,16 @@ impl TopExp {
             if let Some(shape) = explorer.current() {
                 if shape.is_vertex() {
                     return Some(Handle::new(unsafe {
-                        std::sync::Arc::new((*(shape as *const TopoDsShape as *const TopoDsVertex)).clone())
+                        std::sync::Arc::new(
+                            (*(shape as *const TopoDsShape as *const TopoDsVertex)).clone(),
+                        )
                     }));
                 }
             }
         }
         None
     }
-    
+
     /// Get the last vertex of a shape
     pub fn LastVertex(S: &TopoDsShape) -> Option<Handle<TopoDsVertex>> {
         let mut explorer = TopExpExplorer::new(S, ShapeType::Vertex);
@@ -187,14 +198,16 @@ impl TopExp {
             if let Some(shape) = explorer.current() {
                 if shape.is_vertex() {
                     last_vertex = Some(Handle::new(unsafe {
-                        std::sync::Arc::new((*(shape as *const TopoDsShape as *const TopoDsVertex)).clone())
+                        std::sync::Arc::new(
+                            (*(shape as *const TopoDsShape as *const TopoDsVertex)).clone(),
+                        )
                     }));
                 }
             }
         }
         last_vertex
     }
-    
+
     /// Get the vertices of a shape
     pub fn Vertices(S: &TopoDsShape) -> Vec<Handle<TopoDsVertex>> {
         let mut vertices = Vec::new();
@@ -204,14 +217,16 @@ impl TopExp {
             if let Some(shape) = explorer.current() {
                 if shape.is_vertex() {
                     vertices.push(Handle::new(unsafe {
-                        std::sync::Arc::new((*(shape as *const TopoDsShape as *const TopoDsVertex)).clone())
+                        std::sync::Arc::new(
+                            (*(shape as *const TopoDsShape as *const TopoDsVertex)).clone(),
+                        )
                     }));
                 }
             }
         }
         vertices
     }
-    
+
     /// Get the edges of a shape
     pub fn Edges(S: &TopoDsShape) -> Vec<Handle<TopoDsEdge>> {
         let mut edges = Vec::new();
@@ -221,14 +236,16 @@ impl TopExp {
             if let Some(shape) = explorer.current() {
                 if shape.is_edge() {
                     edges.push(Handle::new(unsafe {
-                        std::sync::Arc::new((*(shape as *const TopoDsShape as *const TopoDsEdge)).clone())
+                        std::sync::Arc::new(
+                            (*(shape as *const TopoDsShape as *const TopoDsEdge)).clone(),
+                        )
                     }));
                 }
             }
         }
         edges
     }
-    
+
     /// Get the wires of a shape
     pub fn Wires(S: &TopoDsShape) -> Vec<Handle<TopoDsWire>> {
         let mut wires = Vec::new();
@@ -238,14 +255,16 @@ impl TopExp {
             if let Some(shape) = explorer.current() {
                 if shape.is_wire() {
                     wires.push(Handle::new(unsafe {
-                        std::sync::Arc::new((*(shape as *const TopoDsShape as *const TopoDsWire)).clone())
+                        std::sync::Arc::new(
+                            (*(shape as *const TopoDsShape as *const TopoDsWire)).clone(),
+                        )
                     }));
                 }
             }
         }
         wires
     }
-    
+
     /// Get the faces of a shape
     pub fn Faces(S: &TopoDsShape) -> Vec<Handle<TopoDsFace>> {
         let mut faces = Vec::new();
@@ -255,14 +274,16 @@ impl TopExp {
             if let Some(shape) = explorer.current() {
                 if shape.is_face() {
                     faces.push(Handle::new(unsafe {
-                        std::sync::Arc::new((*(shape as *const TopoDsShape as *const TopoDsFace)).clone())
+                        std::sync::Arc::new(
+                            (*(shape as *const TopoDsShape as *const TopoDsFace)).clone(),
+                        )
                     }));
                 }
             }
         }
         faces
     }
-    
+
     /// Get the shells of a shape
     pub fn Shells(S: &TopoDsShape) -> Vec<Handle<TopoDsShell>> {
         let mut shells = Vec::new();
@@ -272,14 +293,16 @@ impl TopExp {
             if let Some(shape) = explorer.current() {
                 if shape.is_shell() {
                     shells.push(Handle::new(unsafe {
-                        std::sync::Arc::new((*(shape as *const TopoDsShape as *const TopoDsShell)).clone())
+                        std::sync::Arc::new(
+                            (*(shape as *const TopoDsShape as *const TopoDsShell)).clone(),
+                        )
                     }));
                 }
             }
         }
         shells
     }
-    
+
     /// Get the solids of a shape
     pub fn Solids(S: &TopoDsShape) -> Vec<Handle<TopoDsSolid>> {
         let mut solids = Vec::new();
@@ -289,14 +312,16 @@ impl TopExp {
             if let Some(shape) = explorer.current() {
                 if shape.is_solid() {
                     solids.push(Handle::new(unsafe {
-                        std::sync::Arc::new((*(shape as *const TopoDsShape as *const TopoDsSolid)).clone())
+                        std::sync::Arc::new(
+                            (*(shape as *const TopoDsShape as *const TopoDsSolid)).clone(),
+                        )
                     }));
                 }
             }
         }
         solids
     }
-    
+
     /// Check if a shape contains another shape
     pub fn Contains(S1: &TopoDsShape, S2: &TopoDsShape) -> bool {
         let mut explorer = TopExpExplorer::new(S1, S2.shape_type());
@@ -310,23 +335,27 @@ impl TopExp {
         }
         false
     }
-    
+
     /// Map vertices from one shape to another
-    pub fn MapVertices(S1: &TopoDsShape, S2: &TopoDsShape) -> Vec<(Handle<TopoDsVertex>, Handle<TopoDsVertex>)> {
+    pub fn MapVertices(
+        S1: &TopoDsShape,
+        S2: &TopoDsShape,
+    ) -> Vec<(Handle<TopoDsVertex>, Handle<TopoDsVertex>)> {
         let vertices1 = Self::Vertices(S1);
         let vertices2 = Self::Vertices(S2);
         let mut mappings = Vec::new();
-        
+
         for v1 in &vertices1 {
             for v2 in &vertices2 {
-                if (v1.point().x - v2.point().x).abs() < 1e-7 &&
-                   (v1.point().y - v2.point().y).abs() < 1e-7 &&
-                   (v1.point().z - v2.point().z).abs() < 1e-7 {
+                if (v1.point().x - v2.point().x).abs() < 1e-7
+                    && (v1.point().y - v2.point().y).abs() < 1e-7
+                    && (v1.point().z - v2.point().z).abs() < 1e-7
+                {
                     mappings.push((v1.clone(), v2.clone()));
                 }
             }
         }
-        
+
         mappings
     }
 }
@@ -336,7 +365,7 @@ mod tests {
     use super::*;
     use crate::geometry::Point;
     use crate::modeling::brep_builder::BrepBuilder;
-    
+
     #[test]
     fn test_explorer_creation() {
         let builder = BrepBuilder::new();
@@ -346,11 +375,11 @@ mod tests {
         let v2 = builder.make_vertex(p2);
         let edge = builder.make_edge(v1, v2);
         let shape = edge.shape();
-        
+
         let explorer = TopExp_Explorer::new(shape, ShapeType::Vertex);
         assert!(explorer.More());
     }
-    
+
     #[test]
     fn test_topexp_nb_vertices() {
         let builder = BrepBuilder::new();
@@ -360,7 +389,7 @@ mod tests {
         let v2 = builder.make_vertex(p2);
         let edge = builder.make_edge(v1, v2);
         let shape = edge.shape();
-        
+
         assert_eq!(TopExp::NbVertices(shape), 2);
     }
 }

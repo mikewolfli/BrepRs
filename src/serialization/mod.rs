@@ -18,8 +18,6 @@ pub use json::*;
 #[cfg(feature = "serde")]
 pub use msgpack::*;
 
-// Removed unused imports
-
 /// Trait for types that can be serialized and deserialized
 #[cfg(feature = "serde")]
 pub trait Serializable: serde::Serialize + for<'de> serde::Deserialize<'de> {

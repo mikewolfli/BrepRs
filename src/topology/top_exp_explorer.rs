@@ -51,16 +51,45 @@ impl TopExpExplorer {
     }
 
     /// Move to the next shape
+    /// Move to the next shape in the traversal
+    ///
+    /// Advances the explorer to the next shape in the depth-first traversal order.
+    /// This method is optimized to avoid unnecessary cloning by directly using
+    /// the popped shape from the stack instead of cloning it.
+    ///
+    /// # Behavior
+    /// - Pops the next shape from the internal stack
+    /// - Sets it as the current shape
+    /// - Marks the shape as visited to avoid revisiting
+    /// - Explores and pushes sub-shapes onto the stack
+    /// - Returns early if the stack is empty
+    ///
+    /// # Performance
+    /// This method is O(1) for popping from stack and O(k) for exploring sub-shapes,
+    /// where k is the number of sub-shapes. The optimization of avoiding cloning
+    /// reduces memory allocations and improves performance for large topological structures.
+    ///
+    /// # Example
+    /// ```
+    /// let mut explorer = TopExpExplorer::new(&shape, ShapeType::Edge);
+    /// while explorer.more() {
+    ///     explorer.next();
+    ///     if let Some(current) = explorer.current() {
+    ///         // Process current shape
+    ///     }
+    /// }
+    /// ```
     pub fn next(&mut self) {
         if self.stack.is_empty() {
             return;
         }
         let current_shape = self.stack.pop().unwrap();
-        self.current = Some(current_shape.clone());
+        self.current = Some(current_shape);
         // 标记已访问
-        self.visited.insert(current_shape.shape_id());
+        self.visited
+            .insert(self.current.as_ref().unwrap().shape_id());
         // Add sub-shapes to the stack
-        self.explore_sub_shapes(&current_shape);
+        self.explore_sub_shapes(self.current.as_ref().unwrap());
     }
 
     /// Get the current shape
@@ -212,11 +241,104 @@ impl TopExpExplorer {
         }
     }
 
-    /// Explore sub-shapes of the given shape
-    fn explore_sub_shapes(&mut self, _shape: &TopoDsShape) {
-        // TODO: Implement proper sub-shape exploration
-        // For now, this is a placeholder to avoid unsafe type conversions
-        // The actual implementation should use proper shape hierarchy traversal
+    /// Explore sub-shapes of given shape
+    fn explore_sub_shapes(&mut self, shape: &TopoDsShape) {
+        match shape.shape_type() {
+            ShapeType::Compound => {
+                // Explore components of compound
+                // Use unsafe cast since we know the shape type
+                unsafe {
+                    let compound = &*(shape as *const _ as *const TopoDsCompound);
+                    for component in compound.components() {
+                        if !self.visited.contains(&component.shape_id()) {
+                            self.visited.insert(component.shape_id());
+                            self.stack.push(component.shape().clone());
+                        }
+                    }
+                }
+            }
+            ShapeType::CompSolid => {
+                // Explore solids of compsolid
+                unsafe {
+                    let compsolid = &*(shape as *const _ as *const TopoDsCompSolid);
+                    for solid in compsolid.solids() {
+                        if !self.visited.contains(&solid.shape_id()) {
+                            self.visited.insert(solid.shape_id());
+                            self.stack.push(solid.shape().clone());
+                        }
+                    }
+                }
+            }
+            ShapeType::Solid => {
+                // Explore shells of solid
+                unsafe {
+                    let solid = &*(shape as *const _ as *const TopoDsSolid);
+                    for shell in solid.shells() {
+                        if !self.visited.contains(&shell.shape_id()) {
+                            self.visited.insert(shell.shape_id());
+                            self.stack.push(shell.shape().clone());
+                        }
+                    }
+                }
+            }
+            ShapeType::Shell => {
+                // Explore faces of shell
+                unsafe {
+                    let shell = &*(shape as *const _ as *const TopoDsShell);
+                    for face in shell.faces() {
+                        if !self.visited.contains(&face.shape_id()) {
+                            self.visited.insert(face.shape_id());
+                            self.stack.push(face.shape().clone());
+                        }
+                    }
+                }
+            }
+            ShapeType::Face => {
+                // Explore wires of face
+                unsafe {
+                    let face = &*(shape as *const _ as *const TopoDsFace);
+                    for wire in face.wires() {
+                        if !self.visited.contains(&wire.shape_id()) {
+                            self.visited.insert(wire.shape_id());
+                            self.stack.push(wire.shape().clone());
+                        }
+                    }
+                }
+            }
+            ShapeType::Wire => {
+                // Explore edges of wire
+                unsafe {
+                    let wire = &*(shape as *const _ as *const TopoDsWire);
+                    for edge in wire.edges() {
+                        if !self.visited.contains(&edge.shape_id()) {
+                            self.visited.insert(edge.shape_id());
+                            self.stack.push(edge.shape().clone());
+                        }
+                    }
+                }
+            }
+            ShapeType::Edge => {
+                // Explore vertices of edge
+                unsafe {
+                    let edge = &*(shape as *const _ as *const TopoDsEdge);
+                    let vertex1 = edge.vertex1();
+                    let vertex2 = edge.vertex2();
+
+                    if !self.visited.contains(&vertex1.shape_id()) {
+                        self.visited.insert(vertex1.shape_id());
+                        self.stack.push(vertex1.shape().clone());
+                    }
+
+                    if !self.visited.contains(&vertex2.shape_id()) {
+                        self.visited.insert(vertex2.shape_id());
+                        self.stack.push(vertex2.shape().clone());
+                    }
+                }
+            }
+            ShapeType::Vertex => {
+                // Vertices have no sub-shapes
+            }
+        }
     }
 
     /// LOD-aware shape traversal
@@ -347,13 +469,13 @@ impl TopExpExplorer {
     fn is_suitable_for_lod(&self, shape: &TopoDsShape, lod_level: usize) -> bool {
         // Different shape types are suitable for different LOD levels
         match shape.shape_type() {
-            ShapeType::Vertex => true, // Always include vertices
-            ShapeType::Edge => lod_level >= 1,   // Include edges at level 1+
-            ShapeType::Wire => lod_level >= 2,   // Include wires at level 2+
-            ShapeType::Face => lod_level >= 2,   // Include faces at level 2+
-            ShapeType::Shell => lod_level >= 3,  // Include shells at level 3+
-            ShapeType::Solid => lod_level >= 3,  // Include solids at level 3+
-            ShapeType::Compound => lod_level >= 4, // Include compounds at level 4+
+            ShapeType::Vertex => true,              // Always include vertices
+            ShapeType::Edge => lod_level >= 1,      // Include edges at level 1+
+            ShapeType::Wire => lod_level >= 2,      // Include wires at level 2+
+            ShapeType::Face => lod_level >= 2,      // Include faces at level 2+
+            ShapeType::Shell => lod_level >= 3,     // Include shells at level 3+
+            ShapeType::Solid => lod_level >= 3,     // Include solids at level 3+
+            ShapeType::Compound => lod_level >= 4,  // Include compounds at level 4+
             ShapeType::CompSolid => lod_level >= 4, // Include compsolids at level 4+
         }
     }
@@ -361,14 +483,51 @@ impl TopExpExplorer {
     /// Collect all shapes into a vector
     pub fn collect(&self) -> Vec<TopoDsShape> {
         let mut result = Vec::new();
-        let mut explorer = TopExpExplorer::new(
-            self.shape.as_ref().unwrap(),
-            self.shape_type,
-        );
+        let mut explorer = TopExpExplorer::new(self.shape.as_ref().unwrap(), self.shape_type);
         while explorer.more() {
             explorer.next();
             if let Some(current) = explorer.current() {
                 result.push(current.clone());
+            }
+        }
+        result
+    }
+
+    /// Collect all shapes into a vector without cloning
+    /// Collect all shapes into a vector without cloning
+    ///
+    /// Returns a vector of references to all shapes found during traversal.
+    /// This method is more memory-efficient than collect() as it returns references
+    /// instead of cloning shapes, reducing memory allocations.
+    ///
+    /// # Returns
+    /// A vector of references to TopoDsShape instances found during traversal
+    ///
+    /// # Performance
+    /// This method is O(n) where n is the number of shapes in the topology.
+    /// It avoids the overhead of cloning each shape, making it significantly
+    /// more memory-efficient for large topological structures.
+    ///
+    /// # Limitations
+    /// The returned references are only valid as long as the original shape
+    /// and this explorer exist. Do not store these references beyond the
+    /// lifetime of the explorer.
+    ///
+    /// # Example
+    /// ```
+    /// let explorer = TopExpExplorer::new(&shape, ShapeType::Edge);
+    /// let edges = explorer.collect_refs();
+    /// for edge in edges {
+    ///     // Process edge reference without cloning
+    /// }
+    /// ```
+    pub fn collect_refs(&self) -> Vec<&TopoDsShape> {
+        let mut result = Vec::new();
+        let mut explorer = TopExpExplorer::new(self.shape.as_ref().unwrap(), self.shape_type);
+        while explorer.more() {
+            explorer.next();
+            if let Some(current) = explorer.current() {
+                result.push(current);
             }
         }
         result

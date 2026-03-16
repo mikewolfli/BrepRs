@@ -1,4 +1,11 @@
-#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals, dead_code, unused_imports, unused_variables)]
+#![allow(
+    non_camel_case_types,
+    non_snake_case,
+    non_upper_case_globals,
+    dead_code,
+    unused_imports,
+    unused_variables
+)]
 //! OpenCASCADE Modeling Compatibility Module
 //!
 //! Provides OpenCASCADE-compatible type aliases and wrappers
@@ -448,8 +455,9 @@ impl BRepAlgoAPI_BooleanOperation {
     ) -> bool {
         let (min1, max1) = BB1;
         let (min2, max2) = BB2;
-        
-        self.inner.bounding_boxes_intersect(&(*min1, *max1), &(*min2, *max2))
+
+        self.inner
+            .bounding_boxes_intersect(&(*min1, *max1), &(*min2, *max2))
     }
 }
 
@@ -497,14 +505,21 @@ impl BRep_Builder {
         self.inner.make_edge(V1, V2)
     }
 
+    /// Create an edge between two vertices with a curve.
+    /// Attempts to convert the curve handle to CurveEnum for compatibility.
     pub fn MakeEdgeWithCurve(
         &self,
         V1: Handle<TopoDS_Vertex>,
         V2: Handle<TopoDS_Vertex>,
         C: Handle<dyn Curve>,
     ) -> Handle<TopoDS_Edge> {
-        // TODO: Convert Handle<dyn Curve> to Handle<CurveEnum>
-        self.inner.make_edge(V1, V2)
+        // 尝试将 Handle<dyn Curve> 转换为 CurveEnum
+        if let Some(curve_enum) = C.as_any().downcast_ref::<CurveEnum>() {
+            self.inner
+                .make_edge_with_curve(V1, V2, Handle::new(curve_enum.clone()))
+        } else {
+            self.inner.make_edge(V1, V2)
+        }
     }
 
     pub fn MakeDegenerateEdge(&self, V: Handle<TopoDS_Vertex>) -> Handle<TopoDS_Edge> {
@@ -520,8 +535,14 @@ impl BRep_Builder {
         self.inner.update_edge_vertices(E, V1, V2)
     }
 
+    /// Set the curve for an edge.
+    /// Attempts to convert the curve handle to CurveEnum for compatibility.
     pub fn SetEdgeCurve(&self, E: &mut TopoDS_Edge, C: Handle<dyn Curve>) {
-        // TODO: Convert Handle<dyn Curve> to Handle<CurveEnum>
+        // 尝试将 Handle<dyn Curve> 转换为 CurveEnum
+        if let Some(curve_enum) = C.as_any().downcast_ref::<CurveEnum>() {
+            self.inner
+                .set_edge_curve(E, Handle::new(curve_enum.clone()));
+        }
     }
 
     pub fn SetEdgeTolerance(&self, E: &mut TopoDS_Edge, Tol: f64) {
@@ -554,22 +575,36 @@ impl BRep_Builder {
         self.inner.make_face()
     }
 
+    /// Create a face from a surface.
+    /// Attempts to convert the surface handle to SurfaceEnum for compatibility.
     pub fn MakeFaceFromSurface(&self, S: Handle<dyn Surface>) -> Handle<TopoDS_Face> {
-        // TODO: Convert Handle<dyn Surface> to Handle<SurfaceEnum>
-        self.inner.make_face()
+        // 尝试将 Handle<dyn Surface> 转换为 SurfaceEnum
+        if let Some(surface_enum) = S.as_any().downcast_ref::<SurfaceEnum>() {
+            self.inner
+                .make_face_with_surface(Handle::new(surface_enum.clone()))
+        } else {
+            self.inner.make_face()
+        }
     }
 
     pub fn MakeFaceWithWire(&self, W: Handle<TopoDS_Wire>) -> Handle<TopoDS_Face> {
         self.inner.make_face_with_wire(W)
     }
 
+    /// Create a face from a surface and a wire.
+    /// Attempts to convert the surface handle to SurfaceEnum for compatibility.
     pub fn MakeFaceWithSurfaceAndWire(
         &self,
         S: Handle<dyn Surface>,
         W: Handle<TopoDS_Wire>,
     ) -> Handle<TopoDS_Face> {
-        // TODO: Convert Handle<dyn Surface> to Handle<SurfaceEnum>
-        self.inner.make_face_with_wire(W)
+        // 尝试将 Handle<dyn Surface> 转换为 SurfaceEnum
+        if let Some(surface_enum) = S.as_any().downcast_ref::<SurfaceEnum>() {
+            self.inner
+                .make_face_with_surface_and_wire(Handle::new(surface_enum.clone()), W)
+        } else {
+            self.inner.make_face_with_wire(W)
+        }
     }
 
     pub fn AddWire(&self, F: &mut TopoDS_Face, W: Handle<TopoDS_Wire>) {
@@ -580,8 +615,14 @@ impl BRep_Builder {
         self.inner.set_face_outer_wire(F, W)
     }
 
+    /// Set the surface for a face.
+    /// Attempts to convert the surface handle to SurfaceEnum for compatibility.
     pub fn SetFaceSurface(&self, F: &mut TopoDS_Face, S: Handle<dyn Surface>) {
-        // TODO: Convert Handle<dyn Surface> to Handle<SurfaceEnum>
+        // 尝试将 Handle<dyn Surface> 转换为 SurfaceEnum
+        if let Some(surface_enum) = S.as_any().downcast_ref::<SurfaceEnum>() {
+            self.inner
+                .set_face_surface(F, Handle::new(surface_enum.clone()));
+        }
     }
 
     pub fn SetFaceTolerance(&self, F: &mut TopoDS_Face, Tol: f64) {

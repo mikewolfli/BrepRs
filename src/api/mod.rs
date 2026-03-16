@@ -470,7 +470,7 @@ pub mod incremental {
     pub struct HotReloadManager {
         // Hot reload configuration
         watch_paths: Vec<String>,
-        reload_callbacks: Vec<Box<dyn Fn()>>,
+        reload_callbacks: Vec<Box<dyn Fn() + Send>>,
     }
 
     impl HotReloadManager {
@@ -490,44 +490,87 @@ pub mod incremental {
         /// Add a reload callback
         pub fn add_reload_callback<F>(&mut self, callback: F)
         where
-            F: Fn() + 'static,
+            F: Fn() + Send + 'static,
         {
             self.reload_callbacks.push(Box::new(callback));
         }
 
         /// Start watching for changes
-        pub async fn start_watching(&mut self) -> Result<(), String> {
+        pub async fn start_watching(&mut self) -> crate::foundation::exception::Result<()> {
             // Implementation of file watching using std::sync
             use std::path::Path;
             use std::sync::mpsc;
+            use std::thread;
+            use std::time::Duration;
 
             if self.watch_paths.is_empty() {
-                return Err("No paths to watch".to_string());
+                return Err(crate::foundation::exception::Failure::range_error(
+                    "No paths to watch",
+                ));
             }
 
             // Check if all paths exist
             for path in &self.watch_paths {
                 if !Path::new(path).exists() {
-                    return Err(format!("Path does not exist: {}", path));
+                    return Err(crate::foundation::exception::Failure::runtime_error(
+                        format!("Path does not exist: {}", path),
+                    ));
                 }
             }
 
             // Create a channel to receive events
-            let (tx, _rx) = mpsc::channel::<()>();
 
             // Store sender for later use
             let _tx = tx;
 
-            // In a real implementation, this would use notify crate for file watching
-            // For now, return Ok as a placeholder
+            // Start a watcher thread
+            let watch_paths = self.watch_paths.clone();
+            let reload_callbacks = std::mem::take(&mut self.reload_callbacks);
+
+            thread::spawn(move || {
+                // Simple file watcher implementation
+                let mut last_modified = std::collections::HashMap::new();
+
+                // Initialize last modified times
+                for path in &watch_paths {
+                    if let Ok(metadata) = std::fs::metadata(path) {
+                        if let Ok(modified) = metadata.modified() {
+                            last_modified.insert(path.clone(), modified);
+                        }
+                    }
+                }
+
+                // Watch loop
+                loop {
+                    thread::sleep(Duration::from_secs(1));
+
+                    for path in &watch_paths {
+                        if let Ok(metadata) = std::fs::metadata(path) {
+                            if let Ok(modified) = metadata.modified() {
+                                if let Some(last) = last_modified.get(path) {
+                                    if modified > *last {
+                                        // File changed, trigger reload
+                                        for callback in &reload_callbacks {
+                                            callback();
+                                        }
+                                        last_modified.insert(path.clone(), modified);
+                                    }
+                                } else {
+                                    last_modified.insert(path.clone(), modified);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
             Ok(())
         }
 
         /// Stop watching for changes
-        pub fn stop_watching(&mut self) -> Result<(), String> {
+        pub fn stop_watching(&mut self) -> crate::foundation::exception::Result<()> {
             // Implementation of stopping file watching
-            // In a real implementation, this would stop the watcher threads
-            // For now, we'll just clear the paths
+            // For now, we'll clear the paths
             self.watch_paths.clear();
             Ok(())
         }
@@ -575,9 +618,15 @@ pub mod incremental {
         }
 
         /// Update a vertex
-        pub fn update_vertex(&mut self, vertex_id: usize, point: Point) -> Result<(), String> {
+        pub fn update_vertex(
+            &mut self,
+            vertex_id: usize,
+            point: Point,
+        ) -> crate::foundation::exception::Result<()> {
             if vertex_id >= self.mesh.vertices.len() {
-                return Err("Vertex ID out of bounds".to_string());
+                return Err(crate::foundation::exception::Failure::range_error(
+                    "Vertex ID out of bounds",
+                ));
             }
             self.mesh.vertices[vertex_id].point = point;
             self.dirty = true;
@@ -585,9 +634,11 @@ pub mod incremental {
         }
 
         /// Remove a face
-        pub fn remove_face(&mut self, face_id: usize) -> Result<(), String> {
+        pub fn remove_face(&mut self, face_id: usize) -> crate::foundation::exception::Result<()> {
             if face_id >= self.mesh.faces.len() {
-                return Err("Face ID out of bounds".to_string());
+                return Err(crate::foundation::exception::Failure::range_error(
+                    "Face ID out of bounds",
+                ));
             }
             self.mesh.faces.remove(face_id);
             // Update face IDs
@@ -623,7 +674,6 @@ pub mod incremental {
 
 /// API documentation utilities
 pub mod documentation {
-    
 
     /// API documentation generator
     pub struct ApiDocGenerator {
@@ -647,7 +697,7 @@ pub mod documentation {
         }
 
         /// Generate API documentation
-        pub fn generate(&self) -> Result<(), String> {
+        pub fn generate(&self) -> crate::foundation::exception::Result<()> {
             // Implementation of API documentation generation
             use std::fs;
             use std::path::Path;
@@ -655,9 +705,7 @@ pub mod documentation {
             // Create output directory if it doesn't exist
             let output_path = Path::new(&self.output_dir);
             if !output_path.exists() {
-                if let Err(e) = fs::create_dir_all(output_path) {
-                    return Err(format!("Failed to create output directory: {}", e));
-                }
+                fs::create_dir_all(output_path)?;
             }
 
             // Generate API documentation
@@ -697,15 +745,13 @@ pub mod documentation {
             content.push_str("- `calculate_volume(&self) -> f64`\n");
             content.push_str("- `calculate_surface_area(&self) -> f64`\n\n");
 
-            if let Err(e) = fs::write(api_doc_path, content) {
-                return Err(format!("Failed to write API documentation: {}", e));
-            }
+            fs::write(api_doc_path, content)?;
 
             Ok(())
         }
 
         /// Generate user guide
-        pub fn generate_user_guide(&self) -> Result<(), String> {
+        pub fn generate_user_guide(&self) -> crate::foundation::exception::Result<()> {
             // Implementation of user guide generation
             use std::fs;
             use std::path::Path;
@@ -730,15 +776,13 @@ pub mod documentation {
             content.push_str("let area = mesh.calculate_surface_area();\n");
             content.push_str("```\n\n");
 
-            if let Err(e) = fs::write(guide_path, content) {
-                return Err(format!("Failed to write user guide: {}", e));
-            }
+            fs::write(guide_path, content)?;
 
             Ok(())
         }
 
         /// Generate examples and tutorials
-        pub fn generate_examples(&self) -> Result<(), String> {
+        pub fn generate_examples(&self) -> crate::foundation::exception::Result<()> {
             // Implementation of examples generation
             use std::fs;
             use std::path::Path;
@@ -748,9 +792,7 @@ pub mod documentation {
 
             // Create examples directory
             if !examples_path.exists() {
-                if let Err(e) = fs::create_dir_all(&examples_path) {
-                    return Err(format!("Failed to create examples directory: {}", e));
-                }
+                fs::create_dir_all(&examples_path)?;
             }
 
             // Create basic example
@@ -781,9 +823,7 @@ pub mod documentation {
             content.push_str("    println!(\"Surface Area: {:.3}\", surface_area);\n");
             content.push_str("}\n");
 
-            if let Err(e) = fs::write(basic_example, content) {
-                return Err(format!("Failed to write example: {}", e));
-            }
+            fs::write(basic_example, content)?;
 
             Ok(())
         }

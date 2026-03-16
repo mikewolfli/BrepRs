@@ -111,34 +111,47 @@ impl MeshQualityAnalyzer {
 
         #[cfg(feature = "rayon")]
         {
-            let results: Vec<_> = mesh.faces.par_iter().filter_map(|face| {
-                if face.vertices.len() != 3 {
-                    return None;
-                }
+            let results: Vec<_> = mesh
+                .faces
+                .par_iter()
+                .filter_map(|face| {
+                    if face.vertices.len() != 3 {
+                        return None;
+                    }
 
-                let v0 = &mesh.vertices[face.vertices[0]];
-                let v1 = &mesh.vertices[face.vertices[1]];
-                let v2 = &mesh.vertices[face.vertices[2]];
+                    let v0 = &mesh.vertices[face.vertices[0]];
+                    let v1 = &mesh.vertices[face.vertices[1]];
+                    let v2 = &mesh.vertices[face.vertices[2]];
 
-                // Calculate angles
-                let angle1 = self.calculate_angle(&v1.point, &v0.point, &v2.point);
-                let angle2 = self.calculate_angle(&v0.point, &v1.point, &v2.point);
-                let angle3 = self.calculate_angle(&v0.point, &v2.point, &v1.point);
+                    // Calculate angles
+                    let angle1 = self.calculate_angle(&v1.point, &v0.point, &v2.point);
+                    let angle2 = self.calculate_angle(&v0.point, &v1.point, &v2.point);
+                    let angle3 = self.calculate_angle(&v0.point, &v2.point, &v1.point);
 
-                // Calculate area
-                let area = self.calculate_triangle_area(&v0.point, &v1.point, &v2.point);
+                    // Calculate area
+                    let area = self.calculate_triangle_area(&v0.point, &v1.point, &v2.point);
 
-                // Calculate aspect ratio
-                let aspect_ratio = self.calculate_aspect_ratio(&v0.point, &v1.point, &v2.point);
+                    // Calculate aspect ratio
+                    let aspect_ratio = self.calculate_aspect_ratio(&v0.point, &v1.point, &v2.point);
 
-                // Calculate skewness
-                let skewness = self.calculate_skewness(&v0.point, &v1.point, &v2.point);
+                    // Calculate skewness
+                    let skewness = self.calculate_skewness(&v0.point, &v1.point, &v2.point);
 
-                // Calculate condition number
-                let condition_number = self.calculate_condition_number(&v0.point, &v1.point, &v2.point);
+                    // Calculate condition number
+                    let condition_number =
+                        self.calculate_condition_number(&v0.point, &v1.point, &v2.point);
 
-                Some((angle1, angle2, angle3, area, aspect_ratio, skewness, condition_number))
-            }).collect();
+                    Some((
+                        angle1,
+                        angle2,
+                        angle3,
+                        area,
+                        aspect_ratio,
+                        skewness,
+                        condition_number,
+                    ))
+                })
+                .collect();
 
             let mut angles = Vec::with_capacity(results.len() * 3);
             let mut areas = Vec::with_capacity(results.len());
@@ -146,7 +159,8 @@ impl MeshQualityAnalyzer {
             let mut skewnesses = Vec::with_capacity(results.len());
             let mut condition_numbers = Vec::with_capacity(results.len());
 
-            for (angle1, angle2, angle3, area, aspect_ratio, skewness, condition_number) in results {
+            for (angle1, angle2, angle3, area, aspect_ratio, skewness, condition_number) in results
+            {
                 angles.push(angle1);
                 angles.push(angle2);
                 angles.push(angle3);
@@ -185,7 +199,8 @@ impl MeshQualityAnalyzer {
             }
 
             if !aspect_ratios.is_empty() {
-                quality.aspect_ratio = aspect_ratios.iter().sum::<f64>() / aspect_ratios.len() as f64;
+                quality.aspect_ratio =
+                    aspect_ratios.iter().sum::<f64>() / aspect_ratios.len() as f64;
             }
 
             if !skewnesses.is_empty() {
@@ -193,7 +208,7 @@ impl MeshQualityAnalyzer {
             }
 
             if !condition_numbers.is_empty() {
-                quality.condition_number = 
+                quality.condition_number =
                     condition_numbers.iter().sum::<f64>() / condition_numbers.len() as f64;
             }
         }
@@ -237,7 +252,8 @@ impl MeshQualityAnalyzer {
                 skewnesses.push(skewness);
 
                 // Calculate condition number
-                let condition_number = self.calculate_condition_number(&v0.point, &v1.point, &v2.point);
+                let condition_number =
+                    self.calculate_condition_number(&v0.point, &v1.point, &v2.point);
                 condition_numbers.push(condition_number);
             }
 
@@ -270,7 +286,8 @@ impl MeshQualityAnalyzer {
             }
 
             if !aspect_ratios.is_empty() {
-                quality.aspect_ratio = aspect_ratios.iter().sum::<f64>() / aspect_ratios.len() as f64;
+                quality.aspect_ratio =
+                    aspect_ratios.iter().sum::<f64>() / aspect_ratios.len() as f64;
             }
 
             if !skewnesses.is_empty() {
@@ -278,7 +295,7 @@ impl MeshQualityAnalyzer {
             }
 
             if !condition_numbers.is_empty() {
-                quality.condition_number = 
+                quality.condition_number =
                     condition_numbers.iter().sum::<f64>() / condition_numbers.len() as f64;
             }
         }
@@ -296,50 +313,67 @@ impl MeshQualityAnalyzer {
 
         #[cfg(feature = "rayon")]
         {
-            let results: Vec<_> = mesh.tetrahedrons.par_iter().map(|tetra| {
-                let v0 = &mesh.vertices[tetra.vertices[0]];
-                let v1 = &mesh.vertices[tetra.vertices[1]];
-                let v2 = &mesh.vertices[tetra.vertices[2]];
-                let v3 = &mesh.vertices[tetra.vertices[3]];
+            let results: Vec<_> = mesh
+                .tetrahedrons
+                .par_iter()
+                .map(|tetra| {
+                    let v0 = &mesh.vertices[tetra.vertices[0]];
+                    let v1 = &mesh.vertices[tetra.vertices[1]];
+                    let v2 = &mesh.vertices[tetra.vertices[2]];
+                    let v3 = &mesh.vertices[tetra.vertices[3]];
 
-                // Calculate dihedral angles
-                let angle1 = self.calculate_dihedral_angle(
-                    &v0.point, &v1.point, &v2.point, &v0.point, &v1.point, &v3.point,
-                );
-                let angle2 = self.calculate_dihedral_angle(
-                    &v0.point, &v1.point, &v2.point, &v0.point, &v2.point, &v3.point,
-                );
-                let angle3 = self.calculate_dihedral_angle(
-                    &v0.point, &v1.point, &v2.point, &v1.point, &v2.point, &v3.point,
-                );
-                let angle4 = self.calculate_dihedral_angle(
-                    &v0.point, &v1.point, &v3.point, &v0.point, &v2.point, &v3.point,
-                );
-                let angle5 = self.calculate_dihedral_angle(
-                    &v0.point, &v1.point, &v3.point, &v1.point, &v2.point, &v3.point,
-                );
-                let angle6 = self.calculate_dihedral_angle(
-                    &v0.point, &v2.point, &v3.point, &v1.point, &v2.point, &v3.point,
-                );
+                    // Calculate dihedral angles
+                    let angle1 = self.calculate_dihedral_angle(
+                        &v0.point, &v1.point, &v2.point, &v0.point, &v1.point, &v3.point,
+                    );
+                    let angle2 = self.calculate_dihedral_angle(
+                        &v0.point, &v1.point, &v2.point, &v0.point, &v2.point, &v3.point,
+                    );
+                    let angle3 = self.calculate_dihedral_angle(
+                        &v0.point, &v1.point, &v2.point, &v1.point, &v2.point, &v3.point,
+                    );
+                    let angle4 = self.calculate_dihedral_angle(
+                        &v0.point, &v1.point, &v3.point, &v0.point, &v2.point, &v3.point,
+                    );
+                    let angle5 = self.calculate_dihedral_angle(
+                        &v0.point, &v1.point, &v3.point, &v1.point, &v2.point, &v3.point,
+                    );
+                    let angle6 = self.calculate_dihedral_angle(
+                        &v0.point, &v2.point, &v3.point, &v1.point, &v2.point, &v3.point,
+                    );
 
-                // Calculate volume
-                let volume = 
-                    self.calculate_tetrahedron_volume(&v0.point, &v1.point, &v2.point, &v3.point);
+                    // Calculate volume
+                    let volume = self
+                        .calculate_tetrahedron_volume(&v0.point, &v1.point, &v2.point, &v3.point);
 
-                // Calculate aspect ratio
-                let aspect_ratio = 
-                    self.calculate_tetrahedron_aspect_ratio(&v0.point, &v1.point, &v2.point, &v3.point);
+                    // Calculate aspect ratio
+                    let aspect_ratio = self.calculate_tetrahedron_aspect_ratio(
+                        &v0.point, &v1.point, &v2.point, &v3.point,
+                    );
 
-                // Calculate skewness
-                let skewness = 
-                    self.calculate_tetrahedron_skewness(&v0.point, &v1.point, &v2.point, &v3.point);
+                    // Calculate skewness
+                    let skewness = self
+                        .calculate_tetrahedron_skewness(&v0.point, &v1.point, &v2.point, &v3.point);
 
-                // Calculate condition number
-                let condition_number = self
-                    .calculate_tetrahedron_condition_number(&v0.point, &v1.point, &v2.point, &v3.point);
+                    // Calculate condition number
+                    let condition_number = self.calculate_tetrahedron_condition_number(
+                        &v0.point, &v1.point, &v2.point, &v3.point,
+                    );
 
-                (angle1, angle2, angle3, angle4, angle5, angle6, volume, aspect_ratio, skewness, condition_number)
-            }).collect();
+                    (
+                        angle1,
+                        angle2,
+                        angle3,
+                        angle4,
+                        angle5,
+                        angle6,
+                        volume,
+                        aspect_ratio,
+                        skewness,
+                        condition_number,
+                    )
+                })
+                .collect();
 
             let mut dihedral_angles = Vec::with_capacity(results.len() * 6);
             let mut volumes = Vec::with_capacity(results.len());
@@ -347,7 +381,19 @@ impl MeshQualityAnalyzer {
             let mut skewnesses = Vec::with_capacity(results.len());
             let mut condition_numbers = Vec::with_capacity(results.len());
 
-            for (angle1, angle2, angle3, angle4, angle5, angle6, volume, aspect_ratio, skewness, condition_number) in results {
+            for (
+                angle1,
+                angle2,
+                angle3,
+                angle4,
+                angle5,
+                angle6,
+                volume,
+                aspect_ratio,
+                skewness,
+                condition_number,
+            ) in results
+            {
                 dihedral_angles.push(angle1);
                 dihedral_angles.push(angle2);
                 dihedral_angles.push(angle3);
@@ -371,7 +417,8 @@ impl MeshQualityAnalyzer {
                     .copied()
                     .max_by(|a, b| a.partial_cmp(b).unwrap())
                     .unwrap();
-                quality.avg_angle = dihedral_angles.iter().sum::<f64>() / dihedral_angles.len() as f64;
+                quality.avg_angle =
+                    dihedral_angles.iter().sum::<f64>() / dihedral_angles.len() as f64;
             }
 
             if !volumes.is_empty() {
@@ -389,7 +436,8 @@ impl MeshQualityAnalyzer {
             }
 
             if !aspect_ratios.is_empty() {
-                quality.aspect_ratio = aspect_ratios.iter().sum::<f64>() / aspect_ratios.len() as f64;
+                quality.aspect_ratio =
+                    aspect_ratios.iter().sum::<f64>() / aspect_ratios.len() as f64;
             }
 
             if !skewnesses.is_empty() {
@@ -397,7 +445,7 @@ impl MeshQualityAnalyzer {
             }
 
             if !condition_numbers.is_empty() {
-                quality.condition_number = 
+                quality.condition_number =
                     condition_numbers.iter().sum::<f64>() / condition_numbers.len() as f64;
             }
         }
@@ -444,23 +492,24 @@ impl MeshQualityAnalyzer {
                 dihedral_angles.push(angle6);
 
                 // Calculate volume
-                let volume = 
+                let volume =
                     self.calculate_tetrahedron_volume(&v0.point, &v1.point, &v2.point, &v3.point);
                 volumes.push(volume);
 
                 // Calculate aspect ratio
-                let aspect_ratio = 
-                    self.calculate_tetrahedron_aspect_ratio(&v0.point, &v1.point, &v2.point, &v3.point);
+                let aspect_ratio = self
+                    .calculate_tetrahedron_aspect_ratio(&v0.point, &v1.point, &v2.point, &v3.point);
                 aspect_ratios.push(aspect_ratio);
 
                 // Calculate skewness
-                let skewness = 
+                let skewness =
                     self.calculate_tetrahedron_skewness(&v0.point, &v1.point, &v2.point, &v3.point);
                 skewnesses.push(skewness);
 
                 // Calculate condition number
-                let condition_number = self
-                    .calculate_tetrahedron_condition_number(&v0.point, &v1.point, &v2.point, &v3.point);
+                let condition_number = self.calculate_tetrahedron_condition_number(
+                    &v0.point, &v1.point, &v2.point, &v3.point,
+                );
                 condition_numbers.push(condition_number);
             }
 
@@ -475,7 +524,8 @@ impl MeshQualityAnalyzer {
                     .copied()
                     .max_by(|a, b| a.partial_cmp(b).unwrap())
                     .unwrap();
-                quality.avg_angle = dihedral_angles.iter().sum::<f64>() / dihedral_angles.len() as f64;
+                quality.avg_angle =
+                    dihedral_angles.iter().sum::<f64>() / dihedral_angles.len() as f64;
             }
 
             if !volumes.is_empty() {
@@ -493,7 +543,8 @@ impl MeshQualityAnalyzer {
             }
 
             if !aspect_ratios.is_empty() {
-                quality.aspect_ratio = aspect_ratios.iter().sum::<f64>() / aspect_ratios.len() as f64;
+                quality.aspect_ratio =
+                    aspect_ratios.iter().sum::<f64>() / aspect_ratios.len() as f64;
             }
 
             if !skewnesses.is_empty() {
@@ -501,7 +552,7 @@ impl MeshQualityAnalyzer {
             }
 
             if !condition_numbers.is_empty() {
-                quality.condition_number = 
+                quality.condition_number =
                     condition_numbers.iter().sum::<f64>() / condition_numbers.len() as f64;
             }
         }
@@ -1328,19 +1379,51 @@ impl MeshQualityRepairer {
         for i in 0..num_tetra {
             let tetra_i = &mesh.tetrahedrons[i];
             let faces_i = [
-                [tetra_i.vertices[0], tetra_i.vertices[1], tetra_i.vertices[2]],
-                [tetra_i.vertices[0], tetra_i.vertices[1], tetra_i.vertices[3]],
-                [tetra_i.vertices[0], tetra_i.vertices[2], tetra_i.vertices[3]],
-                [tetra_i.vertices[1], tetra_i.vertices[2], tetra_i.vertices[3]],
+                [
+                    tetra_i.vertices[0],
+                    tetra_i.vertices[1],
+                    tetra_i.vertices[2],
+                ],
+                [
+                    tetra_i.vertices[0],
+                    tetra_i.vertices[1],
+                    tetra_i.vertices[3],
+                ],
+                [
+                    tetra_i.vertices[0],
+                    tetra_i.vertices[2],
+                    tetra_i.vertices[3],
+                ],
+                [
+                    tetra_i.vertices[1],
+                    tetra_i.vertices[2],
+                    tetra_i.vertices[3],
+                ],
             ];
 
             for j in (i + 1)..num_tetra {
                 let tetra_j = &mesh.tetrahedrons[j];
                 let faces_j = [
-                    [tetra_j.vertices[0], tetra_j.vertices[1], tetra_j.vertices[2]],
-                    [tetra_j.vertices[0], tetra_j.vertices[1], tetra_j.vertices[3]],
-                    [tetra_j.vertices[0], tetra_j.vertices[2], tetra_j.vertices[3]],
-                    [tetra_j.vertices[1], tetra_j.vertices[2], tetra_j.vertices[3]],
+                    [
+                        tetra_j.vertices[0],
+                        tetra_j.vertices[1],
+                        tetra_j.vertices[2],
+                    ],
+                    [
+                        tetra_j.vertices[0],
+                        tetra_j.vertices[1],
+                        tetra_j.vertices[3],
+                    ],
+                    [
+                        tetra_j.vertices[0],
+                        tetra_j.vertices[2],
+                        tetra_j.vertices[3],
+                    ],
+                    [
+                        tetra_j.vertices[1],
+                        tetra_j.vertices[2],
+                        tetra_j.vertices[3],
+                    ],
                 ];
 
                 // Check if any faces are shared
@@ -1425,8 +1508,8 @@ impl MeshQualityRepairer {
                 ];
 
                 // Find shared face
-                for (fi, face_i) in current_faces.iter().enumerate() {
-                    for (fj, face_j) in neighbor_faces.iter().enumerate() {
+                for face_i in current_faces.iter() {
+                    for face_j in neighbor_faces.iter() {
                         let mut shared_vertices = 0;
                         let mut i_in_j = [false; 3];
                         let mut j_in_i = [false; 3];
@@ -1447,7 +1530,7 @@ impl MeshQualityRepairer {
                             let mut consistent = true;
                             for ii in 0..3 {
                                 let vi = face_i[ii];
-                                let vj = face_j[ii];
+
                                 // Find position of vi in face_j
                                 let pos_in_j = face_j.iter().position(|&v| v == vi).unwrap();
                                 // In consistent orientation, the order should be reversed

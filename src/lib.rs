@@ -35,6 +35,7 @@ pub mod gpu;
 pub mod mesh;
 pub mod ml;
 pub mod modeling;
+pub mod plugins;
 pub mod simulation;
 pub mod topology;
 pub mod visualization;

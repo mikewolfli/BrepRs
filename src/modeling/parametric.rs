@@ -1,3 +1,4 @@
+use crate::foundation::handle::Handle;
 use std::collections::HashMap;
 
 use crate::geometry::Point;
@@ -322,7 +323,7 @@ impl ParametricShape for ParametricCube {
         let half_height = height / 2.0;
         let half_depth = depth / 2.0;
 
-        let _vertices = vec![
+        let vertices = vec![
             Point::new(
                 center_x - half_width,
                 center_y - half_height,
@@ -365,10 +366,94 @@ impl ParametricShape for ParametricCube {
             ),
         ];
 
-        // Create cube shape
-        // TODO: Implement actual cube creation using BRepBuilder
-        // For now, create a placeholder shape with the correct type
-        self.shape = TopoDsShape::new(crate::topology::shape_enum::ShapeType::Solid);
+        // Create cube shape using BRepBuilder
+        let builder = crate::modeling::brep_builder::BrepBuilder::new();
+
+        // Create vertices
+        let v0 = builder.make_vertex(vertices[0]);
+        let v1 = builder.make_vertex(vertices[1]);
+        let v2 = builder.make_vertex(vertices[2]);
+        let v3 = builder.make_vertex(vertices[3]);
+        let v4 = builder.make_vertex(vertices[4]);
+        let v5 = builder.make_vertex(vertices[5]);
+        let v6 = builder.make_vertex(vertices[6]);
+        let v7 = builder.make_vertex(vertices[7]);
+
+        // Create edges
+        let e0 = builder.make_edge(v0.clone(), v1.clone());
+        let e1 = builder.make_edge(v1.clone(), v2.clone());
+        let e2 = builder.make_edge(v2.clone(), v3.clone());
+        let e3 = builder.make_edge(v3.clone(), v0.clone());
+        let e4 = builder.make_edge(v4.clone(), v5.clone());
+        let e5 = builder.make_edge(v5.clone(), v6.clone());
+        let e6 = builder.make_edge(v6.clone(), v7.clone());
+        let e7 = builder.make_edge(v7.clone(), v4.clone());
+        let e8 = builder.make_edge(v0.clone(), v4.clone());
+        let e9 = builder.make_edge(v1.clone(), v5.clone());
+        let e10 = builder.make_edge(v2.clone(), v6.clone());
+        let e11 = builder.make_edge(v3.clone(), v7.clone());
+
+        // Create wires for each face
+        let mut wire_bottom = crate::topology::topods_wire::TopoDsWire::new();
+        wire_bottom.add_edge(e0);
+        wire_bottom.add_edge(e1);
+        wire_bottom.add_edge(e2);
+        wire_bottom.add_edge(e3);
+
+        let mut wire_top = crate::topology::topods_wire::TopoDsWire::new();
+        wire_top.add_edge(e4);
+        wire_top.add_edge(e5);
+        wire_top.add_edge(e6);
+        wire_top.add_edge(e7);
+
+        let mut wire_front = crate::topology::topods_wire::TopoDsWire::new();
+        wire_front.add_edge(e0);
+        wire_front.add_edge(e9);
+        wire_front.add_edge(e4);
+        wire_front.add_edge(e8);
+
+        let mut wire_back = crate::topology::topods_wire::TopoDsWire::new();
+        wire_back.add_edge(e2);
+        wire_back.add_edge(e10);
+        wire_back.add_edge(e6);
+        wire_back.add_edge(e11);
+
+        let mut wire_left = crate::topology::topods_wire::TopoDsWire::new();
+        wire_left.add_edge(e3);
+        wire_left.add_edge(e11);
+        wire_left.add_edge(e7);
+        wire_left.add_edge(e8);
+
+        let mut wire_right = crate::topology::topods_wire::TopoDsWire::new();
+        wire_right.add_edge(e1);
+        wire_right.add_edge(e10);
+        wire_right.add_edge(e5);
+        wire_right.add_edge(e9);
+
+        // Create faces
+        let face_bottom =
+            builder.make_face_with_wire(Handle::new(std::sync::Arc::new(wire_bottom)));
+        let face_top = builder.make_face_with_wire(Handle::new(std::sync::Arc::new(wire_top)));
+        let face_front = builder.make_face_with_wire(Handle::new(std::sync::Arc::new(wire_front)));
+        let face_back = builder.make_face_with_wire(Handle::new(std::sync::Arc::new(wire_back)));
+        let face_left = builder.make_face_with_wire(Handle::new(std::sync::Arc::new(wire_left)));
+        let face_right = builder.make_face_with_wire(Handle::new(std::sync::Arc::new(wire_right)));
+
+        // Create shell
+        let mut shell = crate::topology::topods_shell::TopoDsShell::new();
+        shell.add_face(face_bottom);
+        shell.add_face(face_top);
+        shell.add_face(face_front);
+        shell.add_face(face_back);
+        shell.add_face(face_left);
+        shell.add_face(face_right);
+
+        // Create solid
+        let mut solid = crate::topology::topods_solid::TopoDsSolid::new();
+        solid.set_outer_shell(Handle::new(std::sync::Arc::new(shell)));
+
+        // Set the shape
+        self.shape = solid.into_shape();
         true
     }
 
@@ -458,7 +543,7 @@ impl ParametricShape for ParametricCylinder {
 
     fn update(&mut self) -> bool {
         // Get parameters
-        let _radius = if let Some(Parameter::Float(r)) = self.params.get_parameter("radius") {
+        let radius = if let Some(Parameter::Float(r)) = self.params.get_parameter("radius") {
             *r
         } else {
             1.0
@@ -489,13 +574,90 @@ impl ParametricShape for ParametricCylinder {
         };
 
         // Calculate cylinder parameters
-        let _bottom_center = Point::new(center_x, center_y, center_z - height / 2.0);
-        let _top_center = Point::new(center_x, center_y, center_z + height / 2.0);
+        let bottom_center = Point::new(center_x, center_y, center_z - height / 2.0);
+        let top_center = Point::new(center_x, center_y, center_z + height / 2.0);
 
-        // Create cylinder shape
-        // TODO: Implement actual cylinder creation using BRepBuilder
-        // For now, create a placeholder shape with the correct type
-        self.shape = TopoDsShape::new(crate::topology::shape_enum::ShapeType::Solid);
+        // Create cylinder shape using BRepBuilder
+        let builder = crate::modeling::brep_builder::BrepBuilder::new();
+
+        // Create bottom and top centers
+        let bottom_center_vertex = builder.make_vertex(bottom_center);
+        let top_center_vertex = builder.make_vertex(top_center);
+
+        // Create circular edges for bottom and top faces
+        // For simplicity, we'll create a regular polygon approximation of a circle
+        let num_segments = 32;
+        let mut bottom_vertices = Vec::new();
+        let mut top_vertices = Vec::new();
+
+        for i in 0..num_segments {
+            let angle = (i as f64) * 2.0 * std::f64::consts::PI / (num_segments as f64);
+            let x = center_x + radius * angle.cos();
+            let y = center_y + radius * angle.sin();
+
+            bottom_vertices.push(builder.make_vertex(Point::new(x, y, bottom_center.z)));
+            top_vertices.push(builder.make_vertex(Point::new(x, y, top_center.z)));
+        }
+
+        // Create bottom face wire
+        let mut bottom_wire = crate::topology::topods_wire::TopoDsWire::new();
+        for i in 0..num_segments {
+            let next_i = (i + 1) % num_segments;
+            let edge =
+                builder.make_edge(bottom_vertices[i].clone(), bottom_vertices[next_i].clone());
+            bottom_wire.add_edge(edge);
+        }
+
+        // Create top face wire
+        let mut top_wire = crate::topology::topods_wire::TopoDsWire::new();
+        for i in 0..num_segments {
+            let next_i = (i + 1) % num_segments;
+            let edge = builder.make_edge(top_vertices[i].clone(), top_vertices[next_i].clone());
+            top_wire.add_edge(edge);
+        }
+
+        // Create side face wires
+        let mut side_faces = Vec::new();
+        for i in 0..num_segments {
+            let next_i = (i + 1) % num_segments;
+
+            let mut side_wire = crate::topology::topods_wire::TopoDsWire::new();
+            side_wire
+                .add_edge(builder.make_edge(bottom_vertices[i].clone(), top_vertices[i].clone()));
+            side_wire
+                .add_edge(builder.make_edge(top_vertices[i].clone(), top_vertices[next_i].clone()));
+            side_wire.add_edge(builder.make_edge(
+                top_vertices[next_i].clone(),
+                bottom_vertices[next_i].clone(),
+            ));
+            side_wire.add_edge(
+                builder.make_edge(bottom_vertices[next_i].clone(), bottom_vertices[i].clone()),
+            );
+
+            let side_face =
+                builder.make_face_with_wire(Handle::new(std::sync::Arc::new(side_wire)));
+            side_faces.push(side_face);
+        }
+
+        // Create bottom and top faces
+        let bottom_face =
+            builder.make_face_with_wire(Handle::new(std::sync::Arc::new(bottom_wire)));
+        let top_face = builder.make_face_with_wire(Handle::new(std::sync::Arc::new(top_wire)));
+
+        // Create shell
+        let mut shell = crate::topology::topods_shell::TopoDsShell::new();
+        shell.add_face(bottom_face);
+        shell.add_face(top_face);
+        for face in side_faces {
+            shell.add_face(face);
+        }
+
+        // Create solid
+        let mut solid = crate::topology::topods_solid::TopoDsSolid::new();
+        solid.set_outer_shell(Handle::new(std::sync::Arc::new(shell)));
+
+        // Set the shape
+        self.shape = solid.into_shape();
         true
     }
 

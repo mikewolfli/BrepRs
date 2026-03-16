@@ -8,7 +8,7 @@ Stage 2: Topological Kernel — Unfinished
 Complete Percentage: 44%
 
 ## Project Overview
-BrepRs is a Rust implementation of boundary representation (BRep) for CAD/CAE/CAM applications. This checklist tracks the development progress based on the roadmap and TODO items.
+
 
 ## Stage 0: Foundation Layer
 

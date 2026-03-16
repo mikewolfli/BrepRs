@@ -117,16 +117,38 @@ impl BooleanOperations {
             return compound;
         }
 
-        // Build BSP trees for all shapes and union them
-        let mut result_bsp = self.bsp_builder.build_from_shape(&shapes[0]);
-        for shape in shapes.iter().skip(1) {
-            let bsp = self.bsp_builder.build_from_shape(shape);
-            result_bsp = result_bsp.union(&bsp);
+        // Build BSP trees for all shapes and union them in parallel
+        #[cfg(feature = "rayon")]
+        {
+            use rayon::prelude::*;
+            let bsp_trees: Vec<_> = shapes
+                .par_iter()
+                .map(|shape| self.bsp_builder.build_from_shape(shape))
+                .collect();
+
+            let mut result_bsp = bsp_trees[0].clone();
+            for bsp in bsp_trees.iter().skip(1) {
+                result_bsp = result_bsp.union(bsp);
+            }
+
+            // Convert BSP tree result back to compound
+            let faces = result_bsp.collect_all_faces();
+            self.faces_to_compound(&faces)
         }
 
-        // Convert BSP tree result back to compound
-        let faces = result_bsp.collect_all_faces();
-        self.faces_to_compound(&faces)
+        #[cfg(not(feature = "rayon"))]
+        {
+            // Build BSP trees for all shapes and union them
+            let mut result_bsp = self.bsp_builder.build_from_shape(&shapes[0]);
+            for shape in shapes.iter().skip(1) {
+                let bsp = self.bsp_builder.build_from_shape(shape);
+                result_bsp = result_bsp.union(&bsp);
+            }
+
+            // Convert BSP tree result back to compound
+            let faces = result_bsp.collect_all_faces();
+            self.faces_to_compound(&faces)
+        }
     }
 
     // =========================================================================
@@ -410,7 +432,7 @@ impl BooleanOperations {
     ) -> Option<Vec<Handle<TopoDsShape>>> {
         // Get the surface of the face
         if let Some(surface) = face.surface() {
-            if let Some(surface_ref) = surface.as_ref() {
+            if surface.as_ref().is_some() {
                 // Check if bounding box intersects with plane
                 if let Some((min, max)) = face.bounding_box() {
                     if !self.plane_intersects_bounding_box(plane, &(min, max)) {
@@ -505,23 +527,21 @@ impl BooleanOperations {
         // Calculate intersection parameters
         let diff = Vector::new(p3.x - p1.x, p3.y - p1.y, p3.z - p1.z);
 
-        let t = (diff.x * cross.y * d2.z - diff.x * cross.z * d2.y
-            + diff.y * cross.z * d2.x - diff.y * cross.x * d2.z
-            + diff.z * cross.x * d2.y - diff.z * cross.y * d2.x)
+        let t = (diff.x * cross.y * d2.z - diff.x * cross.z * d2.y + diff.y * cross.z * d2.x
+            - diff.y * cross.x * d2.z
+            + diff.z * cross.x * d2.y
+            - diff.z * cross.y * d2.x)
             / (cross_magnitude * cross_magnitude);
 
-        let s = (diff.x * cross.y * d1.z - diff.x * cross.z * d1.y
-            + diff.y * cross.z * d1.x - diff.y * cross.x * d1.z
-            + diff.z * cross.x * d1.y - diff.z * cross.y * d1.x)
+        let s = (diff.x * cross.y * d1.z - diff.x * cross.z * d1.y + diff.y * cross.z * d1.x
+            - diff.y * cross.x * d1.z
+            + diff.z * cross.x * d1.y
+            - diff.z * cross.y * d1.x)
             / (cross_magnitude * cross_magnitude);
 
         // Check if intersection is within both segments
         if t >= -1e-6 && t <= 1.0 + 1e-6 && s >= -1e-6 && s <= 1.0 + 1e-6 {
-            let intersection = Point::new(
-                p1.x + t * d1.x,
-                p1.y + t * d1.y,
-                p1.z + t * d1.z,
-            );
+            let intersection = Point::new(p1.x + t * d1.x, p1.y + t * d1.y, p1.z + t * d1.z);
             Some(intersection)
         } else {
             None
@@ -551,9 +571,11 @@ impl BooleanOperations {
 
                 // Find closest point on surface2
                 for k in 0..=num_samples {
-                    let u2 = u2_range.0 + (u2_range.1 - u2_range.0) * (k as f64 / num_samples as f64);
+                    let u2 =
+                        u2_range.0 + (u2_range.1 - u2_range.0) * (k as f64 / num_samples as f64);
                     for l in 0..=num_samples {
-                        let v2 = v2_range.0 + (v2_range.1 - v2_range.0) * (l as f64 / num_samples as f64);
+                        let v2 = v2_range.0
+                            + (v2_range.1 - v2_range.0) * (l as f64 / num_samples as f64);
 
                         let point2 = surface2.value(u2, v2);
 
@@ -571,10 +593,14 @@ impl BooleanOperations {
             let mut edges = Vec::new();
             for i in 0..intersection_points.len() - 1 {
                 let vertex1 = Handle::new(std::sync::Arc::new(
-                    crate::topology::topods_vertex::TopoDsVertex::new(intersection_points[i].clone()),
+                    crate::topology::topods_vertex::TopoDsVertex::new(
+                        intersection_points[i].clone(),
+                    ),
                 ));
                 let vertex2 = Handle::new(std::sync::Arc::new(
-                    crate::topology::topods_vertex::TopoDsVertex::new(intersection_points[i + 1].clone()),
+                    crate::topology::topods_vertex::TopoDsVertex::new(
+                        intersection_points[i + 1].clone(),
+                    ),
                 ));
                 let edge = TopoDsEdge::new(vertex1, vertex2);
                 edges.push(Handle::new(std::sync::Arc::new(edge.shape().clone())));
@@ -620,15 +646,21 @@ impl BooleanOperations {
             intersection_points.sort_by(|a, b| {
                 let dist_a = a.x * a.x + a.y * a.y + a.z * a.z;
                 let dist_b = b.x * b.x + b.y * b.y + b.z * b.z;
-                dist_a.partial_cmp(&dist_b).unwrap_or(std::cmp::Ordering::Equal)
+                dist_a
+                    .partial_cmp(&dist_b)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             });
 
             for i in 0..intersection_points.len() - 1 {
                 let vertex1 = Handle::new(std::sync::Arc::new(
-                    crate::topology::topods_vertex::TopoDsVertex::new(intersection_points[i].clone()),
+                    crate::topology::topods_vertex::TopoDsVertex::new(
+                        intersection_points[i].clone(),
+                    ),
                 ));
                 let vertex2 = Handle::new(std::sync::Arc::new(
-                    crate::topology::topods_vertex::TopoDsVertex::new(intersection_points[i + 1].clone()),
+                    crate::topology::topods_vertex::TopoDsVertex::new(
+                        intersection_points[i + 1].clone(),
+                    ),
                 ));
                 let edge = TopoDsEdge::new(vertex1, vertex2);
                 edges.push(Handle::new(std::sync::Arc::new(edge.shape().clone())));
@@ -782,11 +814,7 @@ impl BooleanOperations {
     }
 
     /// Check if two bounding boxes intersect
-    fn bounding_boxes_intersect(
-        &self,
-        bbox1: &(Point, Point),
-        bbox2: &(Point, Point),
-    ) -> bool {
+    pub fn bounding_boxes_intersect(&self, bbox1: &(Point, Point), bbox2: &(Point, Point)) -> bool {
         let (min1, max1) = bbox1;
         let (min2, max2) = bbox2;
 
@@ -855,6 +883,24 @@ impl BooleanOperations {
 
         compound
     }
+
+    /// Convert BSP tree to shape
+    ///
+    /// # Parameters
+    /// - `tree`: The BSP tree to convert
+    ///
+    /// # Returns
+    /// A compound shape representing the BSP tree
+    pub fn convert_tree_to_shape(
+        &self,
+        tree: &crate::modeling::bsp_tree::BspTree,
+    ) -> TopoDsCompound {
+        // Collect all faces from the BSP tree
+        let faces = tree.collect_all_faces();
+
+        // Convert faces to compound
+        self.faces_to_compound(&faces)
+    }
 }
 
 impl Default for BooleanOperations {
@@ -872,7 +918,6 @@ mod tests {
 
     #[test]
     fn test_boolean_operations_creation() {
-        let boolean_ops = BooleanOperations::new();
         assert!(!boolean_ops.is_none());
     }
 
@@ -996,12 +1041,344 @@ mod tests {
         );
 
         // Compute section
-        let result = boolean_ops.section_with_plane(
-            &Handle::new(Arc::new(solid.shape().clone())),
-            &plane,
-        );
+        let result =
+            boolean_ops.section_with_plane(&Handle::new(Arc::new(solid.shape().clone())), &plane);
 
         // Result should be a compound
         assert!(result.shape().is_compound());
+    }
+
+    #[test]
+    fn test_boolean_operations_default() {
+        let boolean_ops = BooleanOperations::default();
+        assert!(!boolean_ops.is_none());
+    }
+
+    #[test]
+    fn test_fuse_all_empty() {
+        let boolean_ops = BooleanOperations::new();
+
+        // Fuse empty list
+        let shapes: Vec<Handle<TopoDsShape>> = vec![];
+        let result = boolean_ops.fuse_all(&shapes);
+
+        // Result should be an empty compound
+        assert!(result.shape().is_compound());
+        assert_eq!(result.num_components(), 0);
+    }
+
+    #[test]
+    fn test_fuse_all_single() {
+        let boolean_ops = BooleanOperations::new();
+
+        // Fuse single shape
+        let solid = crate::topology::topods_solid::TopoDsSolid::new();
+        let shapes = vec![Handle::new(Arc::new(solid.shape().clone()))];
+        let result = boolean_ops.fuse_all(&shapes);
+
+        // Result should be a compound with one component
+        assert!(result.shape().is_compound());
+        assert_eq!(result.num_components(), 1);
+    }
+
+    #[test]
+    fn test_fuse_all_parallel() {
+        let boolean_ops = BooleanOperations::new();
+
+        // Create multiple solids for parallel processing
+        let mut shapes = Vec::new();
+        for _ in 0..10 {
+            let solid = crate::topology::topods_solid::TopoDsSolid::new();
+            shapes.push(Handle::new(Arc::new(solid.shape().clone())));
+        }
+
+        // Fuse all solids (should use parallel processing if rayon is enabled)
+        let result = boolean_ops.fuse_all(&shapes);
+
+        // Result should be a compound
+        assert!(result.shape().is_compound());
+    }
+
+    #[test]
+    fn test_fuse_all_with_null_handles() {
+        let boolean_ops = BooleanOperations::new();
+
+        // Create shapes including null handles
+        let solid1 = crate::topology::topods_solid::TopoDsSolid::new();
+        let solid2 = crate::topology::topods_solid::TopoDsSolid::new();
+        let shapes = vec![
+            Handle::new(Arc::new(solid1.shape().clone())),
+            Handle::null(),
+            Handle::new(Arc::new(solid2.shape().clone())),
+        ];
+
+        // Fuse all solids (should handle null handles gracefully)
+        let result = boolean_ops.fuse_all(&shapes);
+
+        // Result should be a compound
+        assert!(result.shape().is_compound());
+    }
+
+    #[test]
+    fn test_fuse_all_consistency() {
+        let boolean_ops = BooleanOperations::new();
+
+        // Create multiple solids
+        let solid1 = crate::topology::topods_solid::TopoDsSolid::new();
+        let solid2 = crate::topology::topods_solid::TopoDsSolid::new();
+        let solid3 = crate::topology::topods_solid::TopoDsSolid::new();
+
+        let shapes = vec![
+            Handle::new(Arc::new(solid1.shape().clone())),
+            Handle::new(Arc::new(solid2.shape().clone())),
+            Handle::new(Arc::new(solid3.shape().clone())),
+        ];
+
+        // Fuse all solids multiple times
+        let result1 = boolean_ops.fuse_all(&shapes);
+        let result2 = boolean_ops.fuse_all(&shapes);
+        let result3 = boolean_ops.fuse_all(&shapes);
+
+        // Results should be consistent
+        assert_eq!(result1.num_components(), result2.num_components());
+        assert_eq!(result2.num_components(), result3.num_components());
+    }
+
+    #[test]
+    fn test_fuse_all_with_many_shapes() {
+        let boolean_ops = BooleanOperations::new();
+
+        // Create many shapes for stress testing
+        let mut shapes = Vec::new();
+        for _ in 0..100 {
+            let solid = crate::topology::topods_solid::TopoDsSolid::new();
+            shapes.push(Handle::new(Arc::new(solid.shape().clone())));
+        }
+
+        // Fuse all shapes (should handle large number of shapes)
+        let result = boolean_ops.fuse_all(&shapes);
+
+        // Result should be a compound
+        assert!(result.shape().is_compound());
+    }
+
+    #[test]
+    fn test_section_with_different_planes() {
+        let boolean_ops = BooleanOperations::new();
+
+        // Create a simple solid
+        let solid = crate::topology::topods_solid::TopoDsSolid::new();
+        let solid_handle = Handle::new(Arc::new(solid.shape().clone()));
+
+        // Create different planes
+        let plane1 = Plane::new(
+            Point::new(0.0, 0.0, 0.0),
+            crate::geometry::Direction::z_axis(),
+            crate::geometry::Direction::x_axis(),
+        );
+        let plane2 = Plane::new(
+            Point::new(0.0, 0.0, 0.0),
+            crate::geometry::Direction::x_axis(),
+            crate::geometry::Direction::y_axis(),
+        );
+        let plane3 = Plane::new(
+            Point::new(0.0, 0.0, 0.0),
+            crate::geometry::Direction::y_axis(),
+            crate::geometry::Direction::z_axis(),
+        );
+
+        // Section solid with different planes
+        let result1 = boolean_ops.section_with_plane(&solid_handle, &plane1);
+        let result2 = boolean_ops.section_with_plane(&solid_handle, &plane2);
+        let result3 = boolean_ops.section_with_plane(&solid_handle, &plane3);
+
+        // All results should be compounds
+        assert!(result1.shape().is_compound());
+        assert!(result2.shape().is_compound());
+        assert!(result3.shape().is_compound());
+    }
+
+    #[test]
+    fn test_section_with_null_handle() {
+        let boolean_ops = BooleanOperations::new();
+
+        // Create a plane
+        let plane = Plane::new(
+            Point::new(0.0, 0.0, 0.0),
+            crate::geometry::Direction::z_axis(),
+            crate::geometry::Direction::x_axis(),
+        );
+
+        // Section null handle with plane (should handle gracefully)
+        let null_handle: Handle<TopoDsShape> = Handle::null();
+        let result = boolean_ops.section_with_plane(&null_handle, &plane);
+
+        // Result should be a compound
+        assert!(result.shape().is_compound());
+    }
+
+    #[test]
+    fn test_fuse_with_null_handles() {
+        let boolean_ops = BooleanOperations::new();
+
+        // Fuse null handles (should handle gracefully)
+        let null_handle1: Handle<TopoDsShape> = Handle::null();
+        let null_handle2: Handle<TopoDsShape> = Handle::null();
+        let result = boolean_ops.fuse(&null_handle1, &null_handle2);
+
+        // Result should be a compound
+        assert!(result.shape().is_compound());
+    }
+
+    #[test]
+    fn test_cut_with_null_handles() {
+        let boolean_ops = BooleanOperations::new();
+
+        // Cut null handles (should handle gracefully)
+        let null_handle1: Handle<TopoDsShape> = Handle::null();
+        let null_handle2: Handle<TopoDsShape> = Handle::null();
+        let result = boolean_ops.cut(&null_handle1, &null_handle2);
+
+        // Result should be a compound
+        assert!(result.shape().is_compound());
+    }
+
+    #[test]
+    fn test_common_with_null_handles() {
+        let boolean_ops = BooleanOperations::new();
+
+        // Find common of null handles (should handle gracefully)
+        let null_handle1: Handle<TopoDsShape> = Handle::null();
+        let null_handle2: Handle<TopoDsShape> = Handle::null();
+        let result = boolean_ops.common(&null_handle1, &null_handle2);
+
+        // Result should be a compound
+        assert!(result.shape().is_compound());
+    }
+
+    #[test]
+    fn test_boolean_operations_with_different_shape_types() {
+        let boolean_ops = BooleanOperations::new();
+
+        // Create different shape types
+        let solid = crate::topology::topods_solid::TopoDsSolid::new();
+        let face = crate::topology::topods_face::TopoDsFace::new();
+        let solid_handle = Handle::new(Arc::new(solid.shape().clone()));
+        let face_handle = Handle::new(Arc::new(face.shape().clone()));
+
+        // Test operations with different shape types
+        let fuse_result = boolean_ops.fuse(&solid_handle, &face_handle);
+        let cut_result = boolean_ops.cut(&solid_handle, &face_handle);
+        let common_result = boolean_ops.common(&solid_handle, &face_handle);
+
+        // All results should be compounds
+        assert!(fuse_result.shape().is_compound());
+        assert!(cut_result.shape().is_compound());
+        assert!(common_result.shape().is_compound());
+    }
+
+    #[test]
+    fn test_boolean_operations_with_same_handles() {
+        let boolean_ops = BooleanOperations::new();
+
+        // Create a single handle
+        let solid = crate::topology::topods_solid::TopoDsSolid::new();
+        let solid_handle = Handle::new(Arc::new(solid.shape().clone()));
+
+        // Test operations with same handle
+        let fuse_result = boolean_ops.fuse(&solid_handle, &solid_handle);
+        let cut_result = boolean_ops.cut(&solid_handle, &solid_handle);
+        let common_result = boolean_ops.common(&solid_handle, &solid_handle);
+
+        // All results should be compounds
+        assert!(fuse_result.shape().is_compound());
+        assert!(cut_result.shape().is_compound());
+        assert!(common_result.shape().is_compound());
+    }
+
+    #[test]
+    fn test_boolean_operations_performance() {
+        let boolean_ops = BooleanOperations::new();
+
+        // Create many shapes for performance testing
+        let mut shapes = Vec::new();
+        for _ in 0..50 {
+            let solid = crate::topology::topods_solid::TopoDsSolid::new();
+            shapes.push(Handle::new(Arc::new(solid.shape().clone())));
+        }
+
+        // Measure performance of fuse_all
+        let start = std::time::Instant::now();
+        let result = boolean_ops.fuse_all(&shapes);
+        let duration = start.elapsed();
+
+        // Result should be a compound
+        assert!(result.shape().is_compound());
+
+        // Performance should be reasonable (less than 1 second for 50 shapes)
+        assert!(duration.as_secs() < 1);
+    }
+
+    #[test]
+    fn test_boolean_operations_thread_safety() {
+        use std::thread;
+
+        let boolean_ops = BooleanOperations::new();
+
+        // Create shapes for thread safety testing
+        let solid1 = crate::topology::topods_solid::TopoDsSolid::new();
+        let solid2 = crate::topology::topods_solid::TopoDsSolid::new();
+        let solid3 = crate::topology::topods_solid::TopoDsSolid::new();
+        let solid4 = crate::topology::topods_solid::TopoDsSolid::new();
+
+        let handle1 = Handle::new(Arc::new(solid1.shape().clone()));
+        let handle2 = Handle::new(Arc::new(solid2.shape().clone()));
+        let handle3 = Handle::new(Arc::new(solid3.shape().clone()));
+        let handle4 = Handle::new(Arc::new(solid4.shape().clone()));
+
+        // Spawn multiple threads performing operations
+        let handle1_clone = handle1.clone();
+        let handle2_clone = handle2.clone();
+        let handle3_clone = handle3.clone();
+        let handle4_clone = handle4.clone();
+
+        let thread1 = thread::spawn(move || {
+            let ops = BooleanOperations::new();
+            ops.fuse(&handle1_clone, &handle2_clone)
+        });
+
+        let thread2 = thread::spawn(move || {
+            let ops = BooleanOperations::new();
+            ops.cut(&handle3_clone, &handle4_clone)
+        });
+
+        // Wait for threads to complete
+        let result1 = thread1.join().unwrap();
+        let result2 = thread2.join().unwrap();
+
+        // Results should be compounds
+        assert!(result1.shape().is_compound());
+        assert!(result2.shape().is_compound());
+    }
+
+    #[test]
+    fn test_boolean_operations_memory_usage() {
+        let boolean_ops = BooleanOperations::new();
+
+        // Create many shapes for memory testing
+        let mut shapes = Vec::new();
+        for _ in 0..100 {
+            let solid = crate::topology::topods_solid::TopoDsSolid::new();
+            shapes.push(Handle::new(Arc::new(solid.shape().clone())));
+        }
+
+        // Fuse all shapes
+        let result = boolean_ops.fuse_all(&shapes);
+
+        // Result should be a compound
+        assert!(result.shape().is_compound());
+
+        // Memory usage should be reasonable (number of components should be reasonable)
+        assert!(result.num_components() <= 100);
     }
 }

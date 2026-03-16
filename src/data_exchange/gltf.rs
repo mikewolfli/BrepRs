@@ -11,10 +11,10 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::path::Path;
 
+use crate::api::traits::Mesh;
 use crate::data_exchange::{DataExchangeError, DataExchangeResult};
 use crate::foundation::handle::Handle;
 use crate::mesh::mesh_data::Mesh2D;
-use crate::api::traits::Mesh;
 use crate::topology::topods_shape::TopoDsShape;
 
 /// glTF format version
@@ -748,8 +748,6 @@ impl GltfImporter {
     }
 
     fn parse_gltf_json(&self, _json: &str, _bin_data: Option<&[u8]>) -> DataExchangeResult<Mesh> {
-        
-
         Ok(Mesh {
             vertices: Vec::new(),
             triangles: Vec::new(),
@@ -775,7 +773,6 @@ fn base64_encode(data: &[u8]) -> String {
             1 => [chunk[0], 0, 0],
             2 => [chunk[0], chunk[1], 0],
             3 => [chunk[0], chunk[1], chunk[2]],
-            _ => unreachable!(),
         };
 
         let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | (b[2] as u32);

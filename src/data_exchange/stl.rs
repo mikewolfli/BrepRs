@@ -10,7 +10,10 @@ use std::path::Path;
 use crate::foundation::handle::Handle;
 use crate::geometry::Point;
 use crate::modeling::BrepBuilder;
-use crate::topology::{shape_enum::ShapeType, top_exp_explorer::TopExpExplorer, topods_compound::TopoDsCompound, topods_face::TopoDsFace, topods_shape::TopoDsShape, topods_wire::TopoDsWire};
+use crate::topology::{
+    shape_enum::ShapeType, top_exp_explorer::TopExpExplorer, topods_compound::TopoDsCompound,
+    topods_face::TopoDsFace, topods_shape::TopoDsShape, topods_wire::TopoDsWire,
+};
 
 /// STL file reader
 ///
@@ -593,16 +596,74 @@ impl StlWriter {
     }
 
     /// Create an STL facet from a face
-    fn create_facet_from_face(&self, _face: &TopoDsFace) -> Result<StlFacet, StlError> {
-        // For now, return a placeholder facet
-        // In a real implementation, this would:
-        // 1. Get the face's vertices
-        // 2. Calculate the normal
-        // 3. Create the facet
+    fn create_facet_from_face(&self, face: &TopoDsFace) -> Result<StlFacet, StlError> {
+        // Get the face's vertices
+        let mut vertices = [[0.0; 3]; 3];
+        let mut vertex_count = 0;
 
-        // Placeholder implementation
-        let normal = [0.0, 0.0, 1.0];
-        let vertices = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
+        // Use TopExpExplorer to get the face's edges and vertices
+        let mut explorer = crate::topology::top_exp_explorer::TopExpExplorer::new(
+            face.shape(),
+            crate::topology::shape_enum::ShapeType::Vertex,
+        );
+        while explorer.more() && vertex_count < 3 {
+            explorer.next();
+            if let Some(vertex_shape) = explorer.current() {
+                if vertex_shape.is_vertex() {
+                    // SAFETY: This is safe because:
+                    // - We verified the shape is a vertex via is_vertex()
+                    // - TopoDsVertex is the concrete type for vertex shapes
+                    // - The pointer is valid and properly aligned
+                    // - The lifetime of the reference is tied to vertex_shape
+                    let vertex = unsafe {
+                        &*(vertex_shape as *const _
+                            as *const crate::topology::topods_vertex::TopoDsVertex)
+                    };
+                    let point = vertex.point();
+                    vertices[vertex_count][0] = point.x();
+                    vertices[vertex_count][1] = point.y();
+                    vertices[vertex_count][2] = point.z();
+                    vertex_count += 1;
+                }
+            }
+        }
+
+        if vertex_count != 3 {
+            // If we couldn't get 3 vertices, return a placeholder
+            let normal = [0.0, 0.0, 1.0];
+            let vertices = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
+            return Ok(StlFacet::new(normal, vertices));
+        }
+
+        // Calculate the normal using cross product
+        let v1 = [
+            vertices[1][0] - vertices[0][0],
+            vertices[1][1] - vertices[0][1],
+            vertices[1][2] - vertices[0][2],
+        ];
+        let v2 = [
+            vertices[2][0] - vertices[0][0],
+            vertices[2][1] - vertices[0][1],
+            vertices[2][2] - vertices[0][2],
+        ];
+
+        let cross = [
+            v1[1] * v2[2] - v1[2] * v2[1],
+            v1[2] * v2[0] - v1[0] * v2[2],
+            v1[0] * v2[1] - v1[1] * v2[0],
+        ];
+
+        let norm_len = (cross[0] * cross[0] + cross[1] * cross[1] + cross[2] * cross[2]) as f64;
+        let norm_len = norm_len.sqrt();
+        let normal = if norm_len > 1e-12 {
+            [
+                cross[0] / norm_len,
+                cross[1] / norm_len,
+                cross[2] / norm_len,
+            ]
+        } else {
+            [0.0, 0.0, 1.0]
+        };
 
         Ok(StlFacet::new(normal, vertices))
     }

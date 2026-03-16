@@ -1,9 +1,14 @@
-//! Level of Detail (LOD) system
-//!
-//! This module provides functionality for managing levels of detail for large models,
-//! including hierarchical LOD generation, transition management, and view-dependent
-//! LOD selection.
-
+/// Mesh vertex definition for visualization
+#[derive(Debug, Clone)]
+pub struct MeshVertex {
+    pub point: crate::geometry::Point,
+    // 可扩展属性: normal, uv, color 等
+}
+/// Level of Detail (LOD) system
+///
+/// This module provides functionality for managing levels of detail for large models,
+/// including hierarchical LOD generation, transition management, and view-dependent
+/// LOD selection.
 use crate::geometry::{Point, Vector};
 use crate::mesh::mesh_data::Mesh3D;
 
@@ -753,9 +758,13 @@ impl LodTransitionManager {
 
     /// Get current time in seconds since epoch
     fn get_current_time(&self) -> f64 {
-        // Implementation of current time retrieval
-        // This is a placeholder implementation
-        0.0
+        // Get current time using std::time
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        match SystemTime::now().duration_since(UNIX_EPOCH) {
+            Ok(duration) => duration.as_secs_f64(),
+            Err(_) => 0.0,
+        }
     }
 }
 
@@ -796,24 +805,185 @@ impl LodCollisionDetector {
     }
 
     /// Check collision with a point
-    pub fn check_point_collision(&self, _point: Point) -> bool {
-        // Implementation of point collision detection
-        // This is a placeholder implementation
+    pub fn check_point_collision(&self, point: Point) -> bool {
+        // Get current LOD mesh
+        let current_mesh = self.lod_system.get_current_mesh();
+
+        // Check if point is inside any face (simplified implementation)
+        for face in &current_mesh.faces {
+            if face.vertices.len() >= 3 {
+                let v0 = &current_mesh.vertices[face.vertices[0]];
+                let v1 = &current_mesh.vertices[face.vertices[1]];
+                let v2 = &current_mesh.vertices[face.vertices[2]];
+
+                // Calculate normal vector
+                let vec1 = Vector::new(
+                    v1.point.x - v0.point.x,
+                    v1.point.y - v0.point.y,
+                    v1.point.z - v0.point.z,
+                );
+                let vec2 = Vector::new(
+                    v2.point.x - v0.point.x,
+                    v2.point.y - v0.point.y,
+                    v2.point.z - v0.point.z,
+                );
+                let normal = vec1.cross(&vec2);
+
+                // Calculate distance from point to plane
+                let plane_eq = normal.dot(&Vector::new(v0.point.x, v0.point.y, v0.point.z));
+                let point_vec = Vector::new(point.x, point.y, point.z);
+                let distance = normal.dot(&point_vec) - plane_eq;
+
+                if distance.abs() < self.params.tolerance {
+                    // Point is on the plane, check if it's inside the triangle
+                    let barycentric = self.calculate_barycentric(&point, v0, v1, v2);
+                    if barycentric.0 >= 0.0
+                        && barycentric.1 >= 0.0
+                        && (barycentric.0 + barycentric.1) <= 1.0
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+
         false
     }
 
     /// Check collision with a ray
-    pub fn check_ray_collision(&self, _origin: Point, _direction: Vector) -> Option<Point> {
-        // Implementation of ray collision detection
-        // This is a placeholder implementation
-        None
+    pub fn check_ray_collision(&self, origin: Point, direction: Vector) -> Option<Point> {
+        // Get current LOD mesh
+        let current_mesh = self.lod_system.get_current_mesh();
+
+        // Check ray intersection with each face
+        let mut closest_hit: Option<(Point, f64)> = None;
+
+        for face in &current_mesh.faces {
+            if face.vertices.len() >= 3 {
+                let v0 = &current_mesh.vertices[face.vertices[0]];
+                let v1 = &current_mesh.vertices[face.vertices[1]];
+                let v2 = &current_mesh.vertices[face.vertices[2]];
+
+                // Calculate normal vector
+                let vec1 = Vector::new(
+                    v1.point.x - v0.point.x,
+                    v1.point.y - v0.point.y,
+                    v1.point.z - v0.point.z,
+                );
+                let vec2 = Vector::new(
+                    v2.point.x - v0.point.x,
+                    v2.point.y - v0.point.y,
+                    v2.point.z - v0.point.z,
+                );
+                let normal = vec1.cross(&vec2);
+
+                // Calculate plane equation
+                let plane_eq = normal.dot(&Vector::new(v0.point.x, v0.point.y, v0.point.z));
+
+                // Calculate ray direction dot normal
+                let dir_dot_normal = normal.dot(&direction);
+                if dir_dot_normal.abs() < 1e-6 {
+                    // Ray is parallel to plane
+                    continue;
+                }
+
+                // Calculate t parameter
+                let origin_vec = Vector::new(origin.x, origin.y, origin.z);
+                let t = (plane_eq - normal.dot(&origin_vec)) / dir_dot_normal;
+
+                if t < 0.0 {
+                    // Intersection is behind the ray origin
+                    continue;
+                }
+
+                // Calculate intersection point
+                let intersection = Point::new(
+                    origin.x + t * direction.x,
+                    origin.y + t * direction.y,
+                    origin.z + t * direction.z,
+                );
+
+                // Check if intersection is inside the triangle
+                let barycentric = self.calculate_barycentric(&intersection, v0, v1, v2);
+                if barycentric.0 >= 0.0
+                    && barycentric.1 >= 0.0
+                    && (barycentric.0 + barycentric.1) <= 1.0
+                {
+                    // Update closest hit
+                    match closest_hit {
+                        None => closest_hit = Some((intersection, t)),
+                        Some((_, current_t)) if t < current_t => {
+                            closest_hit = Some((intersection, t))
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        closest_hit.map(|(point, _)| point)
     }
 
     /// Check collision with another mesh
-    pub fn check_mesh_collision(&self, _other_mesh: &Mesh3D) -> bool {
-        // Implementation of mesh collision detection
-        // This is a placeholder implementation
-        false
+    pub fn check_mesh_collision(&self, other_mesh: &Mesh3D) -> bool {
+        // Get current LOD mesh
+        let current_mesh = self.lod_system.get_current_mesh();
+
+        // Simple bounding box check first
+        let (self_min, self_max) = current_mesh.calculate_bounding_box();
+        let (other_min, other_max) = other_mesh.calculate_bounding_box();
+
+        // Check if bounding boxes overlap
+        if self_max.x < other_min.x || self_min.x > other_max.x {
+            return false;
+        }
+        if self_max.y < other_min.y || self_min.y > other_max.y {
+            return false;
+        }
+        if self_max.z < other_min.z || self_min.z > other_max.z {
+            return false;
+        }
+
+        // For a more accurate check, we would check each triangle pair
+        // For now, just return true if bounding boxes overlap
+        true
+    }
+
+    /// Calculate barycentric coordinates for a point in a triangle
+    fn calculate_barycentric(
+        &self,
+        point: &Point,
+        v0: &MeshVertex,
+        v1: &MeshVertex,
+        v2: &MeshVertex,
+    ) -> (f64, f64) {
+        let vec0 = Vector::new(
+            v2.point.x - v0.point.x,
+            v2.point.y - v0.point.y,
+            v2.point.z - v0.point.z,
+        );
+        let vec1 = Vector::new(
+            v1.point.x - v0.point.x,
+            v1.point.y - v0.point.y,
+            v1.point.z - v0.point.z,
+        );
+        let vec2 = Vector::new(
+            point.x - v0.point.x,
+            point.y - v0.point.y,
+            point.z - v0.point.z,
+        );
+
+        let dot00 = vec0.dot(&vec0);
+        let dot01 = vec0.dot(&vec1);
+        let dot02 = vec0.dot(&vec2);
+        let dot11 = vec1.dot(&vec1);
+        let dot12 = vec1.dot(&vec2);
+
+        let inv_denom = 1.0 / (dot00 * dot11 - dot01 * dot01);
+        let u = (dot11 * dot02 - dot01 * dot12) * inv_denom;
+        let v = (dot00 * dot12 - dot01 * dot02) * inv_denom;
+
+        (u, v)
     }
 }
 
@@ -907,26 +1077,72 @@ impl LodDebugger {
 
     /// Visualize LOD levels
     pub fn visualize_lod_levels(&self) {
-        // Implementation of LOD level visualization
-        // This is a placeholder implementation
+        // Log LOD levels information
+        println!("=== LOD Levels Visualization ===");
+        println!("Number of LOD levels: {}", self.lod_system.get_num_levels());
+
+        for i in 0..self.lod_system.get_num_levels() {
+            if let Some(metrics) = self.lod_system.get_quality_metrics(i) {
+                println!("LOD Level {}:", i);
+                println!("  Triangle count: {}", metrics.triangle_count());
+                println!(
+                    "  Average edge length: {:.3}",
+                    metrics.average_edge_length()
+                );
+                println!(
+                    "  Maximum edge length: {:.3}",
+                    metrics.maximum_edge_length()
+                );
+                println!("  Geometric error: {:.6}", metrics.geometric_error());
+                println!("  Visual error: {:.6}", metrics.visual_error());
+            }
+        }
+        println!("=============================");
     }
 
     /// Visualize bounding boxes
     pub fn visualize_bounding_boxes(&self) {
-        // Implementation of bounding box visualization
-        // This is a placeholder implementation
+        // Log bounding boxes information
+        println!("=== Bounding Boxes Visualization ===");
+
+        for i in 0..self.lod_system.get_num_levels() {
+            if let Some(mesh) = self.lod_system.get_mesh_for_level(i) {
+                let (min_point, max_point) = mesh.calculate_bounding_box();
+                println!("LOD Level {} Bounding Box:", i);
+                println!(
+                    "  Min: ({:.3}, {:.3}, {:.3})",
+                    min_point.x, min_point.y, min_point.z
+                );
+                println!(
+                    "  Max: ({:.3}, {:.3}, {:.3})",
+                    max_point.x, max_point.y, max_point.z
+                );
+            }
+        }
+        println!("================================");
     }
 
     /// Visualize error metrics
     pub fn visualize_error_metrics(&self) {
-        // Implementation of error metric visualization
-        // This is a placeholder implementation
+        // Log error metrics information
+        println!("=== Error Metrics Visualization ===");
+
+        for i in 0..self.lod_system.get_num_levels() {
+            if let Some(metrics) = self.lod_system.get_quality_metrics(i) {
+                println!("LOD Level {} Error Metrics:", i);
+                println!("  Geometric error: {:.6}", metrics.geometric_error());
+                println!("  Visual error: {:.6}", metrics.visual_error());
+            }
+        }
+        println!("==============================");
     }
 
     /// Visualize transition states
     pub fn visualize_transitions(&self) {
-        // Implementation of transition state visualization
-        // This is a placeholder implementation
+        // Log transition states information
+        println!("=== Transition States Visualization ===");
+        println!("Current LOD level: {}", self.lod_system.get_current_level());
+        println!("====================================");
     }
 }
 

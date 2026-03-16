@@ -215,6 +215,22 @@ impl TopoDsCompound {
     }
 
     /// Get all components of a specific type
+    ///
+    /// Returns a vector of cloned handles for all components matching the specified shape type.
+    /// This method creates new Handle instances, which increases memory usage but provides
+    /// ownership of the handles.
+    ///
+    /// # Arguments
+    /// * `shape_type` - The type of shape to filter for (e.g., ShapeType::Vertex, ShapeType::Edge)
+    ///
+    /// # Returns
+    /// A vector of cloned Handle<TopoDsShape> instances matching the specified type
+    ///
+    /// # Example
+    /// ```
+    /// let compound = TopoDsCompound::new();
+    /// let vertices = compound.components_of_type(ShapeType::Vertex);
+    /// ```
     pub fn components_of_type(
         &self,
         shape_type: crate::topology::shape_enum::ShapeType,
@@ -222,7 +238,41 @@ impl TopoDsCompound {
         self.components
             .iter()
             .filter(|c| c.shape_type() == shape_type)
-            .cloned()
+            .map(|c| c.clone())
+            .collect()
+    }
+
+    /// Get all components of a specific type as references
+    ///
+    /// Returns a vector of references to handles for all components matching the specified shape type.
+    /// This method is more memory-efficient than components_of_type() as it doesn't clone the handles,
+    /// but the references are only valid as long as the compound exists.
+    ///
+    /// # Arguments
+    /// * `shape_type` - The type of shape to filter for (e.g., ShapeType::Vertex, ShapeType::Edge)
+    ///
+    /// # Returns
+    /// A vector of references to Handle<TopoDsShape> instances matching the specified type
+    ///
+    /// # Performance
+    /// This method is preferred over components_of_type() when you only need to read the components
+    /// and don't need ownership, as it avoids unnecessary memory allocations.
+    ///
+    /// # Example
+    /// ```
+    /// let compound = TopoDsCompound::new();
+    /// let vertices = compound.components_of_type_refs(ShapeType::Vertex);
+    /// for vertex in vertices {
+    ///     // Read vertex data without cloning
+    /// }
+    /// ```
+    pub fn components_of_type_refs(
+        &self,
+        shape_type: crate::topology::shape_enum::ShapeType,
+    ) -> Vec<&Handle<TopoDsShape>> {
+        self.components
+            .iter()
+            .filter(|c| c.shape_type() == shape_type)
             .collect()
     }
 }

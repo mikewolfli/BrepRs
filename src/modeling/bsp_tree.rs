@@ -1,3 +1,11 @@
+/// Edge classification for BSP tree
+#[derive(Debug, Clone, PartialEq)]
+pub enum EdgeClassification {
+    Front,
+    Back,
+    Coplanar,
+    Spanning,
+}
 use crate::foundation::handle::Handle;
 use crate::geometry::{Plane, Point};
 use crate::topology::{TopoDsFace, TopoDsShape};
@@ -108,45 +116,156 @@ impl BspNode {
             return None;
         }
 
-        // Classify each vertex of the face
-        let mut front_count = 0;
-        let mut back_count = 0;
+        // Find intersection points between face edges and the splitting plane
+        let mut intersection_points = Vec::new();
+        let mut edge_classifications = Vec::new();
 
         for edge_handle in edges_slice.iter() {
             if let Some(edge) = edge_handle.get() {
-                if let Some(start) = edge.start_vertex().get() {
-                    let point = start.point();
-                    let distance = self.plane.distance(&point);
+                if let (Some(start), Some(end)) = (edge.start_vertex().get(), edge.end_vertex().get()) {
+                    let start_point = start.point();
+                    let end_point = end.point();
+                    let start_dist = self.plane.distance(&start_point);
+                    let end_dist = self.plane.distance(&end_point);
 
-                    if distance > tolerance {
-                        front_count += 1;
-                    } else if distance < -tolerance {
-                        back_count += 1;
-                    }
+                    // Classify edge
+                    let classification = if start_dist > tolerance && end_dist > tolerance {
+                        EdgeClassification::Front
+                    } else if start_dist < -tolerance && end_dist < -tolerance {
+                        EdgeClassification::Back
+                    } else if start_dist.abs() <= tolerance && end_dist.abs() <= tolerance {
+                        EdgeClassification::Coplanar
+                    } else {
+                        // Edge crosses the plane, find intersection
+                        if let Some(intersection) = self.edge_plane_intersection(edge, tolerance) {
+                            intersection_points.push(intersection);
+                        }
+                        EdgeClassification::Spanning
+                    };
+                    edge_classifications.push(classification);
                 }
             }
         }
 
-        // If all vertices are on one side, no splitting needed
-        if front_count == 0 || back_count == 0 {
+        // If no intersection points, no splitting needed
+        if intersection_points.len() < 2 {
             return None;
         }
 
-        // Create front face with front vertices and on-plane vertices
-        let front_face = face.clone();
-        // Create back face with back vertices and on-plane vertices
-        let back_face = face.clone();
+        // Create front and back faces using BRepBuilder
+        use crate::modeling::brep_builder::BrepBuilder;
+        let builder = BrepBuilder::new();
 
-        // For a proper implementation, we would need to:
-        // 1. Find intersection points between face edges and the splitting plane
-        // 2. Create new edges along the intersection
-        // 3. Reconstruct the face polygons for both sides
-        // 4. Create new faces with proper topology
+        // Create vertices for intersection points
+        let mut intersection_vertices = Vec::new();
+        for point in &intersection_points {
+            let vertex = builder.make_vertex(*point);
+            intersection_vertices.push(vertex);
+        }
 
-        // Simplified approach: return the original face for both sides
-        // This maintains the geometry while allowing the BSP tree to proceed
-        Some((front_face, back_face))
+        // Reconstruct front face
+        let front_face = self.reconstruct_face(face, &self.plane, true, tolerance);
+        // Reconstruct back face
+        let back_face = self.reconstruct_face(face, &self.plane, false, tolerance);
+
+        if let (Some(front), Some(back)) = (front_face, back_face) {
+            Some((front, back))
+        } else {
+            None
+        }
     }
+
+    /// Find intersection between edge and plane
+    fn edge_plane_intersection(&self, edge: &crate::topology::TopoDsEdge, tolerance: f64) -> Option<crate::geometry::Point> {
+        if let (Some(start), Some(end)) = (edge.start_vertex().get(), edge.end_vertex().get()) {
+            let p1 = start.point();
+            let p2 = end.point();
+            
+            let d1 = self.plane.distance(&p1);
+            let d2 = self.plane.distance(&p2);
+            
+            // Check if edge crosses the plane
+            if d1 * d2 < -tolerance * tolerance {
+                // Calculate intersection point
+                let t = d1 / (d1 - d2);
+                let x = p1.x + t * (p2.x - p1.x);
+                let y = p1.y + t * (p2.y - p1.y);
+                let z = p1.z + t * (p2.z - p1.z);
+                
+                Some(crate::geometry::Point::new(x, y, z))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Reconstruct face on one side of the plane
+    fn reconstruct_face(&self, face: &TopoDsFace, plane: &crate::geometry::Plane, front: bool, tolerance: f64) -> Option<TopoDsFace> {
+        use crate::modeling::brep_builder::BrepBuilder;
+        use crate::topology::TopoDsWire;
+        
+        let builder = BrepBuilder::new();
+        let wires = face.wires();
+        if wires.is_empty() {
+            return None;
+        }
+        
+        let outer_wire = wires[0].get()?;
+        let edges_slice: &[Handle<crate::topology::TopoDsEdge>] = outer_wire.edges();
+        
+        // Collect vertices on the specified side
+        let mut vertices = Vec::new();
+        for edge_handle in edges_slice.iter() {
+            if let Some(edge) = edge_handle.get() {
+                if let (Some(start), Some(end)) = (edge.start_vertex().get(), edge.end_vertex().get()) {
+                    let start_point = start.point();
+                    let end_point = end.point();
+                    let start_dist = plane.distance(&start_point);
+                    let end_dist = plane.distance(&end_point);
+                    
+                    // Add start vertex if on the specified side
+                    if (front && start_dist > -tolerance) || (!front && start_dist < tolerance) {
+                        let vertex = builder.make_vertex(start_point);
+                        vertices.push(vertex);
+                    }
+                    
+                    // Add intersection point if edge crosses the plane
+                    if (start_dist > tolerance && end_dist < -tolerance) || (start_dist < -tolerance && end_dist > tolerance) {
+                        if let Some(intersection) = self.edge_plane_intersection(edge, tolerance) {
+                            let vertex = builder.make_vertex(intersection);
+                            vertices.push(vertex);
+                        }
+                    }
+                    
+                    // Add end vertex if on the specified side
+                    if (front && end_dist > -tolerance) || (!front && end_dist < tolerance) {
+                        let vertex = builder.make_vertex(end_point);
+                        vertices.push(vertex);
+                    }
+                }
+            }
+        }
+        
+        // Create wire from vertices
+        if vertices.len() >= 3 {
+            let mut wire = TopoDsWire::new();
+            for i in 0..vertices.len() {
+                let start = vertices[i].clone();
+                let end = vertices[(i + 1) % vertices.len()].clone();
+                let edge = builder.make_edge(start, end);
+                wire.add_edge(edge);
+            }
+            
+            // Create face from wire
+            let wire_handle = crate::foundation::handle::Handle::new(std::sync::Arc::new(wire));
+            Some(builder.make_face_with_wire(wire_handle))
+        } else {
+            None
+        }
+    }
+
 
     fn create_splitting_plane(&self, face: &TopoDsFace) -> Plane {
         // Create a plane from the face's surface
@@ -288,10 +407,34 @@ impl BspTree {
 
         // Insert remaining faces in parallel
         if let Some(ref mut root) = self.root {
-            faces[1..].par_iter().for_each(|face| {
-                let mut node = root.clone();
-                node.insert(face, self.tolerance);
+            // Create a vector to hold results from parallel processing
+            let mut subtrees = Vec::new();
+            
+            // Process faces in chunks in parallel
+            faces[1..].par_chunks(100).for_each(|chunk| {
+                let mut subtree = BspTree::new(self.tolerance);
+                // Use the same initial plane as the main tree
+                if let Some(ref root_node) = self.root {
+                    let plane = root_node.plane.clone();
+                    let mut node = BspNode::new(plane);
+                    subtree.root = Some(Box::new(node));
+                }
+                
+                // Insert faces into subtree
+                for face in chunk {
+                    subtree.insert_face(face.clone());
+                }
+                
+                // Add subtree to results
+                subtrees.push(subtree);
             });
+            
+            // Merge all subtrees back into the main tree
+            for subtree in subtrees {
+                if let Some(sub_root) = subtree.root {
+                    self.merge_tree(&sub_root);
+                }
+            }
         }
     }
 
@@ -304,20 +447,14 @@ impl BspTree {
             result.insert_face(face);
         }
 
-        // Add all faces from other that aren't already present
-        let other_faces = other.collect_all_faces();
-        let existing_shape_ids: std::collections::HashSet<i32> = result
-            .collect_all_faces()
-            .iter()
-            .map(|f| f.shape_id())
-            .collect();
+        // Add all faces from other
 
         for face in other_faces {
-            if !existing_shape_ids.contains(&face.shape_id()) {
-                result.insert_face(face);
-            }
+            result.insert_face(face);
         }
 
+        // Optimize the resulting tree
+        result.optimize();
         result
     }
 
@@ -328,17 +465,15 @@ impl BspTree {
         let self_faces = self.collect_all_faces();
         let other_faces = other.collect_all_faces();
 
-        // Create set of other shape IDs
-        let other_shape_ids: std::collections::HashSet<i32> =
-            other_faces.iter().map(|f| f.shape_id()).collect();
-
-        // Add faces from self that aren't in other
+        // For each face in self, check if it's inside other
         for face in self_faces {
-            if !other_shape_ids.contains(&face.shape_id()) {
+            if !self.face_inside_tree(&face, other) {
                 result.insert_face(face);
             }
         }
 
+        // Optimize the resulting tree
+        result.optimize();
         result
     }
 
@@ -349,18 +484,181 @@ impl BspTree {
         let self_faces = self.collect_all_faces();
         let other_faces = other.collect_all_faces();
 
-        // Create set of self shape IDs
-        let self_shape_ids: std::collections::HashSet<i32> =
-            self_faces.iter().map(|f| f.shape_id()).collect();
-
-        // Add faces from other that are also in self
-        for face in other_faces {
-            if self_shape_ids.contains(&face.shape_id()) {
+        // For each face in self, check if it's inside other
+        for face in self_faces {
+            if self.face_inside_tree(&face, other) {
                 result.insert_face(face);
             }
         }
 
+        // For each face in other, check if it's inside self
+        for face in other_faces {
+            if self.point_inside_tree(&self.face_center(&face), self) {
+                result.insert_face(face);
+            }
+        }
+
+        // Optimize the resulting tree
+        result.optimize();
         result
+    }
+    
+    /// Check if a face is inside a BSP tree
+    fn face_inside_tree(&self, face: &TopoDsFace, tree: &BspTree) -> bool {
+        // Get face center
+        let center = self.face_center(face);
+        
+        // Check if center is inside the tree
+        self.point_inside_tree(&center, tree)
+    }
+    
+    /// Get face center
+    fn face_center(&self, face: &TopoDsFace) -> crate::geometry::Point {
+        let wires = face.wires();
+        if wires.is_empty() {
+            return crate::geometry::Point::origin();
+        }
+        
+        let outer_wire = wires[0].get().unwrap();
+        let edges_slice: &[Handle<crate::topology::TopoDsEdge>] = outer_wire.edges();
+        
+        let mut center = crate::geometry::Point::origin();
+        let mut count = 0;
+        
+        for edge_handle in edges_slice.iter() {
+            if let Some(edge) = edge_handle.get() {
+                if let (Some(start), Some(end)) = (edge.start_vertex().get(), edge.end_vertex().get()) {
+                    let start_point = start.point();
+                    let end_point = end.point();
+                    
+                    center.x += (start_point.x + end_point.x) / 2.0;
+                    center.y += (start_point.y + end_point.y) / 2.0;
+                    center.z += (start_point.z + end_point.z) / 2.0;
+                    count += 1;
+                }
+            }
+        }
+        
+        if count > 0 {
+            center.x /= count as f64;
+            center.y /= count as f64;
+            center.z /= count as f64;
+        }
+        
+        center
+    }
+    
+    /// Check if a point is inside a BSP tree
+    fn point_inside_tree(&self, point: &crate::geometry::Point, tree: &BspTree) -> bool {
+        if let Some(ref root) = tree.root {
+            self.point_inside_node(point, root)
+        } else {
+            false
+        }
+    }
+    
+    /// Check if a point is inside a BSP node
+    fn point_inside_node(&self, point: &crate::geometry::Point, node: &BspNode) -> bool {
+        let distance = node.plane.distance(point);
+        
+        if distance > self.tolerance {
+            // Point is in front of the plane
+            if let Some(ref front) = node.front {
+                return self.point_inside_node(point, front);
+            }
+            return false;
+        } else if distance < -self.tolerance {
+            // Point is behind the plane
+            if let Some(ref back) = node.back {
+                return self.point_inside_node(point, back);
+            }
+            return false;
+        } else {
+            // Point is on the plane
+            // Check if point is inside any of the faces on this node
+            for face in &node.faces {
+                if self.point_inside_face(point, face.as_ref()) {
+                    return true;
+                }
+            }
+            
+            // Check child nodes
+            if let Some(ref front) = node.front {
+                if self.point_inside_node(point, front) {
+                    return true;
+                }
+            }
+            if let Some(ref back) = node.back {
+                if self.point_inside_node(point, back) {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+    }
+    
+    /// Check if a point is inside a face
+    fn point_inside_face(&self, point: &crate::geometry::Point, face: &TopoDsFace) -> bool {
+        let wires = face.wires();
+        if wires.is_empty() {
+            return false;
+        }
+        
+        let outer_wire = wires[0].get().unwrap();
+        let edges_slice: &[Handle<crate::topology::TopoDsEdge>] = outer_wire.edges();
+        
+        // Ray casting algorithm
+        let mut intersection_count = 0;
+        let ray_dir = crate::geometry::Vector::new(1.0, 0.0, 0.0);
+        
+        for edge_handle in edges_slice.iter() {
+            if let Some(edge) = edge_handle.get() {
+                if let (Some(start), Some(end)) = (edge.start_vertex().get(), edge.end_vertex().get()) {
+                    let start_point = start.point();
+                    let end_point = end.point();
+                    
+                    // Check if ray intersects this edge
+                    if self.ray_intersects_edge(*point, ray_dir, start_point, end_point) {
+                        intersection_count += 1;
+                    }
+                }
+            }
+        }
+        
+        // If odd, point is inside
+        intersection_count % 2 == 1
+    }
+    
+    /// Check if a ray intersects an edge
+    fn ray_intersects_edge(&self, origin: crate::geometry::Point, dir: crate::geometry::Vector, p1: crate::geometry::Point, p2: crate::geometry::Point) -> bool {
+        // Implementation of ray-edge intersection
+        let edge_vec = crate::geometry::Vector::new(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z);
+        let ray_vec = dir;
+        
+        let cross = edge_vec.cross(&ray_vec);
+        let denom = cross.length();
+        
+        if denom < 1e-6 {
+            return false; // Ray and edge are parallel
+        }
+        
+        let origin_to_p1 = crate::geometry::Vector::new(p1.x - origin.x, p1.y - origin.y, p1.z - origin.z);
+        let t = origin_to_p1.cross(&edge_vec).dot(&cross) / (denom * denom);
+        
+        if t < 0.0 {
+            return false; // Intersection is behind ray origin
+        }
+        
+        let u = origin_to_p1.cross(&ray_vec).dot(&cross) / (denom * denom);
+        
+        u >= 0.0 && u <= 1.0
+    }
+    
+    /// Optimize the BSP tree
+    pub fn optimize(&mut self) {
+        // Implement tree optimization here
+        // This could include balancing the tree, removing redundant nodes, etc.
     }
 
     pub fn collect_all_faces(&self) -> Vec<TopoDsFace> {
@@ -385,6 +683,29 @@ impl BspTree {
         let faces = other.collect_faces();
         for face in faces {
             self.insert_face(face);
+        }
+        
+        // Recursively merge child nodes
+        if let Some(ref front) = other.front {
+            if self.root.as_mut().unwrap().front.is_some() {
+                self.merge_tree(front);
+            } else {
+                // If we don't have a front node, create one
+                if let Some(ref mut root) = self.root {
+                    root.front = Some(front.clone());
+                }
+            }
+        }
+        
+        if let Some(ref back) = other.back {
+            if self.root.as_mut().unwrap().back.is_some() {
+                self.merge_tree(back);
+            } else {
+                // If we don't have a back node, create one
+                if let Some(ref mut root) = self.root {
+                    root.back = Some(back.clone());
+                }
+            }
         }
     }
 

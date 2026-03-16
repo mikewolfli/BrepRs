@@ -12,6 +12,9 @@ pub mod mesher3d;
 pub mod quad_mesher;
 pub mod quality;
 
+#[cfg(test)]
+mod tests;
+
 pub use boundary_layer::*;
 pub use hex_mesher::*;
 pub use mesh_data::*;
@@ -89,13 +92,41 @@ impl MeshGenerator {
                 }
             }
             crate::topology::ShapeType::Solid => {
-                // For solid, generate mesh for each face
-                for face in shape.faces() {
-                    let face_handle =
-                        crate::foundation::handle::Handle::new(std::sync::Arc::new(face.clone()));
-                    let face_mesh = self.generate_face(&face_handle, deflection, angle);
-                    // Merge face mesh into the main mesh
-                    mesh.merge(&face_mesh);
+                // For solid, generate mesh for each face in parallel
+                let faces = shape.faces();
+                if !faces.is_empty() {
+                    // Use rayon for parallel processing if feature is enabled
+                    #[cfg(feature = "rayon")]
+                    {
+                        use rayon::prelude::*;
+                        let face_meshes: Vec<_> = faces
+                            .par_iter()
+                            .map(|face| {
+                                let face_handle = crate::foundation::handle::Handle::new(
+                                    std::sync::Arc::new(face.clone()),
+                                );
+                                self.generate_face(&face_handle, deflection, angle)
+                            })
+                            .collect();
+
+                        // Merge all face meshes into the main mesh
+                        for face_mesh in face_meshes {
+                            mesh.merge(&face_mesh);
+                        }
+                    }
+
+                    // Fallback to sequential processing if rayon is not enabled
+                    #[cfg(not(feature = "rayon"))]
+                    {
+                        for face in faces {
+                            let face_handle = crate::foundation::handle::Handle::new(
+                                std::sync::Arc::new(face.clone()),
+                            );
+                            let face_mesh = self.generate_face(&face_handle, deflection, angle);
+                            // Merge face mesh into the main mesh
+                            mesh.merge(&face_mesh);
+                        }
+                    }
                 }
             }
             _ => {

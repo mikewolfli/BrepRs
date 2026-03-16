@@ -29,25 +29,33 @@ impl From<crate::data_exchange::step::StepError> for DataExchangeError {
 
 use thiserror::Error;
 
+pub mod fbx;
 pub mod gltf;
 pub mod iges;
+pub mod obj;
+pub mod ode;
+pub mod ply;
 pub mod step;
 pub mod stl;
 pub mod threemf;
+pub mod usd;
 pub mod usdz;
-pub mod ply;
-pub mod vtk;
 pub mod utils;
+pub mod vtk;
 
+pub use fbx::*;
 pub use gltf::*;
 pub use iges::*;
+pub use obj::*;
+pub use ode::*;
+pub use ply::*;
 pub use step::*;
 pub use stl::*;
 pub use threemf::*;
+pub use usd::*;
 pub use usdz::*;
-pub use ply::*;
-pub use vtk::*;
 pub use utils::*;
+pub use vtk::*;
 
 #[derive(Error, Debug)]
 pub enum DataExchangeError {

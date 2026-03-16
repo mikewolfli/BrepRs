@@ -1,6 +1,6 @@
 # Code Review Advice for BrepRs (Stage 1 & 2)
 
-This document provides review, corrections, and optimization suggestions for the completed parts of the BrepRs project, based on the current implementation and the completed items in `todo.md`. Each section corresponds to a major module or type.
+
 
 ---
 
