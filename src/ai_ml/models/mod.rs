@@ -95,8 +95,8 @@ impl AiModelManager {
     }
 
     /// Save model with version
-    pub fn save_model_with_version(
-        &self,
+    pub fn save_model_version(
+        &mut self,
         model_name: &str,
         version: &str,
         description: &str,

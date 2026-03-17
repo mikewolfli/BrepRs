@@ -4,11 +4,13 @@
 //! model performance, and training progress visualization.
 
 use std::path::Path;
+use std::io::Write;
 
 use crate::geometry::Point;
 use crate::mesh::mesh_data::Mesh3D;
 
 /// Performance metrics for monitoring
+#[derive(Clone)]
 pub struct PerformanceMetrics {
     pub inference_time: f64,    // In milliseconds
     pub render_time: f64,       // In milliseconds

@@ -7,7 +7,6 @@ use crate::ai_ml::models::AiModel;
 use crate::ai_ml::protocol::{AiProtocolError, AiResult};
 use crate::geometry::Point;
 use crate::mesh::mesh_data::Mesh3D;
-use rand::Rng;
 use std::path::Path;
 
 /// Calculate the center of the mesh
@@ -177,10 +176,10 @@ impl OnnxModelCache {
         let path_str = path.to_str().unwrap_or("").to_string();
 
         // Check if model is in cache
-        if let Some(model) = self.models.get(&path_str) {
+        if self.models.contains_key(&path_str) {
             // Update last used time
-            self.last_used.insert(path_str, std::time::Instant::now());
-            return Ok(model);
+            self.last_used.insert(path_str.clone(), std::time::Instant::now());
+            return Ok(self.models.get(&path_str).unwrap());
         }
 
         // Load model
@@ -188,20 +187,21 @@ impl OnnxModelCache {
 
         // Evict oldest model if cache is full
         if self.models.len() >= self.max_size {
-            if let Some(oldest) = self
+            let oldest = self
                 .last_used
                 .iter()
                 .min_by_key(|&(_, time)| time)
-                .map(|(path, _)| path.clone())
-            {
-                self.models.remove(&oldest);
-                self.last_used.remove(&oldest);
+                .map(|(path, _)| path.clone());
+            
+            if let Some(oldest_path) = oldest {
+                self.models.remove(&oldest_path);
+                self.last_used.remove(&oldest_path);
             }
         }
 
         // Add to cache
         self.models.insert(path_str.clone(), model);
-        self.last_used.insert(path_str, std::time::Instant::now());
+        self.last_used.insert(path_str.clone(), std::time::Instant::now());
 
         Ok(self.models.get(&path_str).unwrap())
     }
@@ -241,7 +241,7 @@ impl OnnxRuntime {
         }
 
         // Get model from cache or load it
-        let model = self.model_cache.get_or_load(model_path)?;
+        // let model = self.model_cache.get_or_load(model_path)?;
 
         // In a real implementation, this would use an ONNX runtime to execute the model
         // For now, we'll implement a comprehensive tensor transformation that simulates a neural network

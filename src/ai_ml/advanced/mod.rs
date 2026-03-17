@@ -240,6 +240,7 @@ impl FederatedLearningServer {
 }
 
 /// Experience tuple for reinforcement learning
+#[allow(dead_code)]
 pub struct Experience {
     state: Mesh3D,
     action: String,
@@ -312,7 +313,7 @@ impl ReinforcementLearningAgent {
     /// Predict best action using the model
     fn predict_best_action(&self, state: &Mesh3D) -> String {
         // Extract features from the mesh
-        let features = self.extract_features(state);
+        // let features = self.extract_features(state);
 
         // In a real implementation, this would use the model to predict the best action
         // For now, we'll use a heuristic based on mesh complexity
@@ -402,14 +403,15 @@ impl ReinforcementLearningAgent {
 
     /// Learn from a batch of experiences
     fn learn_from_batch(&mut self) {
-        use rand::seq::SliceRandom;
+        use rand::seq::IteratorRandom;
+        use rand::Rng;
         let mut rng = rand::thread_rng();
 
         // Sample batch from replay buffer
-        let batch: Vec<&Experience> = self
-            .replay_buffer
-            .choose_multiple(&mut rng, self.batch_size)
-            .collect();
+        // let batch: Vec<&Experience> = self
+        //     .replay_buffer
+        //     .iter()
+        //     .choose_multiple(&mut rng, self.batch_size);
 
         // In a real implementation, this would update the model using the batch
         // For now, we'll just reduce exploration rate over time

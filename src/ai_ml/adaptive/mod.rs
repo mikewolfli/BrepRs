@@ -3,12 +3,13 @@
 //! This module provides functionality for adaptive 3D models that can automatically adjust their
 //! detail level based on rendering performance, device capabilities, and user feedback.
 
-use crate::ai_ml::model_optimization::{LodResult, ModelOptimizer};
+use crate::ai_ml::model_optimization::ModelOptimizer;
 use crate::ai_ml::visualization::PerformanceMetrics;
 use crate::mesh::mesh_data::Mesh3D;
 use std::time::Instant;
 
 /// Device Capability Level
+#[derive(Copy, Clone)]
 pub enum DeviceCapability {
     Low,    // Mobile devices, low-end GPUs
     Medium, // Mid-range desktops, integrated GPUs
@@ -58,7 +59,6 @@ impl Default for AdaptiveModelSettings {
 
 /// Adaptive Model
 pub struct AdaptiveModel {
-    original_mesh: Mesh3D,
     lods: Vec<Mesh3D>,
     current_lod: usize,
     settings: AdaptiveModelSettings,
@@ -82,7 +82,6 @@ impl AdaptiveModel {
         lods.insert(0, mesh.clone()); // Add original mesh as highest LOD
         
         Self {
-            original_mesh: mesh,
             lods,
             current_lod: 0,
             settings,
@@ -150,11 +149,6 @@ impl AdaptiveModel {
             let avg_fps = self.performance_history
                 .iter()
                 .map(|m| m.fps)
-                .sum::<f64>() / self.performance_history.len() as f64;
-            
-            let avg_render_time = self.performance_history
-                .iter()
-                .map(|m| m.render_time)
                 .sum::<f64>() / self.performance_history.len() as f64;
             
             // If FPS is too low, decrease detail

@@ -2,11 +2,12 @@
 //!
 //! This module provides integration with external 3D generative models like Point-E, DreamFusion, etc.
 
-use crate::ai_ml::protocol::{AiDataType, AiProtocol, AiResult};
+use crate::ai_ml::protocol::AiResult;
 use crate::mesh::mesh_data::Mesh3D;
 use std::path::Path;
 
 /// External 3D Generative Model Types
+#[derive(Clone)]
 pub enum ExternalModelType {
     PointE,
     DreamFusion,
@@ -15,6 +16,7 @@ pub enum ExternalModelType {
 }
 
 /// External Model Configuration
+#[derive(Clone)]
 pub struct ExternalModelConfig {
     pub model_type: ExternalModelType,
     pub api_endpoint: Option<String>,
@@ -48,6 +50,7 @@ pub trait External3DModel {
 }
 
 /// Point-E Model Integration
+#[allow(dead_code)]
 pub struct PointEModel {
     config: ExternalModelConfig,
 }
@@ -167,14 +170,27 @@ impl PointEModel {
                 let v2 = face.vertices[2];
 
                 // Create new vertices at midpoints
-                let mid0 = (new_vertices[v0].point + new_vertices[v1].point) / 2.0;
-                let mid1 = (new_vertices[v1].point + new_vertices[v2].point) / 2.0;
-                let mid2 = (new_vertices[v2].point + new_vertices[v0].point) / 2.0;
+                let mid0_vec = (new_vertices[v1].point - new_vertices[v0].point) / 2.0;
+                let mid0 = new_vertices[v0].point + mid0_vec;
+                
+                let mid1_vec = (new_vertices[v2].point - new_vertices[v1].point) / 2.0;
+                let mid1 = new_vertices[v1].point + mid1_vec;
+                
+                let mid2_vec = (new_vertices[v0].point - new_vertices[v2].point) / 2.0;
+                let mid2 = new_vertices[v2].point + mid2_vec;
 
                 // Normalize to sphere
-                let mid0 = mid0.normalize() * radius;
-                let mid1 = mid1.normalize() * radius;
-                let mid2 = mid2.normalize() * radius;
+                let mid0_vec_from_origin = crate::geometry::Vector::new(mid0.x, mid0.y, mid0.z);
+                let mid0_normalized = mid0_vec_from_origin.normalized() * radius;
+                let mid0 = crate::geometry::Point::new(mid0_normalized.x, mid0_normalized.y, mid0_normalized.z);
+                
+                let mid1_vec_from_origin = crate::geometry::Vector::new(mid1.x, mid1.y, mid1.z);
+                let mid1_normalized = mid1_vec_from_origin.normalized() * radius;
+                let mid1 = crate::geometry::Point::new(mid1_normalized.x, mid1_normalized.y, mid1_normalized.z);
+                
+                let mid2_vec_from_origin = crate::geometry::Vector::new(mid2.x, mid2.y, mid2.z);
+                let mid2_normalized = mid2_vec_from_origin.normalized() * radius;
+                let mid2 = crate::geometry::Point::new(mid2_normalized.x, mid2_normalized.y, mid2_normalized.z);
 
                 let mid0_id = new_vertices.len();
                 let mid1_id = mid0_id + 1;

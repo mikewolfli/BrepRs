@@ -1,14 +1,13 @@
 //! TensorFlow Integration
-//!
+//! 
 //! This module provides utilities for integrating with TensorFlow, including tensor conversion
 //! between geometric data and TensorFlow tensors, with optimized performance and GPU acceleration.
 
-use crate::geometry::{Point, Vector};
-use crate::mesh::mesh_data::{Mesh3D, MeshFace, MeshVertex};
-use std::collections::HashMap;
-use std::sync::Arc;
+#[cfg(feature = "tensorflow")]
+use tensorflow;
 
 /// TensorFlow Model Wrapper
+#[cfg(feature = "tensorflow")]
 pub struct TensorFlowModel {
     session: tensorflow::Session,
     graph: tensorflow::Graph,
@@ -16,6 +15,7 @@ pub struct TensorFlowModel {
     output_op: tensorflow::Operation,
 }
 
+#[cfg(feature = "tensorflow")]
 impl TensorFlowModel {
     /// Load TensorFlow model from file
     pub fn load_from_file(path: &str) -> Result<Self, String> {
@@ -70,10 +70,12 @@ impl TensorFlowModel {
 }
 
 /// TensorFlow Model Cache
+#[cfg(feature = "tensorflow")]
 pub struct TensorFlowModelCache {
     models: HashMap<String, Arc<TensorFlowModel>>,
 }
 
+#[cfg(feature = "tensorflow")]
 impl TensorFlowModelCache {
     pub fn new() -> Self {
         Self {
@@ -94,7 +96,7 @@ impl TensorFlowModelCache {
 }
 
 /// Convert point to TensorFlow tensor
-#[cfg(feature = "gpu")]
+#[cfg(feature = "tensorflow")]
 pub fn point_to_tensor(point: &Point) -> tensorflow::Tensor<f32> {
     tensorflow::Tensor::new(&[3])
         .with_values(&[point.x as f32, point.y as f32, point.z as f32])
@@ -102,7 +104,7 @@ pub fn point_to_tensor(point: &Point) -> tensorflow::Tensor<f32> {
 }
 
 /// Convert vector to TensorFlow tensor
-#[cfg(feature = "gpu")]
+#[cfg(feature = "tensorflow")]
 pub fn vector_to_tensor(vector: &Vector) -> tensorflow::Tensor<f32> {
     tensorflow::Tensor::new(&[3])
         .with_values(&[vector.x as f32, vector.y as f32, vector.z as f32])
@@ -110,7 +112,7 @@ pub fn vector_to_tensor(vector: &Vector) -> tensorflow::Tensor<f32> {
 }
 
 /// Convert mesh to TensorFlow tensor (optimized)
-#[cfg(feature = "gpu")]
+#[cfg(feature = "tensorflow")]
 pub fn mesh_to_tensor(mesh: &Mesh3D) -> tensorflow::Tensor<f32> {
     // Pre-allocate exact size to avoid reallocations
     let mut data = Vec::with_capacity(mesh.vertices.len() * 6);
@@ -135,7 +137,7 @@ pub fn mesh_to_tensor(mesh: &Mesh3D) -> tensorflow::Tensor<f32> {
 }
 
 /// Convert batch of points to TensorFlow tensor (optimized)
-#[cfg(feature = "gpu")]
+#[cfg(feature = "tensorflow")]
 pub fn points_to_tensor(points: &[Point]) -> tensorflow::Tensor<f32> {
     let mut data = Vec::with_capacity(points.len() * 3);
     for point in points {
@@ -147,7 +149,7 @@ pub fn points_to_tensor(points: &[Point]) -> tensorflow::Tensor<f32> {
 }
 
 /// Convert TensorFlow tensor to point
-#[cfg(feature = "gpu")]
+#[cfg(feature = "tensorflow")]
 pub fn tensor_to_point(tensor: &tensorflow::Tensor<f32>) -> Result<Point, String> {
     let data: Vec<f32> = tensor.to_vec().unwrap();
     if data.len() < 3 {
@@ -157,7 +159,7 @@ pub fn tensor_to_point(tensor: &tensorflow::Tensor<f32>) -> Result<Point, String
 }
 
 /// Convert TensorFlow tensor to mesh
-#[cfg(feature = "gpu")]
+#[cfg(feature = "tensorflow")]
 pub fn tensor_to_mesh(tensor: &tensorflow::Tensor<f32>) -> Result<Mesh3D, String> {
     let data: Vec<f32> = tensor.to_vec().unwrap();
     if data.len() < 6 {

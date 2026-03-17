@@ -18,8 +18,8 @@ serde = ["dep:serde", "dep:serde_json", "dep:bincode"]
 wasm = ["dep:wasm-bindgen", "dep:js-sys", "dep:web-sys"]
 rayon = ["dep:rayon"]
 gpu = ["dep:wgpu", "dep:pollster"]
-pytorch = []
-tensorflow = []
+pytorch = ["dep:tch"]
+tensorflow = ["dep:tensorflow"]
 
 [dependencies]
 thiserror = "1.0"
@@ -49,11 +49,15 @@ pollster = { version = "0.3", optional = true }
 console_error_panic_hook = "0.1.7"
 console_log = "1.0.0"
 tokio = { version = "1.50.0", features = ["time", "rt"] }
-rand = "0.10.0"
+rand = { version = "0.9", features = ["std"] }
 lz4 = "1.28.1"
 zstd = "0.13.3"
 rmp-serde = "1.3.1"
 bson = "3.1.0"
+
+# ML Framework dependencies
+tch = { version = "0.14", optional = true }
+tensorflow = { version = "0.21", optional = true }
 
 [dev-dependencies]
 criterion = "0.5"

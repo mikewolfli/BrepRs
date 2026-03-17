@@ -17,6 +17,7 @@ use crate::mesh::mesh_data::{Mesh3D, MeshFace, MeshVertex};
 use crate::topology::topods_shape::TopoDsShape;
 
 /// ML Dataset
+#[derive(Clone)]
 pub struct MlDataset {
     pub name: String,
     pub samples: Vec<(Mesh3D, Vec<String>)>,
@@ -221,7 +222,7 @@ impl AiMlUtils {
     }
 
     /// Generate mesh from text description
-    pub fn generate_mesh(&self, description: &str) -> AiResult<Mesh3D> {
+    pub fn generate_mesh(&mut self, description: &str) -> AiResult<Mesh3D> {
         let input = AiDataType::Text(description.to_string());
         let result = self
             .model_manager
@@ -236,7 +237,7 @@ impl AiMlUtils {
     }
 
     /// Recognize features in mesh
-    pub fn recognize_features(&self, mesh: &Mesh3D) -> AiResult<Vec<String>> {
+    pub fn recognize_features(&mut self, mesh: &Mesh3D) -> AiResult<Vec<String>> {
         let input = AiDataType::Mesh(mesh.clone());
         let result = self
             .model_manager
@@ -260,7 +261,7 @@ impl AiMlUtils {
     }
 
     /// Repair mesh
-    pub fn repair_mesh(&self, mesh: &Mesh3D) -> AiResult<Mesh3D> {
+    pub fn repair_mesh(&mut self, mesh: &Mesh3D) -> AiResult<Mesh3D> {
         let input = AiDataType::Mesh(mesh.clone());
         let result = self.model_manager.execute_model("model_repair", &input)?;
 

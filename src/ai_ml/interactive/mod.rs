@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use crate::ai_ml::protocol::{AiDataType, AiProtocolError, AiResult};
+use crate::ai_ml::protocol::{AiProtocolError, AiResult};
 use crate::ai_ml::text_to_3d::{TextTo3DGenerator, TextTo3DSettings};
 use crate::mesh::mesh_data::Mesh3D;
 
@@ -83,7 +83,7 @@ impl InteractiveSession {
     /// Process multimodal prompt
     pub fn process_multimodal_prompt(&mut self, prompt: &MultimodalPrompt) -> AiResult<Mesh3D> {
         // Start with text generation
-        let mut result = self.generator.generate(&prompt.text)?;
+        let result = self.generator.generate(&prompt.text)?;
         let mut current_mesh = result.mesh;
 
         // Incorporate sketches if provided

@@ -1,19 +1,19 @@
 //! PyTorch Integration
-//!
+//! 
 //! This module provides utilities for integrating with PyTorch, including tensor conversion
 //! between geometric data and PyTorch tensors, with optimized performance and GPU acceleration.
 
-use crate::geometry::{Point, Vector};
-use crate::mesh::mesh_data::{Mesh3D, MeshFace, MeshVertex};
-use std::collections::HashMap;
-use std::sync::Arc;
+#[cfg(feature = "pytorch")]
+use tch;
 
 /// PyTorch Model Wrapper
+#[cfg(feature = "pytorch")]
 pub struct PyTorchModel {
     model: tch::CModule,
     device: tch::Device,
 }
 
+#[cfg(feature = "pytorch")]
 impl PyTorchModel {
     /// Load PyTorch model from file
     pub fn load_from_file(path: &str, device: tch::Device) -> Result<Self, String> {
@@ -38,10 +38,12 @@ impl PyTorchModel {
 }
 
 /// PyTorch Model Cache
+#[cfg(feature = "pytorch")]
 pub struct PyTorchModelCache {
     models: HashMap<String, Arc<PyTorchModel>>,
 }
 
+#[cfg(feature = "pytorch")]
 impl PyTorchModelCache {
     pub fn new() -> Self {
         Self {
@@ -66,19 +68,19 @@ impl PyTorchModelCache {
 }
 
 /// Convert point to PyTorch tensor
-#[cfg(feature = "gpu")]
+#[cfg(feature = "pytorch")]
 pub fn point_to_tensor(point: &Point) -> tch::Tensor {
     tch::Tensor::of_slice(&[point.x as f32, point.y as f32, point.z as f32])
 }
 
 /// Convert vector to PyTorch tensor
-#[cfg(feature = "gpu")]
+#[cfg(feature = "pytorch")]
 pub fn vector_to_tensor(vector: &Vector) -> tch::Tensor {
     tch::Tensor::of_slice(&[vector.x as f32, vector.y as f32, vector.z as f32])
 }
 
 /// Convert mesh to PyTorch tensor (optimized)
-#[cfg(feature = "gpu")]
+#[cfg(feature = "pytorch")]
 pub fn mesh_to_tensor(mesh: &Mesh3D) -> tch::Tensor {
     // Pre-allocate exact size to avoid reallocations
     let mut data = Vec::with_capacity(mesh.vertices.len() * 6);

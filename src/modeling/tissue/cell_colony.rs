@@ -250,7 +250,7 @@ impl CellColony {
         density: StandardReal,
         bounds: (Point, Point),
     ) -> Self {
-        use rand::RngExt;
+        use rand::Rng;
         let mut rng = rand::rng();
         let mut cells = Vec::with_capacity(cell_count);
 
@@ -266,11 +266,11 @@ impl CellColony {
             let mut placed = false;
 
             while attempts < max_attempts && !placed {
-                let size = cell_size * (1.0 + rng.random_range(-size_variation..size_variation));
+                let size = cell_size * (1.0 + rng.gen_range(-size_variation..size_variation));
                 let position = Point::new(
-                    min.x + rng.random_range(0.0..width),
-                    min.y + rng.random_range(0.0..height),
-                    min.z + rng.random_range(0.0..depth),
+                    min.x + rng.gen_range(0.0..width),
+                    min.y + rng.gen_range(0.0..height),
+                    min.z + rng.gen_range(0.0..depth),
                 );
 
                 let cell = Cell::spherical(size, position);

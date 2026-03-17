@@ -265,7 +265,7 @@ impl ModelQualityEvaluator {
     }
 
     /// Check for self-intersections
-    fn check_self_intersections(&self, mesh: &Mesh3D, errors: &mut Vec<ModelError>) {
+    fn check_self_intersections(&self, mesh: &Mesh3D, _errors: &mut Vec<ModelError>) {
         // Simplified check: this is a computationally expensive operation
         // For simplicity, we'll skip detailed intersection checking
         // In a real implementation, you would use more sophisticated algorithms

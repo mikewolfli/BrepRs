@@ -6,7 +6,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::ai_ml::protocol::{AiProtocolError, AiResult};
-use crate::geometry::{Point, Vector};
+use crate::geometry::Point;
 use crate::mesh::mesh_data::{Mesh3D, MeshFace, MeshVertex};
 
 /// Model Optimization Settings

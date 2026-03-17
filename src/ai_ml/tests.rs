@@ -52,7 +52,7 @@ fn test_ai_protocol() {
 
 #[test]
 fn test_ai_ml_utils() {
-    let utils = AiMlUtils::new();
+    let mut utils = AiMlUtils::new();
 
     // Test mesh generation
     let mesh = utils.generate_mesh("A simple cube").unwrap();
@@ -81,7 +81,7 @@ fn test_ai_ml_utils() {
 
 #[test]
 fn test_model_manager() {
-    let utils = AiMlUtils::new();
+    let mut utils = AiMlUtils::new();
     let model_manager = utils.model_manager();
 
     // Test model registration and retrieval

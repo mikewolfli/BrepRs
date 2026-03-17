@@ -66,7 +66,7 @@ impl MlWorkflow {
     }
 
     /// Evaluate model
-    pub fn evaluate(&self, test_dataset: &MlDataset) -> Result<f64, String> {
+    pub fn evaluate(&mut self, test_dataset: &MlDataset) -> Result<f64, String> {
         // Evaluate model performance
         let mut correct = 0;
         let mut total = 0;
@@ -96,7 +96,7 @@ impl MlWorkflow {
     }
 
     /// Save model
-    pub fn save_model(&self, path: &Path, format: MlModelFormat) -> AiResult<()> {
+    pub fn save_model(&mut self, path: &Path, format: MlModelFormat) -> AiResult<()> {
         self.utils.save_model(&self.model_name, path, format)
     }
 
@@ -114,7 +114,7 @@ impl MlWorkflow {
     }
 
     /// Predict using model
-    pub fn predict(&self, mesh: &Mesh3D) -> AiResult<Vec<String>> {
+    pub fn predict(&mut self, mesh: &Mesh3D) -> AiResult<Vec<String>> {
         self.utils.recognize_features(mesh)
     }
 
@@ -171,8 +171,8 @@ impl MlPipeline {
             match workflow.train() {
                 Ok(_) => {
                     // Evaluate with the same dataset (placeholder)
-                    if let Some(dataset) = &workflow.dataset {
-                        let accuracy = workflow.evaluate(dataset).unwrap_or(0.0);
+                    if let Some(dataset) = workflow.dataset.clone() {
+                        let accuracy = workflow.evaluate(&dataset).unwrap_or(0.0);
                         results.push(accuracy);
                     } else {
                         results.push(0.0);

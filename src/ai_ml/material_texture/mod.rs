@@ -6,8 +6,7 @@
 use std::collections::HashMap;
 
 use crate::ai_ml::protocol::{AiProtocolError, AiResult};
-use crate::geometry::{Point, Vector};
-use crate::mesh::mesh_data::{Mesh3D, MeshFace, MeshVertex};
+use crate::mesh::mesh_data::Mesh3D;
 
 /// Material Properties
 #[derive(Debug, Clone, PartialEq)]
@@ -155,7 +154,7 @@ impl MaterialTextureGenerator {
     }
 
     /// Apply material to mesh
-    pub fn apply_material(&self, mesh: &Mesh3D, material: &Material) -> AiResult<Mesh3D> {
+    pub fn apply_material(&self, mesh: &Mesh3D, _material: &Material) -> AiResult<Mesh3D> {
         // In a real implementation, this would include texture mapping and UV unwrapping
         // For now, we'll just return a copy of the mesh
         Ok(mesh.clone())
@@ -460,7 +459,7 @@ impl MaterialTextureGenerator {
     }
 
     /// Calculate quality score for the generated material
-    fn calculate_quality_score(&self, material: &Material, description: &str) -> f64 {
+    fn calculate_quality_score(&self, material: &Material, _description: &str) -> f64 {
         // In a real implementation, this would include more sophisticated metrics
         // For now, we'll just return a score based on texture count and material properties
         let texture_count = material.textures.len() as f64;
