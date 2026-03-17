@@ -98,7 +98,7 @@ pub struct CloudStorage {
     // Cloud storage configuration
     provider: String,
     bucket_name: String,
-    credentials: String,
+    _credentials: String,
 }
 
 impl CloudStorage {
@@ -107,7 +107,7 @@ impl CloudStorage {
         Self {
             provider,
             bucket_name,
-            credentials,
+            _credentials: credentials,
         }
     }
 

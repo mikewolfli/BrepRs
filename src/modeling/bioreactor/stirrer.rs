@@ -201,7 +201,7 @@ impl StirrerShaft {
         shell: &mut TopoDsShell,
         impeller: &Impeller,
         origin: Point,
-        axis: Axis,
+        _axis: Axis,
     ) {
         let blade_angle_step = 2.0 * std::f64::consts::PI / impeller.blade_count as StandardReal;
 
@@ -230,7 +230,7 @@ impl StirrerShaft {
         shell: &mut TopoDsShell,
         impeller: &Impeller,
         origin: Point,
-        axis: Axis,
+        _axis: Axis,
         pitch_angle: StandardReal,
     ) {
         let blade_angle_step = 2.0 * std::f64::consts::PI / impeller.blade_count as StandardReal;
@@ -263,11 +263,11 @@ impl StirrerShaft {
         shell: &mut TopoDsShell,
         impeller: &Impeller,
         origin: Point,
-        axis: Axis,
+        _axis: Axis,
         pitch_angle: StandardReal,
     ) {
         // TODO: Implement marine propeller blade geometry
-        self.add_pitched_blades(shell, impeller, origin, axis, pitch_angle);
+        self.add_pitched_blades(shell, impeller, origin, _axis, pitch_angle);
     }
 
     /// Add anchor impeller blades
@@ -275,7 +275,7 @@ impl StirrerShaft {
         &self,
         shell: &mut TopoDsShell,
         impeller: &Impeller,
-        origin: Point,
+        _origin: Point,
         axis: Axis,
     ) {
         // TODO: Implement anchor blade geometry
@@ -292,11 +292,11 @@ impl StirrerShaft {
         shell: &mut TopoDsShell,
         impeller: &Impeller,
         origin: Point,
-        axis: Axis,
+        _axis: Axis,
         pitch_angle: StandardReal,
     ) {
         // TODO: Implement propeller blade geometry
-        self.add_pitched_blades(shell, impeller, origin, axis, pitch_angle);
+        self.add_pitched_blades(shell, impeller, origin, _axis, pitch_angle);
     }
 }
 

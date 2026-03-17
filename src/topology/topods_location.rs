@@ -164,7 +164,7 @@ impl TopoDsLocation {
     }
 
     /// Rotate the location around an axis
-    pub fn rotate(&mut self, axis: Axis, angle: f64) {
+    pub fn rotate(&mut self, axis: &Axis, angle: f64) {
         let rotation = Transform::from_rotation(axis, angle);
         self.transformation = rotation.multiply(&self.transformation);
     }
@@ -192,7 +192,7 @@ impl TopoDsLocation {
     /// Mirror the location across a plane
     pub fn mirror(&mut self, point: Point, normal: Direction) {
         // Create an axis for mirroring
-        let axis = Axis::new(&point, &normal);
+        let axis = Axis::new(point, normal);
         let mirror = Transform::from_axis_mirror(&axis);
         self.transformation = mirror.multiply(&self.transformation);
     }

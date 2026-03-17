@@ -325,6 +325,27 @@ impl TopoDsWire {
         ))
     }
 
+    /// Get the centroid of the wire
+    pub fn centroid(&self) -> Option<Point> {
+        if self.vertices.is_empty() {
+            return None;
+        }
+
+        let mut sum_x = 0.0;
+        let mut sum_y = 0.0;
+        let mut sum_z = 0.0;
+
+        for vertex in &self.vertices {
+            let point = vertex.point();
+            sum_x += point.x;
+            sum_y += point.y;
+            sum_z += point.z;
+        }
+
+        let count = self.vertices.len() as f64;
+        Some(Point::new(sum_x / count, sum_y / count, sum_z / count))
+    }
+
     /// Check if the wire is self-intersecting
     pub fn is_self_intersecting(&self) -> bool {
         if self.edges.len() < 2 {

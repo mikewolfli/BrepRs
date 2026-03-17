@@ -164,13 +164,13 @@ impl DynamicSurface {
             VertexConstraint::Plane(plane_point, plane_normal) => {
                 // Project to plane
                 let vector = *position - *plane_point;
-                let distance = vector.dot(*plane_normal);
-                *position - *plane_normal * distance
+                let distance = vector.dot(plane_normal);
+                *position + (*plane_normal) * (-distance)
             }
             VertexConstraint::Line(line_point, line_direction) => {
                 // Project to line
                 let vector = *position - *line_point;
-                let projection = line_point + line_direction * vector.dot(*line_direction);
+                let projection = *line_point + (*line_direction) * vector.dot(line_direction);
                 projection
             }
             VertexConstraint::Surface(_surface) => {
@@ -184,27 +184,33 @@ impl DynamicSurface {
     fn smooth_surface(&mut self, factor: StandardReal) {
         let original_vertices = self.vertices.clone();
 
+        // Pre-compute neighbors for all vertices to avoid borrow conflicts
+        let all_neighbors: Vec<Vec<usize>> = (0..self.vertices.len())
+            .map(|i| self.find_neighbors(i))
+            .collect();
+
         for (i, vertex) in self.vertices.iter_mut().enumerate() {
             // Skip fixed vertices
             if self.constraints.len() > i && self.constraints[i] == VertexConstraint::Fixed {
                 continue;
             }
 
-            // Find neighboring vertices
-            let neighbors = self.find_neighbors(i);
+            // Get pre-computed neighbors
+            let neighbors = &all_neighbors[i];
             if neighbors.is_empty() {
                 continue;
             }
 
             // Calculate average position of neighbors
-            let mut avg_position = Point::origin();
-            for neighbor in &neighbors {
+            let mut avg_position = Vector::new(0.0, 0.0, 0.0);
+            for neighbor in neighbors {
                 avg_position = avg_position + (original_vertices[*neighbor] - Point::origin());
             }
             avg_position = avg_position / neighbors.len() as StandardReal;
+            let avg_point = Point::origin() + avg_position;
 
             // Move vertex towards average position
-            *vertex = *vertex + (avg_position - *vertex) * factor;
+            *vertex = *vertex + (avg_point - *vertex) * factor;
         }
     }
 
@@ -270,11 +276,11 @@ impl UpdateParameters {
 mod tests {
     use super::*;
     use crate::geometry::Point;
-    use crate::topology::TopoDsShape;
+    use crate::topology::{TopoDsShape, shape_enum::ShapeType};
 
     #[test]
     fn test_dynamic_surface_creation() {
-        let surface = TopoDsShape::new();
+        let surface = TopoDsShape::new(ShapeType::Compound);
         let dynamic_surface = DynamicSurface::new(surface);
 
         assert!(dynamic_surface.vertices.is_empty());
@@ -284,7 +290,7 @@ mod tests {
 
     #[test]
     fn test_vertex_constraint() {
-        let surface = TopoDsShape::new();
+        let surface = TopoDsShape::new(ShapeType::Compound);
         let mut dynamic_surface = DynamicSurface::new(surface);
 
         // Add a vertex
@@ -303,7 +309,7 @@ mod tests {
 
     #[test]
     fn test_surface_smoothing() {
-        let surface = TopoDsShape::new();
+        let surface = TopoDsShape::new(ShapeType::Compound);
         let mut dynamic_surface = DynamicSurface::new(surface);
 
         // Add vertices

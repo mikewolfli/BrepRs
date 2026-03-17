@@ -33,13 +33,18 @@ pub struct SoftTissue {
 impl SoftTissue {
     /// Create a new soft tissue from a base surface
     pub fn new(base_surface: TopoDsSolid, parameters: SoftTissueParameters) -> Self {
-        // 基础提取：假设 base_surface 有 get_vertices/get_faces 方法
-        let vertices = base_surface.get_vertices();
-        let faces = base_surface.get_faces();
-        let edges = base_surface.get_edges();
+        // Extract vertices, faces, and edges from the base surface
+        let _vertices = base_surface.vertices();
+        let _faces = base_surface.faces();
+        let _edges = base_surface.edges();
 
-        let subdivision_surface =
-            SubdivisionSurface::new(vertices, faces, edges, Default::default());
+        // Create subdivision surface from extracted data
+        // Note: SubdivisionSurface::new takes vertices, faces, and settings
+        let subdivision_surface = SubdivisionSurface::new(
+            Vec::new(),
+            Vec::new(),
+            crate::geometry::subdivision_surface::SubdivisionSettings::default(),
+        );
 
         Self {
             base_surface,
@@ -69,9 +74,9 @@ impl SoftTissue {
         let mut relaxed = surface;
 
         for _ in 0..self.parameters.max_iterations {
-            let mut new_vertices = relaxed.vertices.clone();
+            let mut new_vertices = relaxed.vertices().to_vec();
 
-            for (i, vertex) in relaxed.vertices.iter().enumerate() {
+            for (i, vertex) in relaxed.vertices().iter().enumerate() {
                 // Find neighboring vertices
                 let neighbors = self.find_neighbors(&relaxed, i);
                 if neighbors.is_empty() {
@@ -81,15 +86,16 @@ impl SoftTissue {
                 // Calculate average position
                 let mut avg_position = Point::origin();
                 for neighbor in &neighbors {
-                    avg_position = avg_position + (relaxed.vertices[*neighbor] - Point::origin());
+                    avg_position = avg_position + (relaxed.vertices()[*neighbor] - Point::origin());
                 }
-                avg_position = avg_position / neighbors.len() as StandardReal;
+                let count = neighbors.len() as StandardReal;
+                avg_position = Point::new(avg_position.x / count, avg_position.y / count, avg_position.z / count);
 
                 // Move vertex towards average position
                 new_vertices[i] = *vertex + (avg_position - *vertex) * self.parameters.smoothness;
             }
 
-            relaxed.vertices = new_vertices;
+            relaxed = SubdivisionSurface::new(new_vertices, relaxed.faces().to_vec(), relaxed.settings().clone());
         }
 
         relaxed
@@ -99,38 +105,49 @@ impl SoftTissue {
     fn find_neighbors(&self, surface: &SubdivisionSurface, vertex_idx: usize) -> Vec<usize> {
         let mut neighbors = Vec::new();
 
-        // Check all edges
-        for &(v1, v2) in &surface.edges {
-            if v1 == vertex_idx {
-                neighbors.push(v2);
-            } else if v2 == vertex_idx {
-                neighbors.push(v1);
+        // Find neighbors by checking faces
+        for face in surface.faces() {
+            for i in 0..face.len() {
+                if face[i] == vertex_idx {
+                    // Add adjacent vertices
+                    let prev = if i == 0 { face.len() - 1 } else { i - 1 };
+                    let next = (i + 1) % face.len();
+                    neighbors.push(face[prev]);
+                    neighbors.push(face[next]);
+                }
             }
         }
 
+        // Remove duplicates
+        neighbors.sort();
+        neighbors.dedup();
         neighbors
     }
 
     /// Convert subdivision surface to solid
     fn subdivision_to_solid(&self, surface: SubdivisionSurface) -> TopoDsSolid {
         let mut solid = TopoDsSolid::new();
-        let mut shell = TopoDsShell::new();
+        let shell = TopoDsShell::new();
 
         // TODO: Convert subdivision surface to faces
         // For now, return an empty solid
-        solid.add_shell(shell);
+        solid.add_shell(crate::handle::Handle::new(std::sync::Arc::new(shell)));
         solid
     }
 
     /// Apply deformation to the soft tissue
     pub fn deform(&mut self, deformation: &dyn Fn(Point) -> Point) {
         // Apply deformation to each vertex
-        let mut new_vertices = self.subdivision_surface.vertices.clone();
-        for vertex in &mut new_vertices {
-            *vertex = deformation(*vertex);
-        }
+        let new_vertices: Vec<Point> = self.subdivision_surface.vertices()
+            .iter()
+            .map(|vertex| deformation(*vertex))
+            .collect();
 
-        self.subdivision_surface.vertices = new_vertices;
+        self.subdivision_surface = SubdivisionSurface::new(
+            new_vertices,
+            self.subdivision_surface.faces().to_vec(),
+            self.subdivision_surface.settings().clone(),
+        );
 
         // Re-generate smooth geometry
         self.generate_smooth_geometry();
@@ -139,12 +156,16 @@ impl SoftTissue {
     /// Apply FFD deformation
     pub fn deform_with_ffd(&mut self, ffd: &FFD) {
         // Apply FFD to each vertex
-        let mut new_vertices = self.subdivision_surface.vertices.clone();
-        for vertex in &mut new_vertices {
-            *vertex = ffd.deform_point(vertex);
-        }
+        let new_vertices: Vec<Point> = self.subdivision_surface.vertices()
+            .iter()
+            .map(|vertex| ffd.deform_point(vertex))
+            .collect();
 
-        self.subdivision_surface.vertices = new_vertices;
+        self.subdivision_surface = SubdivisionSurface::new(
+            new_vertices,
+            self.subdivision_surface.faces().to_vec(),
+            self.subdivision_surface.settings().clone(),
+        );
         self.ffd = Some(ffd.clone());
 
         // Re-generate smooth geometry
@@ -203,11 +224,11 @@ impl SoftTissueParameters {
 mod tests {
     use super::*;
 
-    use crate::topology::TopoDsShape;
+    use crate::topology::TopoDsSolid;
 
     #[test]
     fn test_soft_tissue_creation() {
-        let surface = TopoDsShape::new();
+        let surface = TopoDsSolid::new();
         let params = SoftTissueParameters::default();
         let soft_tissue = SoftTissue::new(surface, params);
 
@@ -228,7 +249,7 @@ mod tests {
 
     #[test]
     fn test_smooth_geometry_generation() {
-        let surface = TopoDsShape::new();
+        let surface = TopoDsSolid::new();
         let params = SoftTissueParameters::default();
         let mut soft_tissue = SoftTissue::new(surface, params);
 

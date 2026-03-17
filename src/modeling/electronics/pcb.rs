@@ -1,6 +1,7 @@
 use crate::foundation::handle::Handle;
-use crate::geometry::{Axis, Circle, Cylinder, Direction, Line, Point, Vector};
+use crate::geometry::{Axis, Cylinder, Direction, Point, Vector};
 use crate::topology::{TopoDsEdge, TopoDsFace, TopoDsShell, TopoDsSolid, TopoDsVertex, TopoDsWire};
+use std::sync::Arc;
 
 /// PCB layer type
 #[derive(Debug, Clone, PartialEq)]
@@ -126,26 +127,26 @@ impl PcbBoard {
         // Create board layers
         for layer in &self.layers {
             let layer_shell = self.create_layer_shell(layer);
-            solid.add_shell(layer_shell);
+            solid.add_shell(Handle::new(Arc::new(layer_shell)));
         }
 
         // Create pads
         for pad in &self.pads {
             let pad_shell = self.create_pad_shell(pad);
-            solid.add_shell(pad_shell);
+            solid.add_shell(Handle::new(Arc::new(pad_shell)));
         }
 
         // Create vias
         for via in &self.vias {
             let via_shell = self.create_via_shell(via);
-            solid.add_shell(via_shell);
+            solid.add_shell(Handle::new(Arc::new(via_shell)));
         }
 
         // Create traces
         for trace in &self.traces {
             for segment in &trace.segments {
                 let trace_shell = self.create_trace_segment_shell(segment);
-                solid.add_shell(trace_shell);
+                solid.add_shell(Handle::new(Arc::new(trace_shell)));
             }
         }
 
@@ -156,16 +157,39 @@ impl PcbBoard {
     fn create_layer_shell(&self, layer: &PcbLayer) -> TopoDsShell {
         let mut shell = TopoDsShell::new();
 
-        // Create layer rectangle
-        let rectangle = Rectangle::new(
-            self.origin + Vector::new(0.0, 0.0, layer.position),
-            Vector::new(1.0, 0.0, 0.0),
-            Vector::new(0.0, 1.0, 0.0),
-            self.width,
-            self.height,
-        );
+        // Create layer rectangle manually
+        let z = layer.position;
+        let origin = self.origin;
+        let w = self.width;
+        let h = self.height;
 
-        let face = rectangle.to_face();
+        // Create four corners
+        let p1 = Point::new(origin.x, origin.y, z);
+        let p2 = Point::new(origin.x + w, origin.y, z);
+        let p3 = Point::new(origin.x + w, origin.y + h, z);
+        let p4 = Point::new(origin.x, origin.y + h, z);
+
+        // Create vertices
+        let v1 = Arc::new(TopoDsVertex::new(p1));
+        let v2 = Arc::new(TopoDsVertex::new(p2));
+        let v3 = Arc::new(TopoDsVertex::new(p3));
+        let v4 = Arc::new(TopoDsVertex::new(p4));
+
+        // Create edges
+        let e1 = Handle::new(Arc::new(TopoDsEdge::new(Handle::new(v1.clone()), Handle::new(v2.clone()))));
+        let e2 = Handle::new(Arc::new(TopoDsEdge::new(Handle::new(v2.clone()), Handle::new(v3.clone()))));
+        let e3 = Handle::new(Arc::new(TopoDsEdge::new(Handle::new(v3.clone()), Handle::new(v4.clone()))));
+        let e4 = Handle::new(Arc::new(TopoDsEdge::new(Handle::new(v4.clone()), Handle::new(v1.clone()))));
+
+        // Create wire
+        let mut wire = TopoDsWire::new();
+        wire.add_edge(e1);
+        wire.add_edge(e2);
+        wire.add_edge(e3);
+        wire.add_edge(e4);
+
+        // Create face
+        let face = Handle::new(Arc::new(TopoDsFace::with_outer_wire(wire)));
         shell.add_face(face);
 
         shell
@@ -177,59 +201,66 @@ impl PcbBoard {
 
         // Find the layer position
         let layer_position = self.find_layer_position(&pad.layer).unwrap_or(0.0);
+        let z = layer_position;
 
         match pad.shape {
             PadShape::Round => {
+                // Approximate round pad with an octagon
                 let radius = pad.size.0 / 2.0;
-                let circle = Circle::new(
-                    Axis::new(
-                        pad.position + Vector::new(0.0, 0.0, layer_position),
-                        Vector::new(0.0, 0.0, 1.0),
-                    ),
-                    radius,
-                );
-
-                let face = circle.to_face();
+                let center_x = pad.position.x;
+                let center_y = pad.position.y;
+                let n_sides = 8;
+                
+                let mut vertices: Vec<Arc<TopoDsVertex>> = Vec::with_capacity(n_sides);
+                for i in 0..n_sides {
+                    let angle = 2.0 * std::f64::consts::PI * i as f64 / n_sides as f64;
+                    let x = center_x + radius * angle.cos();
+                    let y = center_y + radius * angle.sin();
+                    vertices.push(Arc::new(TopoDsVertex::new(Point::new(x, y, z))));
+                }
+                
+                let mut wire = TopoDsWire::new();
+                for i in 0..n_sides {
+                    let j = (i + 1) % n_sides;
+                    let edge = Handle::new(Arc::new(TopoDsEdge::new(
+                        Handle::new(vertices[i].clone()),
+                        Handle::new(vertices[j].clone()),
+                    )));
+                    wire.add_edge(edge);
+                }
+                
+                let face = Handle::new(Arc::new(TopoDsFace::with_outer_wire(wire)));
                 shell.add_face(face);
             }
-            PadShape::Square => {
-                let rectangle = Rectangle::new(
-                    pad.position - Vector::new(pad.size.0 / 2.0, pad.size.1 / 2.0, 0.0)
-                        + Vector::new(0.0, 0.0, layer_position),
-                    Vector::new(1.0, 0.0, 0.0),
-                    Vector::new(0.0, 1.0, 0.0),
-                    pad.size.0,
-                    pad.size.1,
-                );
+            PadShape::Square | PadShape::Rectangle | _ => {
+                // Create rectangle manually
+                let half_w = pad.size.0 / 2.0;
+                let half_h = pad.size.1 / 2.0;
+                let cx = pad.position.x;
+                let cy = pad.position.y;
 
-                let face = rectangle.to_face();
-                shell.add_face(face);
-            }
-            PadShape::Rectangle => {
-                let rectangle = Rectangle::new(
-                    pad.position - Vector::new(pad.size.0 / 2.0, pad.size.1 / 2.0, 0.0)
-                        + Vector::new(0.0, 0.0, layer_position),
-                    Vector::new(1.0, 0.0, 0.0),
-                    Vector::new(0.0, 1.0, 0.0),
-                    pad.size.0,
-                    pad.size.1,
-                );
+                let p1 = Point::new(cx - half_w, cy - half_h, z);
+                let p2 = Point::new(cx + half_w, cy - half_h, z);
+                let p3 = Point::new(cx + half_w, cy + half_h, z);
+                let p4 = Point::new(cx - half_w, cy + half_h, z);
 
-                let face = rectangle.to_face();
-                shell.add_face(face);
-            }
-            _ => {
-                // For other shapes, use a simple rectangle as placeholder
-                let rectangle = Rectangle::new(
-                    pad.position - Vector::new(pad.size.0 / 2.0, pad.size.1 / 2.0, 0.0)
-                        + Vector::new(0.0, 0.0, layer_position),
-                    Vector::new(1.0, 0.0, 0.0),
-                    Vector::new(0.0, 1.0, 0.0),
-                    pad.size.0,
-                    pad.size.1,
-                );
+                let v1 = Arc::new(TopoDsVertex::new(p1));
+                let v2 = Arc::new(TopoDsVertex::new(p2));
+                let v3 = Arc::new(TopoDsVertex::new(p3));
+                let v4 = Arc::new(TopoDsVertex::new(p4));
 
-                let face = rectangle.to_face();
+                let e1 = Handle::new(Arc::new(TopoDsEdge::new(Handle::new(v1.clone()), Handle::new(v2.clone()))));
+                let e2 = Handle::new(Arc::new(TopoDsEdge::new(Handle::new(v2.clone()), Handle::new(v3.clone()))));
+                let e3 = Handle::new(Arc::new(TopoDsEdge::new(Handle::new(v3.clone()), Handle::new(v4.clone()))));
+                let e4 = Handle::new(Arc::new(TopoDsEdge::new(Handle::new(v4.clone()), Handle::new(v1.clone()))));
+
+                let mut wire = TopoDsWire::new();
+                wire.add_edge(e1);
+                wire.add_edge(e2);
+                wire.add_edge(e3);
+                wire.add_edge(e4);
+
+                let face = Handle::new(Arc::new(TopoDsFace::with_outer_wire(wire)));
                 shell.add_face(face);
             }
         }
@@ -237,16 +268,14 @@ impl PcbBoard {
         // Add drill hole if it's a through-hole pad
         if let Some(drill_size) = pad.drill_size {
             let drill_radius = drill_size / 2.0;
-            let cylinder = Cylinder::new(
-                Axis::new(
-                    pad.position - Vector::new(0.0, 0.0, 1.0), // Extend below the board
-                    Vector::new(0.0, 0.0, 1.0),
-                ),
-                drill_radius,
-                2.0, // Height greater than board thickness
+            let axis = Axis::new(
+                Point::new(pad.position.x, pad.position.y, -1.0),
+                Direction::new(0.0, 0.0, 1.0),
             );
-
-            let face = cylinder.to_face();
+            let cylinder = Cylinder::from_axis(&axis, drill_radius);
+            let face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
+                crate::geometry::surface_enum::SurfaceEnum::Cylinder(cylinder),
+            )))));
             shell.add_face(face);
         }
 
@@ -269,30 +298,21 @@ impl PcbBoard {
         }
 
         // Create via cylinder
-        let height = max_position - min_position + 0.1; // Add some extra height
-        let cylinder = Cylinder::new(
-            Axis::new(
-                via.position + Vector::new(0.0, 0.0, min_position - 0.05),
-                Vector::new(0.0, 0.0, 1.0),
-            ),
-            via.pad_size / 2.0,
-            height,
+        let axis = Axis::new(
+            Point::new(via.position.x, via.position.y, min_position - 0.05),
+            Direction::new(0.0, 0.0, 1.0),
         );
-
-        let face = cylinder.to_face();
+        let cylinder = Cylinder::from_axis(&axis, via.pad_size / 2.0);
+        let face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
+            crate::geometry::surface_enum::SurfaceEnum::Cylinder(cylinder),
+        )))));
         shell.add_face(face);
 
         // Create drill hole
-        let drill_cylinder = Cylinder::new(
-            Axis::new(
-                via.position + Vector::new(0.0, 0.0, min_position - 0.05),
-                Vector::new(0.0, 0.0, 1.0),
-            ),
-            via.drill_size / 2.0,
-            height,
-        );
-
-        let drill_face = drill_cylinder.to_face();
+        let drill_cylinder = Cylinder::from_axis(&axis, via.drill_size / 2.0);
+        let drill_face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
+            crate::geometry::surface_enum::SurfaceEnum::Cylinder(drill_cylinder),
+        )))));
         shell.add_face(drill_face);
 
         shell
@@ -310,41 +330,46 @@ impl PcbBoard {
         let normal = Vector::new(-direction.y, direction.x, 0.0); // Perpendicular to the trace
 
         // Create rectangle for the trace segment
-        let start1 =
-            segment.start + normal * segment.width / 2.0 + Vector::new(0.0, 0.0, layer_position);
-        let start2 =
-            segment.start - normal * segment.width / 2.0 + Vector::new(0.0, 0.0, layer_position);
-        let end1 =
-            segment.end + normal * segment.width / 2.0 + Vector::new(0.0, 0.0, layer_position);
-        let end2 =
-            segment.end - normal * segment.width / 2.0 + Vector::new(0.0, 0.0, layer_position);
+        let start1 = Point::new(
+            segment.start.x + normal.x * segment.width / 2.0,
+            segment.start.y + normal.y * segment.width / 2.0,
+            layer_position,
+        );
+        let start2 = Point::new(
+            segment.start.x - normal.x * segment.width / 2.0,
+            segment.start.y - normal.y * segment.width / 2.0,
+            layer_position,
+        );
+        let end1 = Point::new(
+            segment.end.x + normal.x * segment.width / 2.0,
+            segment.end.y + normal.y * segment.width / 2.0,
+            layer_position,
+        );
+        let end2 = Point::new(
+            segment.end.x - normal.x * segment.width / 2.0,
+            segment.end.y - normal.y * segment.width / 2.0,
+            layer_position,
+        );
 
         // Create wire from the four points
         let mut wire = TopoDsWire::new();
 
-        let edge1 = TopoDsEdge::new(
-            Handle::new(TopoDsVertex::new(start1)),
-            Handle::new(TopoDsVertex::new(end1)),
-        );
-        let edge2 = TopoDsEdge::new(
-            Handle::new(TopoDsVertex::new(end1)),
-            Handle::new(TopoDsVertex::new(end2)),
-        );
-        let edge3 = TopoDsEdge::new(
-            Handle::new(TopoDsVertex::new(end2)),
-            Handle::new(TopoDsVertex::new(start2)),
-        );
-        let edge4 = TopoDsEdge::new(
-            Handle::new(TopoDsVertex::new(start2)),
-            Handle::new(TopoDsVertex::new(start1)),
-        );
+        let v1 = Arc::new(TopoDsVertex::new(start1));
+        let v2 = Arc::new(TopoDsVertex::new(end1));
+        let v3 = Arc::new(TopoDsVertex::new(end2));
+        let v4 = Arc::new(TopoDsVertex::new(start2));
+
+        let edge1 = Handle::new(Arc::new(TopoDsEdge::new(Handle::new(v1.clone()), Handle::new(v2.clone()))));
+        let edge2 = Handle::new(Arc::new(TopoDsEdge::new(Handle::new(v2.clone()), Handle::new(v3.clone()))));
+        let edge3 = Handle::new(Arc::new(TopoDsEdge::new(Handle::new(v3.clone()), Handle::new(v4.clone()))));
+        let edge4 = Handle::new(Arc::new(TopoDsEdge::new(Handle::new(v4.clone()), Handle::new(v1.clone()))));
 
         wire.add_edge(edge1);
         wire.add_edge(edge2);
         wire.add_edge(edge3);
         wire.add_edge(edge4);
 
-        let face = TopoDsFace::with_outer_wire(wire);
+        let face = Handle::new(Arc::new(TopoDsFace::with_outer_wire(wire)));
         shell.add_face(face);
 
         shell
@@ -368,13 +393,13 @@ impl PcbBoard {
             .layers
             .iter()
             .map(|layer| layer.position)
-            .min()
+            .reduce(|a, b| a.min(b))
             .unwrap_or(0.0);
         let max_position = self
             .layers
             .iter()
             .map(|layer| layer.position + layer.thickness)
-            .max()
+            .reduce(|a, b| a.max(b))
             .unwrap_or(0.0);
 
         max_position - min_position

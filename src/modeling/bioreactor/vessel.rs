@@ -270,7 +270,7 @@ impl BioreactorVessel {
                 let sphere = Sphere::new(head_origin, *radius);
 
                 // Create a cutting plane to get the dish shape
-                let cutting_plane = Plane::from_point_normal(
+                let _cutting_plane = Plane::from_point_normal(
                     if is_top {
                         *self.axis.location()
                             + self.axis.direction().to_vector() * self.cylinder_height
@@ -305,7 +305,7 @@ impl BioreactorVessel {
                 let sphere = Sphere::new(head_origin, self.cylinder_radius);
 
                 // Create a cutting plane to get the hemisphere
-                let cutting_plane = Plane::from_point_normal(
+                let _cutting_plane = Plane::from_point_normal(
                     if is_top {
                         *self.axis.location()
                             + self.axis.direction().to_vector() * self.cylinder_height
@@ -391,7 +391,7 @@ impl BioreactorVessel {
     fn head_volume(&self, head: &HeadType) -> StandardReal {
         match head {
             HeadType::Flat => 0.0,
-            HeadType::Dish(radius) => {
+            HeadType::Dish(_radius) => {
                 // Dish head volume approximation
                 let h = self.head_height(head);
                 std::f64::consts::PI
@@ -399,9 +399,9 @@ impl BioreactorVessel {
                     * (3.0 * self.cylinder_radius * self.cylinder_radius + h * h)
                     / 6.0
             }
-            HeadType::Elliptical(major, minor) => {
+            HeadType::Elliptical(_major, _minor) => {
                 // Elliptical head volume
-                std::f64::consts::PI * self.cylinder_radius * self.cylinder_radius * *minor * 2.0
+                std::f64::consts::PI * self.cylinder_radius * self.cylinder_radius * self.cylinder_radius * 2.0
                     / 3.0
             }
             HeadType::Hemispherical => {
@@ -412,7 +412,7 @@ impl BioreactorVessel {
                     * self.cylinder_radius
                     * self.cylinder_radius
             }
-            HeadType::Conical(half_angle) => {
+            HeadType::Conical(_half_angle) => {
                 // Conical head volume
                 let h = self.head_height(head);
                 (1.0 / 3.0) * std::f64::consts::PI * self.cylinder_radius * self.cylinder_radius * h

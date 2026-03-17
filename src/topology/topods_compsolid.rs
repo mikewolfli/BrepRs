@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 /// Represents a compsolid in topological structure
 ///
 /// A compsolid is a collection of solids grouped together.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TopoDsCompSolid {
     shape: TopoDsShape,

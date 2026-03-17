@@ -92,7 +92,7 @@ impl PointCloud {
         let mut distances: Vec<(StandardReal, Point)> = self
             .points
             .iter()
-            .map(|p| ((p.to_vector() - point.to_vector()).magnitude(), *p))
+            .map(|p| ((*p - *point).magnitude(), *p))
             .collect();
 
         distances.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
@@ -105,14 +105,14 @@ impl PointCloud {
         // Calculate centroid
         let centroid_vector = points
             .iter()
-            .fold(Vector::origin(), |acc, p| acc + p.to_vector())
+            .fold(Vector::zero(), |acc, p| acc + (*p - Point::origin()))
             / points.len() as StandardReal;
-        let centroid = Point::from_vector(&centroid_vector);
+        let centroid = Point::new(centroid_vector.x, centroid_vector.y, centroid_vector.z);
 
         // Calculate covariance matrix
         let mut cov = [[0.0; 3]; 3];
         for point in points {
-            let diff = point.to_vector() - centroid.to_vector();
+            let diff = *point - centroid;
             cov[0][0] += diff.x * diff.x;
             cov[0][1] += diff.x * diff.y;
             cov[0][2] += diff.x * diff.z;
@@ -135,7 +135,7 @@ impl PointCloud {
     pub fn reconstruct_surface(&self, params: &ReconstructionParameters) -> ReconstructionResult {
         // 基础重建：用球体包裹点云，实际应实现 Marching Cubes 或 Poisson 重建
         let center = self.bounding_box.center();
-        let radius = (self.bounding_box.max().to_vector() - self.bounding_box.min().to_vector()).magnitude() / 2.0;
+        let radius = (self.bounding_box.max - self.bounding_box.min).magnitude() / 2.0;
 
         let sphere = Sphere::new(center, radius);
         let face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
@@ -208,9 +208,9 @@ pub struct MarchingCubes {
 impl MarchingCubes {
     /// Create a new Marching Cubes instance
     pub fn new(bounding_box: &BoundingBox, voxel_size: StandardReal) -> Self {
-        let width = ((bounding_box.max().x - bounding_box.min().x) / voxel_size).ceil() as usize;
-        let height = ((bounding_box.max().y - bounding_box.min().y) / voxel_size).ceil() as usize;
-        let depth = ((bounding_box.max().z - bounding_box.min().z) / voxel_size).ceil() as usize;
+        let width = ((bounding_box.max.x - bounding_box.min.x) / voxel_size).ceil() as usize;
+        let height = ((bounding_box.max.y - bounding_box.min.y) / voxel_size).ceil() as usize;
+        let depth = ((bounding_box.max.z - bounding_box.min.z) / voxel_size).ceil() as usize;
 
         let voxel_grid = vec![vec![vec![0.0; depth]; height]; width];
 
@@ -218,7 +218,7 @@ impl MarchingCubes {
             voxel_grid,
             dimensions: (width, height, depth),
             voxel_size,
-            origin: bounding_box.min(),
+            origin: bounding_box.min,
         }
     }
 

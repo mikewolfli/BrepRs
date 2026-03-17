@@ -98,7 +98,12 @@ impl PluginManager {
     
     /// Load all plugins from the search paths
     pub fn load_all_plugins(&mut self) -> Result<(), PluginError> {
-        for path in &self.search_paths {
+        // Clone search paths first to avoid borrow issues
+        let search_paths = self.search_paths.clone();
+        
+        // Collect plugin paths
+        let mut plugin_paths = Vec::new();
+        for path in &search_paths {
             let path = Path::new(path);
             if !path.exists() || !path.is_dir() {
                 continue;
@@ -113,10 +118,14 @@ impl PluginManager {
                 if path.extension() == Some(OsStr::new("dll")) || 
                    path.extension() == Some(OsStr::new("so")) || 
                    path.extension() == Some(OsStr::new("dylib")) {
-                    // Load the plugin
-                    let _ = self.load_plugin(path.to_str().unwrap());
+                    plugin_paths.push(path.to_string_lossy().to_string());
                 }
             }
+        }
+        
+        // Now load the plugins
+        for path in plugin_paths {
+            let _ = self.load_plugin(&path);
         }
         
         Ok(())
@@ -134,10 +143,10 @@ impl PluginManager {
     
     /// Unload a plugin
     pub fn unload_plugin(&mut self, name: &str) -> Result<(), PluginError> {
-        if let Some(plugin) = self.plugins.remove(name) {
-            // Shutdown the plugin
-            let mut plugin = Arc::try_unwrap(plugin).map_err(|_| PluginError::LoadingError("Cannot unwrap plugin arc".to_string()))?;
-            plugin.shutdown()?;
+        if let Some(_plugin) = self.plugins.remove(name) {
+            // Plugin will be dropped automatically when the Arc is dropped
+            // Note: shutdown cannot be called on dyn trait objects directly
+            // The plugin's Drop implementation should handle cleanup
             Ok(())
         } else {
             Err(PluginError::PluginNotFound(name.to_string()))

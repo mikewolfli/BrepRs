@@ -406,7 +406,7 @@ impl BspTree {
         }
 
         // Insert remaining faces in parallel
-        if let Some(ref mut root) = self.root {
+        if self.root.is_some() {
             // Create a thread-safe vector to hold results from parallel processing
             use std::sync::{Arc, Mutex};
             let subtrees = Arc::new(Mutex::new(Vec::new()));
@@ -417,7 +417,7 @@ impl BspTree {
                 // Use the same initial plane as the main tree
                 if let Some(ref root_node) = self.root {
                     let plane = root_node.plane.clone();
-                    let mut node = BspNode::new(plane);
+                    let node = BspNode::new(plane);
                     subtree.root = Some(Box::new(node));
                 }
                 
@@ -464,7 +464,7 @@ impl BspTree {
 
         // Get all faces from self
         let self_faces = self.collect_all_faces();
-        let other_faces = other.collect_all_faces();
+        let _other_faces = other.collect_all_faces();
 
         // For each face in self, check if it's inside other
         for face in self_faces {

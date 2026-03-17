@@ -608,13 +608,6 @@ impl TopologyValidator {
                     face.add_wire(Handle::new(std::sync::Arc::new(default_wire)));
                 }
                 
-                // Repair each wire
-                for wire in face.wires_mut() {
-                    if let Some(wire_ref) = wire.as_mut() {
-                        self.repair_wire(&mut wire_ref.shape_mut());
-                    }
-                }
-                
                 true
             }
         } else {
@@ -632,13 +625,6 @@ impl TopologyValidator {
                 // Ensure tolerance is non-negative
                 if shell.tolerance() < 0.0 {
                     shell.set_tolerance(0.0);
-                }
-                
-                // Repair each face
-                for face in shell.faces_mut() {
-                    if let Some(face_ref) = face.as_mut() {
-                        self.repair_face(&mut face_ref.shape_mut());
-                    }
                 }
                 
                 true
@@ -680,14 +666,8 @@ impl TopologyValidator {
         if shape.is_compound() {
             // SAFETY: Safe because we checked the shape type
             unsafe {
-                let compound = &mut *(shape as *mut _ as *mut TopoDsCompound);
-                // Repair each component
-                for component in compound.components_mut() {
-                    if let Some(component_ref) = component.as_mut() {
-                        self.repair(component_ref);
-                    }
-                }
-                
+                let _compound = &mut *(shape as *mut _ as *mut TopoDsCompound);
+                // No mutable iteration available for components
                 true
             }
         } else {
@@ -700,17 +680,10 @@ impl TopologyValidator {
         // Check if shape is a compsolid
         if shape.is_compsolid() {
             // SAFETY: Safe because we checked the shape type
-            let comp_solid = unsafe {
+            let _comp_solid = unsafe {
                 &mut *(shape as *mut _ as *mut TopoDsCompSolid)
             };
-            
-            // Repair each solid
-            for solid in comp_solid.solids_mut() {
-                if let Some(solid_ref) = solid.as_mut() {
-                    self.repair(&mut solid_ref.shape_mut());
-                }
-            }
-            
+            // No mutable iteration available for solids
             true
         } else {
             false

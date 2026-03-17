@@ -337,12 +337,10 @@ impl Mesher2D {
 
     /// Refine mesh
     fn refine_mesh(&self, mesh: &mut Mesh2D) {
-        let mut edges_to_split = Vec::new();
-
         // Identify edges that need splitting
         #[cfg(feature = "rayon")]
         {
-            edges_to_split = mesh
+            let edges_to_split: Vec<usize> = mesh
                 .edges
                 .par_iter()
                 .enumerate()
@@ -377,10 +375,17 @@ impl Mesher2D {
                     }
                 })
                 .collect();
+
+            // Split edges
+            for edge_id in edges_to_split {
+                self.split_edge(mesh, edge_id);
+            }
         }
 
         #[cfg(not(feature = "rayon"))]
         {
+            let mut edges_to_split = Vec::new();
+
             for (edge_id, edge) in mesh.edges.iter().enumerate() {
                 let v0 = &mesh.vertices[edge.vertices[0]];
                 let v1 = &mesh.vertices[edge.vertices[1]];
@@ -408,11 +413,11 @@ impl Mesher2D {
                     edges_to_split.push(edge_id);
                 }
             }
-        }
 
-        // Split edges
-        for edge_id in edges_to_split {
-            self.split_edge(mesh, edge_id);
+            // Split edges
+            for edge_id in edges_to_split {
+                self.split_edge(mesh, edge_id);
+            }
         }
     }
 

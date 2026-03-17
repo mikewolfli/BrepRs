@@ -953,9 +953,9 @@ impl LodCollisionDetector {
     fn calculate_barycentric(
         &self,
         point: &Point,
-        v0: &MeshVertex,
-        v1: &MeshVertex,
-        v2: &MeshVertex,
+        v0: &crate::mesh::mesh_data::MeshVertex,
+        v1: &crate::mesh::mesh_data::MeshVertex,
+        v2: &crate::mesh::mesh_data::MeshVertex,
     ) -> (f64, f64) {
         let vec0 = Vector::new(
             v2.point.x - v0.point.x,

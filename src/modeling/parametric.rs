@@ -394,41 +394,42 @@ impl ParametricShape for ParametricCube {
         let e11 = builder.make_edge(v3.clone(), v7.clone());
 
         // Create wires for each face
+        // Note: Edges are shared between faces, so we need to clone them
         let mut wire_bottom = crate::topology::topods_wire::TopoDsWire::new();
-        wire_bottom.add_edge(e0);
-        wire_bottom.add_edge(e1);
-        wire_bottom.add_edge(e2);
-        wire_bottom.add_edge(e3);
+        wire_bottom.add_edge(e0.clone());
+        wire_bottom.add_edge(e1.clone());
+        wire_bottom.add_edge(e2.clone());
+        wire_bottom.add_edge(e3.clone());
 
         let mut wire_top = crate::topology::topods_wire::TopoDsWire::new();
-        wire_top.add_edge(e4);
-        wire_top.add_edge(e5);
-        wire_top.add_edge(e6);
-        wire_top.add_edge(e7);
+        wire_top.add_edge(e4.clone());
+        wire_top.add_edge(e5.clone());
+        wire_top.add_edge(e6.clone());
+        wire_top.add_edge(e7.clone());
 
         let mut wire_front = crate::topology::topods_wire::TopoDsWire::new();
-        wire_front.add_edge(e0);
-        wire_front.add_edge(e9);
-        wire_front.add_edge(e4);
-        wire_front.add_edge(e8);
+        wire_front.add_edge(e0.clone());
+        wire_front.add_edge(e9.clone());
+        wire_front.add_edge(e4.clone());
+        wire_front.add_edge(e8.clone());
 
         let mut wire_back = crate::topology::topods_wire::TopoDsWire::new();
-        wire_back.add_edge(e2);
-        wire_back.add_edge(e10);
-        wire_back.add_edge(e6);
-        wire_back.add_edge(e11);
+        wire_back.add_edge(e2.clone());
+        wire_back.add_edge(e10.clone());
+        wire_back.add_edge(e6.clone());
+        wire_back.add_edge(e11.clone());
 
         let mut wire_left = crate::topology::topods_wire::TopoDsWire::new();
-        wire_left.add_edge(e3);
-        wire_left.add_edge(e11);
-        wire_left.add_edge(e7);
-        wire_left.add_edge(e8);
+        wire_left.add_edge(e3.clone());
+        wire_left.add_edge(e11.clone());
+        wire_left.add_edge(e7.clone());
+        wire_left.add_edge(e8.clone());
 
         let mut wire_right = crate::topology::topods_wire::TopoDsWire::new();
-        wire_right.add_edge(e1);
-        wire_right.add_edge(e10);
-        wire_right.add_edge(e5);
-        wire_right.add_edge(e9);
+        wire_right.add_edge(e1.clone());
+        wire_right.add_edge(e10.clone());
+        wire_right.add_edge(e5.clone());
+        wire_right.add_edge(e9.clone());
 
         // Create faces
         let face_bottom =
@@ -453,7 +454,7 @@ impl ParametricShape for ParametricCube {
         solid.set_outer_shell(Handle::new(std::sync::Arc::new(shell)));
 
         // Set the shape
-        self.shape = solid.into_shape();
+        self.shape = solid.shape().clone();
         true
     }
 
@@ -581,8 +582,8 @@ impl ParametricShape for ParametricCylinder {
         let builder = crate::modeling::brep_builder::BrepBuilder::new();
 
         // Create bottom and top centers
-        let bottom_center_vertex = builder.make_vertex(bottom_center);
-        let top_center_vertex = builder.make_vertex(top_center);
+        let _bottom_center_vertex = builder.make_vertex(bottom_center);
+        let _top_center_vertex = builder.make_vertex(top_center);
 
         // Create circular edges for bottom and top faces
         // For simplicity, we'll create a regular polygon approximation of a circle
@@ -657,7 +658,7 @@ impl ParametricShape for ParametricCylinder {
         solid.set_outer_shell(Handle::new(std::sync::Arc::new(shell)));
 
         // Set the shape
-        self.shape = solid.into_shape();
+        self.shape = solid.shape().clone();
         true
     }
 

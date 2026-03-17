@@ -1,7 +1,8 @@
 use crate::topology::{
-    ShapeType, TopoDsCompSolid, TopoDsCompound, TopoDsEdge, TopoDsFace, TopoDsShape, TopoDsShell,
-    TopoDsSolid, TopoDsVertex, TopoDsWire,
+    ShapeType, TopoDsCompound, TopoDsEdge, TopoDsFace, TopoDsShape, TopoDsShell, TopoDsSolid,
+    TopoDsVertex, TopoDsWire,
 };
+use crate::topology::topods_compsolid::TopoDsCompSolid;
 
 // Add missing imports for types used in this file
 use crate::geometry::Point;

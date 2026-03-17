@@ -599,8 +599,10 @@ impl TextureStreamingSystem {
     /// Get cache statistics
     #[inline]
     pub fn cache_stats(&self) -> (usize, usize) {
-        let cache = self.cache.lock().unwrap_or(VecDeque::new());
-        (cache.len(), self.max_cache_size)
+        match self.cache.lock() {
+            Ok(cache) => (cache.len(), self.max_cache_size),
+            Err(_) => (0, self.max_cache_size),
+        }
     }
 }
 

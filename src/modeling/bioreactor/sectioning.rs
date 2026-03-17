@@ -92,7 +92,7 @@ impl SectionPlane {
     pub fn oblique_section(direction: Vector, point: Point, angle: StandardReal) -> Self {
         // Rotate the direction by the angle to create an oblique plane
         let axis = Axis::new(Point::origin(), Direction::new(0.0, 1.0, 0.0));
-        let rotated_direction = direction.rotate(&axis, angle);
+        let rotated_direction = direction.rotated(&axis, angle);
         let dir = Direction::from_vector(&rotated_direction);
         let plane = Plane::new(point, dir, Direction::x_axis());
         Self::new(plane)
@@ -142,9 +142,10 @@ impl SlicingParameters {
 impl SlicingResult {
     /// Create a new slicing result
     pub fn new(slices: Vec<SectionResult>, total_thickness: StandardReal) -> Self {
+        let slice_count = slices.len();
         Self {
             slices,
-            slice_count: slices.len(),
+            slice_count,
             total_thickness,
         }
     }
@@ -169,7 +170,7 @@ pub trait Sectionable {
 /// Implement sectioning for TopoDsShape
 impl Sectionable for TopoDsShape {
     /// Generate a section using a plane
-    fn section(&self, plane: &SectionPlane) -> SectionResult {
+    fn section(&self, _plane: &SectionPlane) -> SectionResult {
         // TODO: Implement actual sectioning logic
         // For now, return a placeholder
         let section_curves = Vec::new();
@@ -218,11 +219,11 @@ mod tests {
     #[test]
     fn test_section_plane_creation() {
         let point = Point::new(0.0, 0.0, 0.0);
-        let normal = Vector::new(0.0, 0.0, 1.0);
-        let plane = Plane::new(point, normal);
+        let normal = Direction::new(0.0, 0.0, 1.0);
+        let plane = Plane::new(point, normal, Direction::x_axis());
         let section_plane = SectionPlane::new(plane);
 
-        assert_eq!(section_plane.direction, normal);
+        assert_eq!(section_plane.direction, normal.to_vec());
     }
 
     #[test]

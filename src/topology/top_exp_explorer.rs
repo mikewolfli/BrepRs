@@ -84,12 +84,16 @@ impl TopExpExplorer {
             return;
         }
         let current_shape = self.stack.pop().unwrap();
+        let shape_id = current_shape.shape_id();
         self.current = Some(current_shape);
         // 标记已访问
-        self.visited
-            .insert(self.current.as_ref().unwrap().shape_id());
+        self.visited.insert(shape_id);
         // Add sub-shapes to the stack
-        self.explore_sub_shapes(self.current.as_ref().unwrap());
+        // Clone the shape before exploring to avoid borrow conflicts
+        let current_clone = self.current.as_ref().map(|s| s.clone());
+        if let Some(current) = current_clone {
+            self.explore_sub_shapes(&current);
+        }
     }
 
     /// Get the current shape
@@ -250,9 +254,11 @@ impl TopExpExplorer {
                 unsafe {
                     let compound = &*(shape as *const _ as *const TopoDsCompound);
                     for component in compound.components() {
-                        if !self.visited.contains(&component.shape_id()) {
-                            self.visited.insert(component.shape_id());
-                            self.stack.push(component.shape().clone());
+                        if let Some(comp) = component.as_ref() {
+                            if !self.visited.contains(&comp.shape_id()) {
+                                self.visited.insert(comp.shape_id());
+                                self.stack.push(comp.clone());
+                            }
                         }
                     }
                 }
@@ -262,9 +268,11 @@ impl TopExpExplorer {
                 unsafe {
                     let compsolid = &*(shape as *const _ as *const TopoDsCompSolid);
                     for solid in compsolid.solids() {
-                        if !self.visited.contains(&solid.shape_id()) {
-                            self.visited.insert(solid.shape_id());
-                            self.stack.push(solid.shape().clone());
+                        if let Some(s) = solid.as_ref() {
+                            if !self.visited.contains(&s.shape_id()) {
+                                self.visited.insert(s.shape_id());
+                                self.stack.push(s.shape().clone());
+                            }
                         }
                     }
                 }
@@ -274,9 +282,11 @@ impl TopExpExplorer {
                 unsafe {
                     let solid = &*(shape as *const _ as *const TopoDsSolid);
                     for shell in solid.shells() {
-                        if !self.visited.contains(&shell.shape_id()) {
-                            self.visited.insert(shell.shape_id());
-                            self.stack.push(shell.shape().clone());
+                        if let Some(sh) = shell.as_ref() {
+                            if !self.visited.contains(&sh.shape_id()) {
+                                self.visited.insert(sh.shape_id());
+                                self.stack.push(sh.shape().clone());
+                            }
                         }
                     }
                 }
@@ -286,9 +296,11 @@ impl TopExpExplorer {
                 unsafe {
                     let shell = &*(shape as *const _ as *const TopoDsShell);
                     for face in shell.faces() {
-                        if !self.visited.contains(&face.shape_id()) {
-                            self.visited.insert(face.shape_id());
-                            self.stack.push(face.shape().clone());
+                        if let Some(f) = face.as_ref() {
+                            if !self.visited.contains(&f.shape_id()) {
+                                self.visited.insert(f.shape_id());
+                                self.stack.push(f.shape().clone());
+                            }
                         }
                     }
                 }
@@ -298,9 +310,11 @@ impl TopExpExplorer {
                 unsafe {
                     let face = &*(shape as *const _ as *const TopoDsFace);
                     for wire in face.wires() {
-                        if !self.visited.contains(&wire.shape_id()) {
-                            self.visited.insert(wire.shape_id());
-                            self.stack.push(wire.shape().clone());
+                        if let Some(w) = wire.as_ref() {
+                            if !self.visited.contains(&w.shape_id()) {
+                                self.visited.insert(w.shape_id());
+                                self.stack.push(w.shape().clone());
+                            }
                         }
                     }
                 }
@@ -310,9 +324,11 @@ impl TopExpExplorer {
                 unsafe {
                     let wire = &*(shape as *const _ as *const TopoDsWire);
                     for edge in wire.edges() {
-                        if !self.visited.contains(&edge.shape_id()) {
-                            self.visited.insert(edge.shape_id());
-                            self.stack.push(edge.shape().clone());
+                        if let Some(e) = edge.as_ref() {
+                            if !self.visited.contains(&e.shape_id()) {
+                                self.visited.insert(e.shape_id());
+                                self.stack.push(e.shape().clone());
+                            }
                         }
                     }
                 }
@@ -321,17 +337,17 @@ impl TopExpExplorer {
                 // Explore vertices of edge
                 unsafe {
                     let edge = &*(shape as *const _ as *const TopoDsEdge);
-                    let vertex1 = edge.vertex1();
-                    let vertex2 = edge.vertex2();
-
-                    if !self.visited.contains(&vertex1.shape_id()) {
-                        self.visited.insert(vertex1.shape_id());
-                        self.stack.push(vertex1.shape().clone());
+                    if let Some(v1) = edge.vertex1().as_ref() {
+                        if !self.visited.contains(&v1.shape_id()) {
+                            self.visited.insert(v1.shape_id());
+                            self.stack.push(v1.shape().clone());
+                        }
                     }
-
-                    if !self.visited.contains(&vertex2.shape_id()) {
-                        self.visited.insert(vertex2.shape_id());
-                        self.stack.push(vertex2.shape().clone());
+                    if let Some(v2) = edge.vertex2().as_ref() {
+                        if !self.visited.contains(&v2.shape_id()) {
+                            self.visited.insert(v2.shape_id());
+                            self.stack.push(v2.shape().clone());
+                        }
                     }
                 }
             }
@@ -493,45 +509,6 @@ impl TopExpExplorer {
         result
     }
 
-    /// Collect all shapes into a vector without cloning
-    /// Collect all shapes into a vector without cloning
-    ///
-    /// Returns a vector of references to all shapes found during traversal.
-    /// This method is more memory-efficient than collect() as it returns references
-    /// instead of cloning shapes, reducing memory allocations.
-    ///
-    /// # Returns
-    /// A vector of references to TopoDsShape instances found during traversal
-    ///
-    /// # Performance
-    /// This method is O(n) where n is the number of shapes in the topology.
-    /// It avoids the overhead of cloning each shape, making it significantly
-    /// more memory-efficient for large topological structures.
-    ///
-    /// # Limitations
-    /// The returned references are only valid as long as the original shape
-    /// and this explorer exist. Do not store these references beyond the
-    /// lifetime of the explorer.
-    ///
-    /// # Example
-    /// ```
-    /// let explorer = TopExpExplorer::new(&shape, ShapeType::Edge);
-    /// let edges = explorer.collect_refs();
-    /// for edge in edges {
-    ///     // Process edge reference without cloning
-    /// }
-    /// ```
-    pub fn collect_refs(&self) -> Vec<&TopoDsShape> {
-        let mut result = Vec::new();
-        let mut explorer = TopExpExplorer::new(self.shape.as_ref().unwrap(), self.shape_type);
-        while explorer.more() {
-            explorer.next();
-            if let Some(current) = explorer.current() {
-                result.push(current);
-            }
-        }
-        result
-    }
 }
 
 impl Iterator for TopExpExplorer {

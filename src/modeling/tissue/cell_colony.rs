@@ -1,6 +1,7 @@
-use crate::foundation::StandardReal;
+use crate::foundation::{handle::Handle, StandardReal};
 use crate::geometry::{sphere::Sphere, Point, Vector};
 use crate::topology::{TopoDsFace, TopoDsShell, TopoDsSolid};
+use std::sync::Arc;
 
 /// Cell type
 #[derive(Debug, Clone, PartialEq)]
@@ -40,7 +41,6 @@ pub struct CellColony {
 }
 
 /// Biofilm geometry
-#[derive(Debug, Clone)]
 pub struct Biofilm {
     /// Base surface
     pub base_surface: TopoDsFace,
@@ -103,26 +103,32 @@ impl Cell {
         match self.cell_type {
             CellType::Spherical => {
                 let sphere = Sphere::new(self.position, self.size / 2.0);
-                let face = sphere.to_face();
+                let face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
+                    crate::geometry::surface_enum::SurfaceEnum::Sphere(sphere),
+                )))));
                 let mut shell = TopoDsShell::new();
                 shell.add_face(face);
-                solid.add_shell(shell);
+                solid.add_shell(Handle::new(Arc::new(shell)));
             }
             CellType::Ellipsoidal(major, minor) => {
                 // TODO: Implement ellipsoidal cell geometry
                 let sphere = Sphere::new(self.position, self.size / 2.0);
-                let face = sphere.to_face();
+                let face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
+                    crate::geometry::surface_enum::SurfaceEnum::Sphere(sphere),
+                )))));
                 let mut shell = TopoDsShell::new();
                 shell.add_face(face);
-                solid.add_shell(shell);
+                solid.add_shell(Handle::new(Arc::new(shell)));
             }
             CellType::RodShaped(length_ratio) => {
                 // TODO: Implement rod-shaped cell geometry
                 let sphere = Sphere::new(self.position, self.size / 2.0);
-                let face = sphere.to_face();
+                let face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
+                    crate::geometry::surface_enum::SurfaceEnum::Sphere(sphere),
+                )))));
                 let mut shell = TopoDsShell::new();
                 shell.add_face(face);
-                solid.add_shell(shell);
+                solid.add_shell(Handle::new(Arc::new(shell)));
             }
         }
 
@@ -169,7 +175,8 @@ impl CellColony {
         density: StandardReal,
         bounds: (Point, Point),
     ) -> Self {
-        let mut rng = rand::rngs::ThreadRng::default();
+        use rand::RngExt;
+        let mut rng = rand::rng();
         let mut cells = Vec::with_capacity(cell_count);
 
         let (min, max) = bounds;
@@ -184,11 +191,11 @@ impl CellColony {
             let mut placed = false;
 
             while attempts < max_attempts && !placed {
-                let size = cell_size * (1.0 + rng.gen_range(-size_variation..size_variation));
+                let size = cell_size * (1.0 + rng.random_range(-size_variation..size_variation));
                 let position = Point::new(
-                    min.x + rng.gen_range(0.0..width),
-                    min.y + rng.gen_range(0.0..height),
-                    min.z + rng.gen_range(0.0..depth),
+                    min.x + rng.random_range(0.0..width),
+                    min.y + rng.random_range(0.0..height),
+                    min.z + rng.random_range(0.0..depth),
                 );
 
                 let cell = Cell::spherical(size, position);
@@ -223,7 +230,7 @@ impl CellColony {
             // TODO: Merge cells into a single solid
             // For now, just add each cell as a separate shell
             for shell in cell_solid.shells() {
-                solid.add_shell(shell);
+                solid.add_shell(shell.clone());
             }
         }
 
@@ -263,9 +270,9 @@ impl Biofilm {
 
         // TODO: Implement biofilm geometry generation
         // For now, return a simple solid
-        let shell = TopoDsShell::new();
-        shell.add_face(self.base_surface.clone());
-        solid.add_shell(shell);
+        let mut shell = TopoDsShell::new();
+        shell.add_face(Handle::new(Arc::new(self.base_surface.clone())));
+        solid.add_shell(Handle::new(Arc::new(shell)));
 
         solid
     }
@@ -277,7 +284,7 @@ impl Biofilm {
 
     /// Grow the biofilm by a certain amount
     pub fn grow(&mut self, growth_amount: StandardReal) {
-        let original_thickness = self.thickness_function;
+        let original_thickness = std::mem::replace(&mut self.thickness_function, Box::new(|_| 0.0));
         self.thickness_function = Box::new(move |point| original_thickness(point) + growth_amount);
     }
 }

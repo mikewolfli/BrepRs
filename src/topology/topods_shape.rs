@@ -314,10 +314,10 @@ impl crate::api::traits::Transformable for TopoDsShape {
     fn rotate(&mut self, axis: crate::geometry::Axis, angle: f64) -> &mut Self {
         // Implement rotation
         if let Some(loc) = self.location.as_mut() {
-            loc.rotate(axis, angle);
+            loc.rotate(&axis, angle);
         } else {
             let mut loc = crate::topology::topods_location::TopoDsLocation::new();
-            loc.rotate(axis, angle);
+            loc.rotate(&axis, angle);
             self.location = Some(loc);
         }
         self

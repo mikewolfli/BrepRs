@@ -3,7 +3,7 @@
 //! This module provides parallel implementations of geometry algorithms.
 
 use crate::foundation::handle::Handle;
-use crate::geometry::{Point, Vector};
+use crate::geometry::Point;
 use crate::topology::topods_shape::TopoDsShape;
 
 /// Parallel geometry processing result

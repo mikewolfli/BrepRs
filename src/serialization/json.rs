@@ -317,6 +317,7 @@ pub fn json_path<'a>(value: &'a serde_json::Value, path: &str) -> Option<&'a ser
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::geometry::Point;
 
     #[test]
     fn test_json_config() {

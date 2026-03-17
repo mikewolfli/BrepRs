@@ -235,7 +235,7 @@ impl<'a> DataTransaction<'a> {
     pub fn commit(self) {
         for op in self.operations {
             match op {
-                TransactionOperation::Add(id, object) => {
+                TransactionOperation::Add(_id, object) => {
                     self.container.add_object(object);
                 }
                 TransactionOperation::Remove(id) => {

@@ -2,9 +2,11 @@
 //!
 //! Provides OpenCASCADE-compatible TopExp API for topology exploration.
 
+#![allow(non_camel_case_types)]
+#![allow(non_snake_case)]
+
 use crate::foundation::handle::Handle;
 use crate::topology::{
-    topods_compound::TopoDsCompound,
     topods_edge::TopoDsEdge,
     topods_face::TopoDsFace,
     topods_shape::TopoDsShape,
