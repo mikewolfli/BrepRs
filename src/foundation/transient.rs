@@ -83,14 +83,12 @@ mod tests {
 
     struct TestObject {
         base: TransientBase,
-        value: i32,
     }
 
     impl TestObject {
-        fn new(value: i32) -> Self {
+        fn new() -> Self {
             Self {
                 base: TransientBase::new(),
-                value,
             }
         }
     }
@@ -99,7 +97,7 @@ mod tests {
 
     #[test]
     fn test_transient_ref_count() {
-        let obj = TestObject::new(42);
+        let obj = TestObject::new();
         assert_eq!(obj.ref_count(), 1);
 
         obj.increment_ref_count();
@@ -111,7 +109,7 @@ mod tests {
 
     #[test]
     fn test_transient_type_id() {
-        let obj = TestObject::new(42);
+        let obj = TestObject::new();
         assert!(obj.is_kind(TypeId::of::<TestObject>()));
         assert!(!obj.is_kind(TypeId::of::<i32>()));
     }

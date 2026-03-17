@@ -409,6 +409,22 @@ impl std::ops::Neg for Vector {
     }
 }
 
+impl std::ops::AddAssign<Vector> for Vector {
+    fn add_assign(&mut self, other: Vector) {
+        self.x += other.x;
+        self.y += other.y;
+        self.z += other.z;
+    }
+}
+
+impl std::ops::MulAssign<StandardReal> for Vector {
+    fn mul_assign(&mut self, scalar: StandardReal) {
+        self.x *= scalar;
+        self.y *= scalar;
+        self.z *= scalar;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

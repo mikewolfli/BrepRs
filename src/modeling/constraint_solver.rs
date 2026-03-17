@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::geometry::{Point, Vector};
 
-
+#[allow(dead_code)]
 /// Constraint type
 enum ConstraintType {
     /// Distance constraint between two points
@@ -20,7 +20,7 @@ enum ConstraintType {
     /// Perpendicular constraint between two vectors
     Perpendicular,
 }
-
+#[allow(dead_code)]
 /// Variable type
 enum Variable {
     /// Point variable (x, y, z)
@@ -108,7 +108,13 @@ impl ConstraintSolver {
     }
 
     /// Add a distance constraint between two points
-    pub fn add_distance_constraint(&mut self, point1: usize, point2: usize, distance: f64, weight: f64) {
+    pub fn add_distance_constraint(
+        &mut self,
+        point1: usize,
+        point2: usize,
+        distance: f64,
+        weight: f64,
+    ) {
         self.constraints.push(Constraint {
             constraint_type: ConstraintType::Distance(distance),
             variables: vec![Variable::Point(point1), Variable::Point(point2)],
@@ -162,10 +168,21 @@ impl ConstraintSolver {
     }
 
     /// Add an angle constraint between three points
-    pub fn add_angle_constraint(&mut self, point1: usize, point2: usize, point3: usize, angle: f64, weight: f64) {
+    pub fn add_angle_constraint(
+        &mut self,
+        point1: usize,
+        point2: usize,
+        point3: usize,
+        angle: f64,
+        weight: f64,
+    ) {
         self.constraints.push(Constraint {
             constraint_type: ConstraintType::Angle(angle),
-            variables: vec![Variable::Point(point1), Variable::Point(point2), Variable::Point(point3)],
+            variables: vec![
+                Variable::Point(point1),
+                Variable::Point(point2),
+                Variable::Point(point3),
+            ],
             weight,
         });
     }
@@ -222,8 +239,10 @@ impl ConstraintSolver {
                         if !self.fixed_points.contains(&p1_idx) {
                             let j = constraint_index * 2;
                             jacobian[j][p1_idx * 3] = -dx / current_distance * constraint.weight;
-                            jacobian[j][p1_idx * 3 + 1] = -dy / current_distance * constraint.weight;
-                            jacobian[j][p1_idx * 3 + 2] = -dz / current_distance * constraint.weight;
+                            jacobian[j][p1_idx * 3 + 1] =
+                                -dy / current_distance * constraint.weight;
+                            jacobian[j][p1_idx * 3 + 2] =
+                                -dz / current_distance * constraint.weight;
                         }
 
                         if !self.fixed_points.contains(&p2_idx) {
@@ -279,8 +298,164 @@ impl ConstraintSolver {
                         }
                     }
                 }
-                _ => {
-                    // Implement other constraint types
+                ConstraintType::Angle(target_angle) => {
+                    if let [Variable::Point(p1), Variable::Point(p2), Variable::Point(p3)] =
+                        &constraint.variables[..]
+                    {
+                        let p1_idx = *p1;
+                        let p2_idx = *p2;
+                        let p3_idx = *p3;
+                        let p1 = self.points[p1_idx];
+                        let p2 = self.points[p2_idx];
+                        let p3 = self.points[p3_idx];
+
+                        // Calculate vectors
+                        let v1 = Vector::new(p1.x - p2.x, p1.y - p2.y, p1.z - p2.z);
+                        let v2 = Vector::new(p3.x - p2.x, p3.y - p2.y, p3.z - p2.z);
+
+                        // Calculate current angle
+                        let dot = v1.dot(&v2);
+                        let mag1 = v1.magnitude();
+                        let mag2 = v2.magnitude();
+                        let current_angle = if mag1 > 1e-10 && mag2 > 1e-10 {
+                            (dot / (mag1 * mag2)).clamp(-1.0, 1.0).acos()
+                        } else {
+                            0.0
+                        };
+
+                        let error = current_angle - target_angle;
+                        residual[constraint_index * 2] = error * constraint.weight;
+
+                        // Calculate Jacobian
+                        if !self.fixed_points.contains(&p1_idx) {
+                            // Derivative with respect to p1
+                            // let dv1_dp1 = Vector::new(1.0, 1.0, 1.0);
+                            // let dv1_dp2 = Vector::new(-1.0, -1.0, -1.0);
+                            // let dv2_dp2 = Vector::new(-1.0, -1.0, -1.0);
+                            // let dv2_dp3 = Vector::new(1.0, 1.0, 1.0);
+
+                            // Calculate derivative of angle with respect to p1
+                            let dangle_dv1 = (v2 - v1 * (dot / (mag1 * mag1))) / (mag1 * mag2);
+                            // dv1_dp1 is (1,1,1), so just use dangle_dv1 directly
+                            let dangle_dp1 = dangle_dv1;
+
+                            jacobian[constraint_index * 2][p1_idx * 3] =
+                                dangle_dp1.x * constraint.weight;
+                            jacobian[constraint_index * 2][p1_idx * 3 + 1] =
+                                dangle_dp1.y * constraint.weight;
+                            jacobian[constraint_index * 2][p1_idx * 3 + 2] =
+                                dangle_dp1.z * constraint.weight;
+                        }
+
+                        if !self.fixed_points.contains(&p2_idx) {
+                            // Derivative with respect to p2
+                            // let dv1_dp2 = Vector::new(-1.0, -1.0, -1.0);
+                            // let dv2_dp2 = Vector::new(-1.0, -1.0, -1.0);
+
+                            // Calculate derivative of angle with respect to p2
+                            let dangle_dv1 = (v2 - v1 * (dot / (mag1 * mag1))) / (mag1 * mag2);
+                            let dangle_dv2 = (v1 - v2 * (dot / (mag2 * mag2))) / (mag1 * mag2);
+                            // dv1_dp2 and dv2_dp2 are (-1,-1,-1), so negate both vectors
+                            let dangle_dp2 = -dangle_dv1 - dangle_dv2;
+
+                            jacobian[constraint_index * 2][p2_idx * 3] =
+                                dangle_dp2.x * constraint.weight;
+                            jacobian[constraint_index * 2][p2_idx * 3 + 1] =
+                                dangle_dp2.y * constraint.weight;
+                            jacobian[constraint_index * 2][p2_idx * 3 + 2] =
+                                dangle_dp2.z * constraint.weight;
+                        }
+
+                        if !self.fixed_points.contains(&p3_idx) {
+                            // Derivative with respect to p3
+                            // Calculate derivative of angle with respect to p3
+                            let dangle_dv2 = (v1 - v2 * (dot / (mag2 * mag2))) / (mag1 * mag2);
+                            // dv2_dp3 is (1,1,1), so just use dangle_dv2 directly
+                            let dangle_dp3 = dangle_dv2;
+
+                            jacobian[constraint_index * 2][p3_idx * 3] =
+                                dangle_dp3.x * constraint.weight;
+                            jacobian[constraint_index * 2][p3_idx * 3 + 1] =
+                                dangle_dp3.y * constraint.weight;
+                            jacobian[constraint_index * 2][p3_idx * 3 + 2] =
+                                dangle_dp3.z * constraint.weight;
+                        }
+                    }
+                }
+                ConstraintType::Parallel => {
+                    if let [Variable::Vector(v1), Variable::Vector(v2)] = &constraint.variables[..]
+                    {
+                        let v1_idx = *v1;
+                        let v2_idx = *v2;
+                        let v1 = self.vectors[v1_idx];
+                        let v2 = self.vectors[v2_idx];
+
+                        // Calculate cross product (should be zero for parallel vectors)
+                        let cross = v1.cross(&v2);
+                        let error = cross.magnitude();
+
+                        residual[constraint_index * 2] = error * constraint.weight;
+
+                        // Calculate Jacobian
+                        if !self.fixed_vectors.contains(&v1_idx) {
+                            // Derivative with respect to v1
+                            // let dv1_dv1 = Vector::new(1.0, 1.0, 1.0);
+                            let dcross_dv1 = Vector::new(-v2.y, v2.x, 0.0);
+                            jacobian[constraint_index * 2][num_point_vars + v1_idx * 3] =
+                                dcross_dv1.x * constraint.weight;
+                            jacobian[constraint_index * 2][num_point_vars + v1_idx * 3 + 1] =
+                                dcross_dv1.y * constraint.weight;
+                            jacobian[constraint_index * 2][num_point_vars + v1_idx * 3 + 2] =
+                                dcross_dv1.z * constraint.weight;
+                        }
+
+                        if !self.fixed_vectors.contains(&v2_idx) {
+                            // Derivative with respect to v2
+                            let dcross_dv2 = Vector::new(v1.y, -v1.x, 0.0);
+                            jacobian[constraint_index * 2][num_point_vars + v2_idx * 3] =
+                                dcross_dv2.x * constraint.weight;
+                            jacobian[constraint_index * 2][num_point_vars + v2_idx * 3 + 1] =
+                                dcross_dv2.y * constraint.weight;
+                            jacobian[constraint_index * 2][num_point_vars + v2_idx * 3 + 2] =
+                                dcross_dv2.z * constraint.weight;
+                        }
+                    }
+                }
+                ConstraintType::Perpendicular => {
+                    if let [Variable::Vector(v1), Variable::Vector(v2)] = &constraint.variables[..]
+                    {
+                        let v1_idx = *v1;
+                        let v2_idx = *v2;
+                        let v1 = self.vectors[v1_idx];
+                        let v2 = self.vectors[v2_idx];
+
+                        // Calculate dot product (should be zero for perpendicular vectors)
+                        let dot = v1.dot(&v2);
+                        let error = dot;
+
+                        residual[constraint_index * 2] = error * constraint.weight;
+
+                        // Calculate Jacobian
+                        if !self.fixed_vectors.contains(&v1_idx) {
+                            // Derivative with respect to v1
+                            jacobian[constraint_index * 2][num_point_vars + v1_idx * 3] =
+                                v2.x * constraint.weight;
+                            jacobian[constraint_index * 2][num_point_vars + v1_idx * 3 + 1] =
+                                v2.y * constraint.weight;
+                            jacobian[constraint_index * 2][num_point_vars + v1_idx * 3 + 2] =
+                                v2.z * constraint.weight;
+                        }
+
+                        if !self.fixed_vectors.contains(&v2_idx) {
+                            // Derivative with respect to v2
+                            jacobian[constraint_index * 2][num_point_vars + v2_idx * 3] =
+                                v1.x * constraint.weight;
+                            jacobian[constraint_index * 2][num_point_vars + v2_idx * 3 + 1] =
+                                v1.y * constraint.weight;
+                            jacobian[constraint_index * 2][num_point_vars + v2_idx * 3 + 2] =
+                                v1.z * constraint.weight;
+                        }
+                    }
                 }
             }
             constraint_index += 1;
@@ -311,7 +486,7 @@ impl ConstraintSolver {
                 let dx = delta[i * 3];
                 let dy = delta[i * 3 + 1];
                 let dz = delta[i * 3 + 2];
-                
+
                 if dx.abs() > 1e-10 || dy.abs() > 1e-10 || dz.abs() > 1e-10 {
                     self.points[i] = Point::new(
                         self.points[i].x - dx,
@@ -400,9 +575,10 @@ mod tests {
 
         // Check the result
         let points = solver.points();
-        let distance = ((points[p1].x - points[p0].x).powi(2) + 
-                       (points[p1].y - points[p0].y).powi(2) + 
-                       (points[p1].z - points[p0].z).powi(2)).sqrt();
+        let distance = ((points[p1].x - points[p0].x).powi(2)
+            + (points[p1].y - points[p0].y).powi(2)
+            + (points[p1].z - points[p0].z).powi(2))
+        .sqrt();
         assert!((distance - 2.0).abs() < 1e-10);
     }
 

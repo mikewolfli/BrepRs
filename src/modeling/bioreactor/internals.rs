@@ -1,7 +1,7 @@
 use crate::foundation::handle::Handle;
 use crate::foundation::StandardReal;
 
-use crate::geometry::{axis::Axis, cylinder::Cylinder, sphere::Sphere, Point, Vector, Direction};
+use crate::geometry::{axis::Axis, cylinder::Cylinder, sphere::Sphere, Direction, Point, Vector};
 use crate::topology::{TopoDsFace, TopoDsShell, TopoDsSolid};
 use std::sync::Arc;
 
@@ -179,22 +179,50 @@ impl Baffle {
                 * self.distance_from_wall;
 
         // Create baffle as a rectangular prism
-        // TODO: Implement proper baffle geometry
-        let baffle_cylinder = Cylinder::new(
-            baffle_origin,
-            Direction::new(
-                -self.angle_position.sin(),
-                self.angle_position.cos(),
-                0.0,
+        let baffle_height = self.height;
+        let baffle_width = self.width;
+        let baffle_thickness = self.thickness;
+
+        // Create baffle vertices
+        let v1 = baffle_origin + Vector::new(0.0, 0.0, -baffle_height / 2.0);
+        let v2 = v1 + Vector::new(baffle_width, 0.0, 0.0);
+        let v3 = v2 + Vector::new(0.0, 0.0, baffle_height);
+        let v4 = v1 + Vector::new(0.0, 0.0, baffle_height);
+        let v5 = v1 + Vector::new(0.0, -baffle_thickness, 0.0);
+        let v6 = v2 + Vector::new(0.0, -baffle_thickness, 0.0);
+        let v7 = v3 + Vector::new(0.0, -baffle_thickness, 0.0);
+        let v8 = v4 + Vector::new(0.0, -baffle_thickness, 0.0);
+
+        // Rotate the baffle to the correct angle
+        let rotation_matrix = crate::geometry::transform::Transform::from_rotation(
+            &crate::geometry::Axis::new(
+                Point::origin(),
+                crate::geometry::Direction::new(0.0, 0.0, 1.0),
             ),
-            self.thickness / 2.0,
+            self.angle_position,
         );
 
+        let mut vertices = vec![v1, v2, v3, v4, v5, v6, v7, v8];
+        for vertex in &mut vertices {
+            *vertex = rotation_matrix.transforms(vertex);
+        }
+
+        // Create baffle faces
+        let faces = vec![
+            vec![0, 1, 2, 3], // Front face
+            vec![4, 5, 6, 7], // Back face
+            vec![0, 1, 5, 4], // Bottom face
+            vec![2, 3, 7, 6], // Top face
+            vec![0, 3, 7, 4], // Left face
+            vec![1, 2, 6, 5], // Right face
+        ];
+
         let mut shell = TopoDsShell::new();
-        let face = TopoDsFace::with_surface(Handle::new(Arc::new(
-            crate::geometry::surface_enum::SurfaceEnum::Cylinder(baffle_cylinder),
-        )));
-        shell.add_face(Handle::new(Arc::new(face)));
+        let baffle_solid = TopoDsSolid::from_mesh(vertices, faces);
+
+        for face in baffle_solid.faces() {
+            shell.add_face(face);
+        }
 
         solid.add_shell(Handle::new(Arc::new(shell)));
         solid

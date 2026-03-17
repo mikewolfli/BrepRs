@@ -83,11 +83,15 @@ impl BoardComponent {
 
     /// Generate the component as a solid
     pub fn to_solid(&self) -> TopoDsSolid {
-        let solid = TopoDsSolid::new();
+        let mut solid = TopoDsSolid::new();
 
         // Add body geometry if available
-        if let Some(_body) = &self.body_geometry {
-            // TODO: Implement shell addition
+        if let Some(body) = &self.body_geometry {
+            // Implement shell addition
+            // Add all shells from the body geometry to the solid
+            for shell in body.shells() {
+                solid.add_shell(shell.clone());
+            }
         }
 
         solid
@@ -213,11 +217,15 @@ impl Connector {
 
     /// Generate the connector as a solid
     pub fn to_solid(&self) -> TopoDsSolid {
-        let solid = TopoDsSolid::new();
+        let mut solid = TopoDsSolid::new();
 
         // Add body geometry if available
-        if let Some(_body) = &self.body_geometry {
-            // TODO: Implement shell addition
+        if let Some(body) = &self.body_geometry {
+            // Implement shell addition
+            // Add all shells from the body geometry to the solid
+            for shell in body.shells() {
+                solid.add_shell(shell.clone());
+            }
         }
 
         solid
@@ -352,11 +360,15 @@ impl Sensor {
 
     /// Generate the sensor as a solid
     pub fn to_solid(&self) -> TopoDsSolid {
-        let solid = TopoDsSolid::new();
+        let mut solid = TopoDsSolid::new();
 
         // Add body geometry if available
-        if let Some(_body) = &self.body_geometry {
-            // TODO: Implement shell addition
+        if let Some(body) = &self.body_geometry {
+            // Implement shell addition
+            // Add all shells from the body geometry to the solid
+            for shell in body.shells() {
+                solid.add_shell(shell.clone());
+            }
         }
 
         solid
@@ -486,24 +498,33 @@ impl BoardAssembly {
 
     /// Generate the assembly as a solid
     pub fn to_solid(&self) -> TopoDsSolid {
-        let solid = TopoDsSolid::new();
+        let mut solid = TopoDsSolid::new();
 
         // Add all components
         for component in &self.components {
-            let _component_solid = component.to_solid();
-            // TODO: Implement shell addition
+            let component_solid = component.to_solid();
+            // Implement shell addition
+            for shell in component_solid.shells() {
+                solid.add_shell(shell.clone());
+            }
         }
 
         // Add all connectors
         for connector in &self.connectors {
-            let _connector_solid = connector.to_solid();
-            // TODO: Implement shell addition
+            let connector_solid = connector.to_solid();
+            // Implement shell addition
+            for shell in connector_solid.shells() {
+                solid.add_shell(shell.clone());
+            }
         }
 
         // Add all sensors
         for sensor in &self.sensors {
-            let _sensor_solid = sensor.to_solid();
-            // TODO: Implement shell addition
+            let sensor_solid = sensor.to_solid();
+            // Implement shell addition
+            for shell in sensor_solid.shells() {
+                solid.add_shell(shell.clone());
+            }
         }
 
         solid

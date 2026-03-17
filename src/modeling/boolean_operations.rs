@@ -917,8 +917,7 @@ mod tests {
     use std::sync::Arc;
 
     #[test]
-    fn test_boolean_operations_creation() {
-    }
+    fn test_boolean_operations_creation() {}
 
     #[test]
     fn test_fuse() {
@@ -1321,8 +1320,6 @@ mod tests {
     #[test]
     fn test_boolean_operations_thread_safety() {
         use std::thread;
-
-        let boolean_ops = BooleanOperations::new();
 
         // Create shapes for thread safety testing
         let solid1 = crate::topology::topods_solid::TopoDsSolid::new();

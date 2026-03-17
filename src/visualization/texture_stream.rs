@@ -58,9 +58,9 @@ impl TextureFormat {
             TextureFormat::Rgba32Float => 16,
             TextureFormat::R8 => 1,
             TextureFormat::R16 => 2,
-            TextureFormat::Bc1 => 8, // 4x4 block = 16 pixels
+            TextureFormat::Bc1 => 8,  // 4x4 block = 16 pixels
             TextureFormat::Bc3 => 16, // 4x4 block = 16 pixels
-            TextureFormat::Bc4 => 8, // 4x4 block = 16 pixels
+            TextureFormat::Bc4 => 8,  // 4x4 block = 16 pixels
             TextureFormat::Bc5 => 16, // 4x4 block = 16 pixels
             TextureFormat::Bc6 => 16, // 4x4 block = 16 pixels
             TextureFormat::Bc7 => 16, // 4x4 block = 16 pixels
@@ -86,9 +86,7 @@ impl TextureFormat {
     pub fn is_float(&self) -> bool {
         matches!(
             self,
-            TextureFormat::Rgba16Float
-                | TextureFormat::Rgba32Float
-                | TextureFormat::Bc6
+            TextureFormat::Rgba16Float | TextureFormat::Rgba32Float | TextureFormat::Bc6
         )
     }
 }
@@ -239,7 +237,8 @@ impl TextureDescriptor {
             let mip_width = (self.width >> level).max(1);
             let mip_height = (self.height >> level).max(1);
             let mip_depth = (self.depth >> level).max(1);
-            let mip_size = mip_width as u64 * mip_height as u64 * mip_depth as u64 * bytes_per_pixel;
+            let mip_size =
+                mip_width as u64 * mip_height as u64 * mip_depth as u64 * bytes_per_pixel;
             total += mip_size;
         }
 
@@ -257,7 +256,8 @@ impl TextureDescriptor {
             let mip_width = (self.width >> level).max(1);
             let mip_height = (self.height >> level).max(1);
             let mip_depth = (self.depth >> level).max(1);
-            let mip_size = mip_width as u64 * mip_height as u64 * mip_depth as u64 * bytes_per_pixel;
+            let mip_size =
+                mip_width as u64 * mip_height as u64 * mip_depth as u64 * bytes_per_pixel;
 
             mips.push(MipLevel {
                 level,
@@ -349,7 +349,10 @@ impl Texture {
     /// Check if mip level is loaded
     #[inline]
     pub fn is_mip_loaded(&self, mip_level: u32) -> bool {
-        self.loaded_mips.get(mip_level as usize).cloned().unwrap_or(false)
+        self.loaded_mips
+            .get(mip_level as usize)
+            .cloned()
+            .unwrap_or(false)
     }
 
     /// Mark mip level as loaded
@@ -376,6 +379,7 @@ impl Texture {
 
 /// Texture streaming cache entry
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct TextureCacheEntry {
     texture_id: u64,
     lod_level: u32,
@@ -433,7 +437,8 @@ impl TextureStreamingSystem {
             textures.insert(texture_id, texture);
         }
 
-        self.total_allocated.fetch_add(total_size, Ordering::Relaxed);
+        self.total_allocated
+            .fetch_add(total_size, Ordering::Relaxed);
 
         Some(texture_id)
     }
@@ -645,8 +650,8 @@ mod tests {
 
     #[test]
     fn test_mip_generation() {
-        let descriptor = TextureDescriptor::new_2d(256, 256, TextureFormat::Rgba8)
-            .with_max_streaming_lod(4);
+        let descriptor =
+            TextureDescriptor::new_2d(256, 256, TextureFormat::Rgba8).with_max_streaming_lod(4);
 
         let mips = descriptor.generate_mips();
         assert_eq!(mips.len(), 9); // log2(256) + 1
@@ -664,8 +669,8 @@ mod tests {
     fn test_texture_streaming() {
         let system = TextureStreamingSystem::default();
 
-        let descriptor = TextureDescriptor::new_2d(256, 256, TextureFormat::Rgba8)
-            .with_streaming(true);
+        let descriptor =
+            TextureDescriptor::new_2d(256, 256, TextureFormat::Rgba8).with_streaming(true);
 
         let texture_id = system.create_texture(descriptor).unwrap();
         assert_eq!(system.texture_count(), 1);
@@ -691,8 +696,8 @@ mod tests {
     fn test_cache_eviction() {
         let system = TextureStreamingSystem::default();
 
-        let descriptor = TextureDescriptor::new_2d(128, 128, TextureFormat::Rgba8)
-            .with_streaming(true);
+        let descriptor =
+            TextureDescriptor::new_2d(128, 128, TextureFormat::Rgba8).with_streaming(true);
 
         // Create multiple textures
         let mut texture_ids = Vec::new();

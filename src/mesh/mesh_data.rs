@@ -133,7 +133,7 @@ impl MeshEdge {
 }
 
 /// Mesh face
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct MeshFace {
     /// Face ID
     pub id: usize,

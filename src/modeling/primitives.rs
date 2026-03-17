@@ -168,7 +168,9 @@ pub fn make_sphere(radius: f64, center: Option<Point>) -> TopoDsSolid {
     let sphere = Sphere::new(center, radius);
 
     // Create face with sphere surface
-    let face = TopoDsFace::with_surface(Handle::new(Arc::new(crate::geometry::surface_enum::SurfaceEnum::Sphere(sphere))));
+    let face = TopoDsFace::with_surface(Handle::new(Arc::new(
+        crate::geometry::surface_enum::SurfaceEnum::Sphere(sphere),
+    )));
 
     // Create shell
     let mut shell = TopoDsShell::new();
@@ -206,12 +208,16 @@ pub fn make_cylinder(
 
     // Create faces
     // 1. Side face (cylinder surface)
-    let side_face = TopoDsFace::with_surface(Handle::new(Arc::new(crate::geometry::surface_enum::SurfaceEnum::Cylinder(cylinder))));
+    let side_face = TopoDsFace::with_surface(Handle::new(Arc::new(
+        crate::geometry::surface_enum::SurfaceEnum::Cylinder(cylinder),
+    )));
 
     // 2. Bottom face (circle)
     let bottom_center = center;
     let bottom_plane = Plane::new(bottom_center, *axis.direction(), Direction::x_axis());
-    let bottom_face = TopoDsFace::with_surface(Handle::new(Arc::new(crate::geometry::surface_enum::SurfaceEnum::Plane(bottom_plane))));
+    let bottom_face = TopoDsFace::with_surface(Handle::new(Arc::new(
+        crate::geometry::surface_enum::SurfaceEnum::Plane(bottom_plane),
+    )));
 
     // 3. Top face (circle)
     let top_center = Point::new(
@@ -220,7 +226,9 @@ pub fn make_cylinder(
         axis.location().z + axis.direction().z * height,
     );
     let top_plane = Plane::new(top_center, *axis.direction(), Direction::x_axis());
-    let top_face = TopoDsFace::with_surface(Handle::new(Arc::new(crate::geometry::surface_enum::SurfaceEnum::Plane(top_plane))));
+    let top_face = TopoDsFace::with_surface(Handle::new(Arc::new(
+        crate::geometry::surface_enum::SurfaceEnum::Plane(top_plane),
+    )));
 
     // Create shell
     let mut shell = TopoDsShell::new();
@@ -270,12 +278,16 @@ pub fn make_cone(
 
     // Create faces
     // 1. Side face (cone surface)
-    let side_face = TopoDsFace::with_surface(Handle::new(Arc::new(crate::geometry::surface_enum::SurfaceEnum::Cone(cone))));
+    let side_face = TopoDsFace::with_surface(Handle::new(Arc::new(
+        crate::geometry::surface_enum::SurfaceEnum::Cone(cone),
+    )));
 
     // 2. Bottom face (circle)
     let bottom_center = center;
     let bottom_plane = Plane::new(bottom_center, *axis.direction(), Direction::x_axis());
-    let bottom_face = TopoDsFace::with_surface(Handle::new(Arc::new(crate::geometry::surface_enum::SurfaceEnum::Plane(bottom_plane))));
+    let bottom_face = TopoDsFace::with_surface(Handle::new(Arc::new(
+        crate::geometry::surface_enum::SurfaceEnum::Plane(bottom_plane),
+    )));
 
     // 3. Top face (circle)
     let top_center = Point::new(
@@ -284,7 +296,9 @@ pub fn make_cone(
         center.z + axis.direction().z * height,
     );
     let top_plane = Plane::new(top_center, *axis.direction(), Direction::x_axis());
-    let top_face = TopoDsFace::with_surface(Handle::new(Arc::new(crate::geometry::surface_enum::SurfaceEnum::Plane(top_plane))));
+    let top_face = TopoDsFace::with_surface(Handle::new(Arc::new(
+        crate::geometry::surface_enum::SurfaceEnum::Plane(top_plane),
+    )));
 
     // Create shell
     let mut shell = TopoDsShell::new();
@@ -316,7 +330,9 @@ pub fn make_torus(major_radius: f64, minor_radius: f64, center: Option<Point>) -
     let torus = Torus::new(center, Direction::z_axis(), major_radius, minor_radius);
 
     // Create face with torus surface
-    let face = TopoDsFace::with_surface(Handle::new(Arc::new(crate::geometry::surface_enum::SurfaceEnum::Torus(torus))));
+    let face = TopoDsFace::with_surface(Handle::new(Arc::new(
+        crate::geometry::surface_enum::SurfaceEnum::Torus(torus),
+    )));
 
     // Create shell
     let mut shell = TopoDsShell::new();
@@ -366,28 +382,46 @@ pub fn make_prism(wire: &TopoDsWire, vector: &Vector) -> TopoDsSolid {
 
     // Create extruded edges and side faces
     for i in 0..edges.len() {
-        let _original_edge = &edges[i];
-        let _original_v1 = &vertices[i];
-        let _original_v2 = &vertices[i + 1];
+        let original_edge = &edges[i];
+        let original_v1 = &vertices[i];
+        let original_v2 = &vertices[i + 1];
         let extruded_v1 = &extruded_vertices[i];
         let extruded_v2 = &extruded_vertices[i + 1];
 
         // Create extruded edge
-        let _extruded_edge = TopoDsEdge::new(extruded_v1.clone(), extruded_v2.clone());
+        let extruded_edge = TopoDsEdge::new(extruded_v1.clone(), extruded_v2.clone());
 
         // Create side face (quad)
-        // TODO: Implement proper face creation with surface
-        let side_face = TopoDsFace::new();
+        let mut side_wire = TopoDsWire::new();
+        side_wire.add_edge(original_edge.clone());
+        side_wire.add_edge(Handle::new(Arc::new(TopoDsEdge::new(
+            original_v2.clone(),
+            extruded_v2.clone(),
+        ))));
+        side_wire.add_edge(Handle::new(Arc::new(extruded_edge)));
+        side_wire.add_edge(Handle::new(Arc::new(TopoDsEdge::new(
+            extruded_v1.clone(),
+            original_v1.clone(),
+        ))));
+
+        let side_face = TopoDsFace::with_outer_wire(side_wire);
         shell.add_face(Handle::new(Arc::new(side_face)));
     }
 
     // Create bottom face (original wire)
     if wire.is_closed() {
-        let bottom_face = TopoDsFace::new();
+        let bottom_face = TopoDsFace::with_outer_wire(wire.clone());
         shell.add_face(Handle::new(Arc::new(bottom_face)));
 
         // Create top face (extruded wire)
-        let top_face = TopoDsFace::new();
+        let mut top_wire = TopoDsWire::new();
+        for i in 0..extruded_vertices.len() {
+            let v1 = &extruded_vertices[i];
+            let v2 = &extruded_vertices[(i + 1) % extruded_vertices.len()];
+            let edge = TopoDsEdge::new(v1.clone(), v2.clone());
+            top_wire.add_edge(Handle::new(Arc::new(edge)));
+        }
+        let top_face = TopoDsFace::with_outer_wire(top_wire);
         shell.add_face(Handle::new(Arc::new(top_face)));
     }
 
@@ -432,27 +466,47 @@ pub fn make_revolution(wire: &TopoDsWire, axis: &Axis, angle: f64) -> TopoDsSoli
 
     // Create rotated edges and revolution faces
     for i in 0..edges.len() {
-        let _original_edge = &edges[i];
-        let _original_v1 = &vertices[i];
-        let _original_v2 = &vertices[i + 1];
+        let original_edge = &edges[i];
+        let original_v1 = &vertices[i];
+        let original_v2 = &vertices[i + 1];
         let rotated_v1 = &rotated_vertices[i];
         let rotated_v2 = &rotated_vertices[i + 1];
 
         // Create rotated edge
-        let _rotated_edge = TopoDsEdge::new(rotated_v1.clone(), rotated_v2.clone());
+        let rotated_edge = TopoDsEdge::new(rotated_v1.clone(), rotated_v2.clone());
 
         // Create revolution face
-        // TODO: Implement proper face creation with surface
-        let revolution_face = TopoDsFace::new();
+        let mut revolution_wire = TopoDsWire::new();
+        revolution_wire.add_edge(original_edge.clone());
+        revolution_wire.add_edge(Handle::new(Arc::new(TopoDsEdge::new(
+            original_v2.clone(),
+            rotated_v2.clone(),
+        ))));
+        revolution_wire.add_edge(Handle::new(Arc::new(rotated_edge)));
+        revolution_wire.add_edge(Handle::new(Arc::new(TopoDsEdge::new(
+            rotated_v1.clone(),
+            original_v1.clone(),
+        ))));
+
+        let revolution_face = TopoDsFace::with_outer_wire(revolution_wire);
         shell.add_face(Handle::new(Arc::new(revolution_face)));
     }
 
     // Create top and bottom faces if wire is closed
     if wire.is_closed() {
-        let bottom_face = TopoDsFace::new();
+        // Create bottom face (original wire)
+        let bottom_face = TopoDsFace::with_outer_wire(wire.clone());
         shell.add_face(Handle::new(Arc::new(bottom_face)));
 
-        let top_face = TopoDsFace::new();
+        // Create top face (rotated wire)
+        let mut top_wire = TopoDsWire::new();
+        for i in 0..rotated_vertices.len() {
+            let v1 = &rotated_vertices[i];
+            let v2 = &rotated_vertices[(i + 1) % rotated_vertices.len()];
+            let edge = TopoDsEdge::new(v1.clone(), v2.clone());
+            top_wire.add_edge(Handle::new(Arc::new(edge)));
+        }
+        let top_face = TopoDsFace::with_outer_wire(top_wire);
         shell.add_face(Handle::new(Arc::new(top_face)));
     }
 

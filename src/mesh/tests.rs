@@ -51,7 +51,7 @@ mod tests {
         let mesh = generator.generate(&shape_handle, 0.1, 0.5);
 
         // Mesh should be created
-        assert!(mesh.vertex_count() >= 0);
+        assert!(mesh.vertex_count() > 0);
     }
 
     #[test]
@@ -75,7 +75,7 @@ mod tests {
         let mesh = generator.generate_tetrahedral(&solid_handle, 1.0);
 
         // Should create 3D mesh
-        assert!(mesh.vertices.len() >= 0);
+        assert!(mesh.vertices.len() > 0);
     }
 
     #[test]
@@ -92,7 +92,7 @@ mod tests {
         generator.optimize(&mut mesh, 1);
 
         // Optimized mesh should be valid
-        assert!(mesh.vertex_count() >= 0);
+        assert!(mesh.vertex_count() > 0);
     }
 
     #[test]
@@ -109,7 +109,7 @@ mod tests {
         generator.generate_delaunay_mesh(&mut mesh, &vertices, 0.1, 0.5);
 
         // Should generate triangles
-        assert!(mesh.triangle_count() >= 0);
+        assert!(mesh.triangle_count() > 0);
     }
 
     #[test]
@@ -123,7 +123,7 @@ mod tests {
         let mesh = generator.generate(&shape_handle, 0.1, 0.5);
 
         // Should create mesh without errors
-        assert!(mesh.vertex_count() >= 0);
+        assert!(mesh.vertex_count() > 0);
     }
 
     #[test]
@@ -139,9 +139,9 @@ mod tests {
         let mesh3 = generator.generate(&shape_handle, 1.0, 0.5);
 
         // All should create valid meshes
-        assert!(mesh1.vertex_count() >= 0);
-        assert!(mesh2.vertex_count() >= 0);
-        assert!(mesh3.vertex_count() >= 0);
+        assert!(mesh1.vertex_count() > 0);
+        assert!(mesh2.vertex_count() > 0);
+        assert!(mesh3.vertex_count() > 0);
     }
 
     #[test]
@@ -157,9 +157,9 @@ mod tests {
         let mesh3 = generator.generate(&shape_handle, 0.1, 1.0);
 
         // All should create valid meshes
-        assert!(mesh1.vertex_count() >= 0);
-        assert!(mesh2.vertex_count() >= 0);
-        assert!(mesh3.vertex_count() >= 0);
+        assert!(mesh1.vertex_count() > 0);
+        assert!(mesh2.vertex_count() > 0);
+        assert!(mesh3.vertex_count() > 0);
     }
 
     #[test]
@@ -202,8 +202,8 @@ mod tests {
         generator.optimize(&mut mesh, 5);
 
         // Mesh should still be valid
-        assert!(mesh.vertex_count() >= 0);
-        assert!(mesh.triangle_count() >= 0);
+        assert!(mesh.vertex_count() > 0);
+        assert!(mesh.triangle_count() > 0);
     }
 
     #[test]
@@ -215,19 +215,19 @@ mod tests {
         let shape = solid.shape().clone();
         let shape_handle = Handle::new(Arc::new(shape));
         let mesh = generator.generate(&shape_handle, 0.1, 0.5);
-        assert!(mesh.vertex_count() >= 0);
+        assert!(mesh.vertex_count() > 0);
 
         // Test with very large deflection
         let mesh2 = generator.generate(&shape_handle, 1000.0, 0.5);
-        assert!(mesh2.vertex_count() >= 0);
+        assert!(mesh2.vertex_count() > 0);
 
         // Test with very small angle
         let mesh3 = generator.generate(&shape_handle, 0.1, 1e-10);
-        assert!(mesh3.vertex_count() >= 0);
+        assert!(mesh3.vertex_count() > 0);
 
         // Test with very large angle
         let mesh4 = generator.generate(&shape_handle, 0.1, 1000.0);
-        assert!(mesh4.vertex_count() >= 0);
+        assert!(mesh4.vertex_count() > 0);
     }
 
     #[test]
@@ -252,7 +252,7 @@ mod tests {
         let mesh = generator.generate(&shape_handle, 0.1, 0.5);
 
         // Should create simple mesh
-        assert!(mesh.vertex_count() >= 0);
+        assert!(mesh.vertex_count() > 0);
     }
 
     #[test]
@@ -264,7 +264,7 @@ mod tests {
         let mesh = generator.generate(&shape_handle, 0.1, 0.5);
 
         // Should create simple mesh
-        assert!(mesh.vertex_count() >= 0);
+        assert!(mesh.vertex_count() > 0);
     }
 
     #[test]
@@ -276,7 +276,7 @@ mod tests {
         let mesh = generator.generate(&shape_handle, 0.1, 0.5);
 
         // Should create simple mesh
-        assert!(mesh.vertex_count() >= 0);
+        assert!(mesh.vertex_count() > 0);
     }
 
     #[test]
@@ -301,7 +301,7 @@ mod tests {
         let mesh = generator.generate(&shape_handle, 0.1, 0.5);
 
         // Should create simple mesh
-        assert!(mesh.vertex_count() >= 0);
+        assert!(mesh.vertex_count() > 0);
     }
 
     #[test]
@@ -313,7 +313,7 @@ mod tests {
         let mesh = generator.generate(&shape_handle, 0.1, 0.5);
 
         // Should create simple mesh
-        assert!(mesh.vertex_count() >= 0);
+        assert!(mesh.vertex_count() > 0);
     }
 
     #[test]
@@ -325,7 +325,7 @@ mod tests {
 
         // Test with negative deflection (should handle gracefully)
         let mesh = generator.generate(&shape_handle, -0.1, 0.5);
-        assert!(mesh.vertex_count() >= 0);
+        assert!(mesh.vertex_count() > 0);
     }
 
     #[test]
@@ -337,7 +337,7 @@ mod tests {
 
         // Test with negative angle (should handle gracefully)
         let mesh = generator.generate(&shape_handle, 0.1, -0.5);
-        assert!(mesh.vertex_count() >= 0);
+        assert!(mesh.vertex_count() > 0);
     }
 
     #[test]
@@ -349,7 +349,7 @@ mod tests {
 
         // Test with zero deflection
         let mesh = generator.generate(&shape_handle, 0.0, 0.5);
-        assert!(mesh.vertex_count() >= 0);
+        assert!(mesh.vertex_count() > 0);
     }
 
     #[test]
@@ -361,7 +361,7 @@ mod tests {
 
         // Test with zero angle
         let mesh = generator.generate(&shape_handle, 0.1, 0.0);
-        assert!(mesh.vertex_count() >= 0);
+        assert!(mesh.vertex_count() > 0);
     }
 
     #[test]
@@ -379,8 +379,8 @@ mod tests {
         generator.optimize(&mut mesh, 0);
 
         // Mesh should still be valid
-        assert!(mesh.vertex_count() >= 0);
-        assert!(mesh.triangle_count() >= 0);
+        assert!(mesh.vertex_count() > 0);
+        assert!(mesh.triangle_count() > 0);
     }
 
     #[test]
@@ -398,8 +398,8 @@ mod tests {
         generator.optimize(&mut mesh, 100);
 
         // Mesh should still be valid
-        assert!(mesh.vertex_count() >= 0);
-        assert!(mesh.triangle_count() >= 0);
+        assert!(mesh.vertex_count() > 0);
+        assert!(mesh.triangle_count() > 0);
     }
 
     #[test]
@@ -410,7 +410,7 @@ mod tests {
 
         // Test with very large max edge length
         let mesh = generator.generate_tetrahedral(&solid_handle, 1000.0);
-        assert!(mesh.vertices.len() >= 0);
+        assert!(mesh.vertices.len() > 0);
     }
 
     #[test]
@@ -421,7 +421,7 @@ mod tests {
 
         // Test with very small max edge length
         let mesh = generator.generate_tetrahedral(&solid_handle, 1e-10);
-        assert!(mesh.vertices.len() >= 0);
+        assert!(mesh.vertices.len() > 0);
     }
 
     #[test]
@@ -432,7 +432,7 @@ mod tests {
 
         // Test with zero max edge length
         let mesh = generator.generate_tetrahedral(&solid_handle, 0.0);
-        assert!(mesh.vertices.len() >= 0);
+        assert!(mesh.vertices.len() > 0);
     }
 
     #[test]
@@ -443,7 +443,7 @@ mod tests {
 
         // Test with negative max edge length (should handle gracefully)
         let mesh = generator.generate_tetrahedral(&solid_handle, -1.0);
-        assert!(mesh.vertices.len() >= 0);
+        assert!(mesh.vertices.len() > 0);
     }
 
     #[test]

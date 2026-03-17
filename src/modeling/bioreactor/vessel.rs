@@ -2,7 +2,7 @@ use crate::foundation::handle::Handle;
 use crate::foundation::StandardReal;
 use crate::geometry::{
     axis::Axis, bounding_box::BoundingBox, cone::Cone, cylinder::Cylinder, plane::Plane,
-    sphere::Sphere, Point,
+    sphere::Sphere, vector::Vector, Point,
 };
 use crate::topology::{TopoDsFace, TopoDsShell, TopoDsSolid};
 use std::sync::Arc;
@@ -239,8 +239,7 @@ impl BioreactorVessel {
             *self.axis.location()
                 + self.axis.direction().to_vector() * (self.cylinder_height + head_height / 2.0)
         } else {
-            *self.axis.location()
-                + self.axis.direction().to_vector() * (-head_height / 2.0)
+            *self.axis.location() + self.axis.direction().to_vector() * (-head_height / 2.0)
         };
 
         match head {
@@ -302,7 +301,7 @@ impl BioreactorVessel {
             }
             HeadType::Hemispherical => {
                 // Hemispherical head is half of a sphere
-                let sphere = Sphere::new(head_origin, self.cylinder_radius);
+                let _sphere = Sphere::new(head_origin, self.cylinder_radius);
 
                 // Create a cutting plane to get the hemisphere
                 let _cutting_plane = Plane::from_point_normal(
@@ -319,12 +318,47 @@ impl BioreactorVessel {
                     },
                 );
 
-                // Cut the sphere with the plane to get the hemisphere
-                let face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
-                    crate::geometry::surface_enum::SurfaceEnum::Sphere(sphere),
-                )))));
-                // TODO: Implement cutting logic
-                shell.add_face(face);
+                // Create a simple sphere solid (placeholder for actual implementation)
+                let mut sphere_solid = TopoDsSolid::new();
+                let mut sphere_shell = TopoDsShell::new();
+
+                // Add a simple face to represent the sphere
+                // Note: This is a placeholder - actual implementation would create proper spherical faces
+                let sphere_face = TopoDsFace::new();
+                let sphere_face_handle = Handle::new(Arc::new(sphere_face));
+                sphere_shell.add_face(sphere_face_handle);
+
+                let sphere_shell_handle = Handle::new(Arc::new(sphere_shell));
+                sphere_solid.add_shell(sphere_shell_handle);
+
+                // Create cutting plane
+                let plane_origin = head_origin + Vector::new(0.0, 0.0, 0.0);
+                let plane_normal = if is_top {
+                    self.axis.direction().reversed()
+                } else {
+                    *self.axis.direction()
+                };
+                let _plane = Plane::new(plane_origin, plane_normal, plane_normal);
+
+                // Create a simple plane solid (placeholder for actual implementation)
+                let mut plane_solid = TopoDsSolid::new();
+                let mut plane_shell = TopoDsShell::new();
+
+                // Add a simple face to represent the plane
+                let plane_face = TopoDsFace::new();
+                let plane_face_handle = Handle::new(Arc::new(plane_face));
+                plane_shell.add_face(plane_face_handle);
+
+                let plane_shell_handle = Handle::new(Arc::new(plane_shell));
+                plane_solid.add_shell(plane_shell_handle);
+
+                // Cut the sphere to get hemisphere (placeholder for actual implementation)
+                let hemisphere_solid = sphere_solid;
+
+                // Add the hemisphere faces to the shell
+                for face in hemisphere_solid.faces() {
+                    shell.add_face(face);
+                }
             }
             HeadType::Conical(half_angle) => {
                 // Conical head
@@ -333,12 +367,7 @@ impl BioreactorVessel {
                 } else {
                     self.axis.direction().reversed()
                 };
-                let cone = Cone::new(
-                    head_origin,
-                    direction,
-                    *half_angle,
-                    self.cylinder_radius,
-                );
+                let cone = Cone::new(head_origin, direction, *half_angle, self.cylinder_radius);
 
                 let face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
                     crate::geometry::surface_enum::SurfaceEnum::Cone(cone),
@@ -401,7 +430,11 @@ impl BioreactorVessel {
             }
             HeadType::Elliptical(_major, _minor) => {
                 // Elliptical head volume
-                std::f64::consts::PI * self.cylinder_radius * self.cylinder_radius * self.cylinder_radius * 2.0
+                std::f64::consts::PI
+                    * self.cylinder_radius
+                    * self.cylinder_radius
+                    * self.cylinder_radius
+                    * 2.0
                     / 3.0
             }
             HeadType::Hemispherical => {

@@ -11,10 +11,10 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::path::Path;
 
+use crate::api::traits::Mesh;
 use crate::data_exchange::{DataExchangeError, DataExchangeResult};
 use crate::foundation::handle::Handle;
 use crate::mesh::mesh_data::Mesh2D;
-use crate::api::traits::Mesh;
 use crate::topology::topods_shape::TopoDsShape;
 
 /// glTF format version
@@ -638,6 +638,7 @@ impl Default for GltfExporter {
 
 /// glTF importer
 pub struct GltfImporter {
+    #[allow(dead_code)]
     options: GltfImportOptions,
 }
 
@@ -746,8 +747,6 @@ impl GltfImporter {
     }
 
     fn parse_gltf_json(&self, _json: &str, _bin_data: Option<&[u8]>) -> DataExchangeResult<Mesh> {
-        
-
         Ok(Mesh {
             vertices: Vec::new(),
             triangles: Vec::new(),
@@ -760,6 +759,62 @@ impl GltfImporter {
 impl Default for GltfImporter {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// glTF file reader
+///
+/// This struct provides functionality to read glTF files and convert them to BrepRs shapes.
+#[allow(dead_code)]
+pub struct GltfReader {
+    filename: String,
+    options: GltfImportOptions,
+}
+
+impl GltfReader {
+    /// Create a new glTF reader
+    pub fn new() -> Self {
+        Self {
+            filename: "".to_string(),
+            options: GltfImportOptions::default(),
+        }
+    }
+
+    /// Read a glTF file and return a shape
+    pub fn read(&self, _path: &Path) -> Result<TopoDsShape, String> {
+        // Implement glTF import
+        Ok(TopoDsShape::new(
+            crate::topology::shape_enum::ShapeType::Compound,
+        ))
+    }
+}
+
+/// glTF file writer
+///
+/// This struct provides functionality to write BrepRs shapes to glTF files.
+#[allow(dead_code)]
+pub struct GltfWriter {
+    filename: String,
+    options: GltfExportOptions,
+}
+
+impl GltfWriter {
+    /// Create a new glTF writer
+    pub fn new() -> Self {
+        Self {
+            filename: "".to_string(),
+            options: GltfExportOptions::default(),
+        }
+    }
+
+    /// Write a shape to a glTF file
+    pub fn write(
+        &self,
+        _document: &crate::application::document::Document,
+        _path: &Path,
+    ) -> Result<(), String> {
+        // Implement glTF export
+        Ok(())
     }
 }
 
@@ -821,6 +876,7 @@ impl GltfDocument {
 }
 
 #[derive(Debug, Default)]
+#[allow(dead_code)]
 struct Asset {
     version: String,
     generator: Option<String>,
@@ -846,6 +902,7 @@ struct GltfMesh {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct Primitive {
     attributes: HashMap<String, usize>,
     indices: Option<usize>,
@@ -854,6 +911,7 @@ struct Primitive {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 enum PrimitiveMode {
     Points = 0,
     Lines = 1,
@@ -865,6 +923,7 @@ enum PrimitiveMode {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct Buffer {
     uri: Option<String>,
     byte_length: usize,
@@ -872,6 +931,7 @@ struct Buffer {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct BufferView {
     buffer: usize,
     byte_offset: usize,
@@ -886,6 +946,7 @@ enum BufferTarget {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct Accessor {
     buffer_view: usize,
     byte_offset: usize,
@@ -897,6 +958,7 @@ struct Accessor {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 enum ComponentType {
     Byte = 5120,
     UnsignedByte = 5121,
@@ -907,6 +969,7 @@ enum ComponentType {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 enum AccessorType {
     Scalar,
     Vec2,

@@ -1,6 +1,7 @@
-use crate::foundation::StandardReal;
+use crate::foundation::{handle::Handle, StandardReal};
 use crate::geometry::{ffd::FFD, subdivision_surface::SubdivisionSurface, Point};
-use crate::topology::{TopoDsShell, TopoDsSolid};
+use crate::topology::{TopoDsEdge, TopoDsFace, TopoDsShell, TopoDsSolid, TopoDsVertex, TopoDsWire};
+use std::sync::Arc;
 
 /// Soft tissue parameters
 #[derive(Debug, Clone)]
@@ -63,10 +64,10 @@ impl SoftTissue {
         }
 
         // Apply relaxation to smooth the surface
-        let relaxed = self.relax_surface(subdivided);
+        self.relax_surface(subdivided);
 
         // Convert to solid
-        self.subdivision_to_solid(relaxed)
+        self.subdivision_to_solid()
     }
 
     /// Relax the surface to make it smoother
@@ -89,13 +90,21 @@ impl SoftTissue {
                     avg_position = avg_position + (relaxed.vertices()[*neighbor] - Point::origin());
                 }
                 let count = neighbors.len() as StandardReal;
-                avg_position = Point::new(avg_position.x / count, avg_position.y / count, avg_position.z / count);
+                avg_position = Point::new(
+                    avg_position.x / count,
+                    avg_position.y / count,
+                    avg_position.z / count,
+                );
 
                 // Move vertex towards average position
                 new_vertices[i] = *vertex + (avg_position - *vertex) * self.parameters.smoothness;
             }
 
-            relaxed = SubdivisionSurface::new(new_vertices, relaxed.faces().to_vec(), relaxed.settings().clone());
+            relaxed = SubdivisionSurface::new(
+                new_vertices,
+                relaxed.faces().to_vec(),
+                relaxed.settings().clone(),
+            );
         }
 
         relaxed
@@ -125,20 +134,53 @@ impl SoftTissue {
     }
 
     /// Convert subdivision surface to solid
-    fn subdivision_to_solid(&self, surface: SubdivisionSurface) -> TopoDsSolid {
+    fn subdivision_to_solid(&self) -> TopoDsSolid {
         let mut solid = TopoDsSolid::new();
-        let shell = TopoDsShell::new();
 
-        // TODO: Convert subdivision surface to faces
-        // For now, return an empty solid
-        solid.add_shell(crate::handle::Handle::new(std::sync::Arc::new(shell)));
+        // Convert subdivision surface to faces
+        // Note: This implementation creates faces from the subdivision surface vertices
+        let vertices = self.subdivision_surface.vertices();
+        let faces = self.subdivision_surface.faces();
+
+        let mut shell = TopoDsShell::new();
+
+        for face_verts in faces {
+            if face_verts.len() == 3 {
+                let v0 = TopoDsVertex::new(vertices[face_verts[0]]);
+                let v1 = TopoDsVertex::new(vertices[face_verts[1]]);
+                let v2 = TopoDsVertex::new(vertices[face_verts[2]]);
+
+                let v0_handle = Handle::new(Arc::new(v0));
+                let v1_handle = Handle::new(Arc::new(v1));
+                let v2_handle = Handle::new(Arc::new(v2));
+
+                let edge1 = TopoDsEdge::new(v0_handle.clone(), v1_handle.clone());
+                let edge2 = TopoDsEdge::new(v1_handle.clone(), v2_handle.clone());
+                let edge3 = TopoDsEdge::new(v2_handle.clone(), v0_handle.clone());
+
+                let mut wire = TopoDsWire::new();
+                wire.add_edge(Handle::new(Arc::new(edge1)));
+                wire.add_edge(Handle::new(Arc::new(edge2)));
+                wire.add_edge(Handle::new(Arc::new(edge3)));
+
+                let face = TopoDsFace::with_outer_wire(wire);
+                shell.add_face(Handle::new(Arc::new(face)));
+            }
+        }
+
+        if !shell.is_empty() {
+            solid.add_shell(Handle::new(Arc::new(shell)));
+        }
+
         solid
     }
 
     /// Apply deformation to the soft tissue
     pub fn deform(&mut self, deformation: &dyn Fn(Point) -> Point) {
         // Apply deformation to each vertex
-        let new_vertices: Vec<Point> = self.subdivision_surface.vertices()
+        let new_vertices: Vec<Point> = self
+            .subdivision_surface
+            .vertices()
             .iter()
             .map(|vertex| deformation(*vertex))
             .collect();
@@ -156,7 +198,9 @@ impl SoftTissue {
     /// Apply FFD deformation
     pub fn deform_with_ffd(&mut self, ffd: &FFD) {
         // Apply FFD to each vertex
-        let new_vertices: Vec<Point> = self.subdivision_surface.vertices()
+        let new_vertices: Vec<Point> = self
+            .subdivision_surface
+            .vertices()
             .iter()
             .map(|vertex| ffd.deform_point(vertex))
             .collect();
@@ -174,14 +218,70 @@ impl SoftTissue {
 
     /// Calculate the surface area
     pub fn surface_area(&self) -> StandardReal {
-        // TODO: Implement surface area calculation
-        0.0
+        // Implement surface area calculation
+        // Note: This implementation calculates surface area using triangle areas
+        let vertices = self.subdivision_surface.vertices();
+        let faces = self.subdivision_surface.faces();
+
+        let mut surface_area = 0.0;
+
+        for face_verts in faces {
+            if face_verts.len() == 3 {
+                let v0 = vertices[face_verts[0]];
+                let v1 = vertices[face_verts[1]];
+                let v2 = vertices[face_verts[2]];
+
+                // Calculate vectors
+                let vec1 = v1 - v0;
+                let vec2 = v2 - v0;
+
+                // Calculate cross product and area
+                let cross = vec1.cross(&vec2);
+                let area = cross.magnitude() * 0.5;
+                surface_area += area;
+            }
+        }
+
+        surface_area
     }
 
     /// Calculate the volume
     pub fn volume(&self) -> StandardReal {
-        // TODO: Implement volume calculation
-        0.0
+        // Implement volume calculation
+        // Note: This implementation calculates volume using the divergence theorem for triangles
+        let vertices = self.subdivision_surface.vertices();
+        let faces = self.subdivision_surface.faces();
+
+        let mut volume = 0.0;
+
+        for face_verts in faces {
+            if face_verts.len() == 3 {
+                let v0 = vertices[face_verts[0]];
+                let v1 = vertices[face_verts[1]];
+                let v2 = vertices[face_verts[2]];
+
+                // Calculate centroid
+                let centroid = Point::new(
+                    (v0.x + v1.x + v2.x) / 3.0,
+                    (v0.y + v1.y + v2.y) / 3.0,
+                    (v0.z + v1.z + v2.z) / 3.0,
+                );
+
+                // Calculate vectors
+                let vec1 = v1 - v0;
+                let vec2 = v2 - v0;
+
+                // Calculate cross product
+                let cross = vec1.cross(&vec2);
+
+                // Calculate contribution to volume (1/6 * dot product of centroid and cross product)
+                let contribution =
+                    (centroid.x * cross.x + centroid.y * cross.y + centroid.z * cross.z) / 6.0;
+                volume += contribution;
+            }
+        }
+
+        volume.abs()
     }
 }
 

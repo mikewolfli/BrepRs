@@ -271,8 +271,142 @@ impl SubdivisionSurface {
 
     /// Perform Loop subdivision
     fn loop_subdivision(&self) -> Self {
-        // TODO: Implement Loop subdivision for triangular meshes
-        self.clone()
+        // Implement Loop subdivision for triangular meshes
+        let mut new_vertices = self.vertices.clone();
+        let mut new_faces = Vec::new();
+
+        // Step 1: Create new edge vertices
+        let mut edge_vertices = std::collections::HashMap::new();
+
+        // Process each face to create new edge vertices
+        for face in &self.faces {
+            let v0 = face[0];
+            let v1 = face[1];
+            let v2 = face[2];
+
+            // Create edge vertices
+            let edge1 = if v0 < v1 { (v0, v1) } else { (v1, v0) };
+            let edge2 = if v1 < v2 { (v1, v2) } else { (v2, v1) };
+            let edge3 = if v2 < v0 { (v2, v0) } else { (v0, v2) };
+
+            // Calculate edge vertex positions using Loop subdivision weights
+            if !edge_vertices.contains_key(&edge1) {
+                let v0_pos = self.vertices[v0];
+                let v1_pos = self.vertices[v1];
+                let edge_vertex = Point::new(
+                    (3.0 * v0_pos.x + 3.0 * v1_pos.x) / 8.0,
+                    (3.0 * v0_pos.y + 3.0 * v1_pos.y) / 8.0,
+                    (3.0 * v0_pos.z + 3.0 * v1_pos.z) / 8.0,
+                );
+                edge_vertices.insert(edge1, new_vertices.len());
+                new_vertices.push(edge_vertex);
+            }
+
+            if !edge_vertices.contains_key(&edge2) {
+                let v1_pos = self.vertices[v1];
+                let v2_pos = self.vertices[v2];
+                let edge_vertex = Point::new(
+                    (3.0 * v1_pos.x + 3.0 * v2_pos.x) / 8.0,
+                    (3.0 * v1_pos.y + 3.0 * v2_pos.y) / 8.0,
+                    (3.0 * v1_pos.z + 3.0 * v2_pos.z) / 8.0,
+                );
+                edge_vertices.insert(edge2, new_vertices.len());
+                new_vertices.push(edge_vertex);
+            }
+
+            if !edge_vertices.contains_key(&edge3) {
+                let v2_pos = self.vertices[v2];
+                let v0_pos = self.vertices[v0];
+                let edge_vertex = Point::new(
+                    (3.0 * v2_pos.x + 3.0 * v0_pos.x) / 8.0,
+                    (3.0 * v2_pos.y + 3.0 * v0_pos.y) / 8.0,
+                    (3.0 * v2_pos.z + 3.0 * v0_pos.z) / 8.0,
+                );
+                edge_vertices.insert(edge3, new_vertices.len());
+                new_vertices.push(edge_vertex);
+            }
+
+            // Create new faces
+            let ev1 = edge_vertices[&edge1];
+            let ev2 = edge_vertices[&edge2];
+            let ev3 = edge_vertices[&edge3];
+
+            // Center face
+            new_faces.push(vec![ev1, ev2, ev3]);
+
+            // Edge faces
+            new_faces.push(vec![v0, ev1, ev3]);
+            new_faces.push(vec![v1, ev2, ev1]);
+            new_faces.push(vec![v2, ev3, ev2]);
+        }
+
+        // Step 2: Update original vertices using Loop subdivision weights
+        for (i, vertex) in new_vertices
+            .iter_mut()
+            .enumerate()
+            .take(self.vertices.len())
+        {
+            // Find all adjacent vertices
+            let mut adjacent_vertices = std::collections::HashSet::new();
+            for face in &self.faces {
+                if face.contains(&i) {
+                    for &v in face {
+                        if v != i {
+                            adjacent_vertices.insert(v);
+                        }
+                    }
+                }
+            }
+
+            let count = adjacent_vertices.len();
+            if count > 0 {
+                // Loop subdivision weight for interior vertices
+                let n = count as f64;
+                let beta = if n == 3.0 {
+                    3.0 / 16.0
+                } else {
+                    3.0 / (8.0 * n)
+                };
+
+                let mut sum = Point::new(0.0, 0.0, 0.0);
+                for &v in &adjacent_vertices {
+                    sum.x += self.vertices[v].x;
+                    sum.y += self.vertices[v].y;
+                    sum.z += self.vertices[v].z;
+                }
+
+                vertex.x = (1.0 - n * beta) * vertex.x + beta * sum.x;
+                vertex.y = (1.0 - n * beta) * vertex.y + beta * sum.y;
+                vertex.z = (1.0 - n * beta) * vertex.z + beta * sum.z;
+            }
+        }
+
+        // Extract edges from new faces
+        let mut new_edges = Vec::new();
+        let mut edge_set = std::collections::HashSet::new();
+
+        for face in &new_faces {
+            for i in 0..face.len() {
+                let j = (i + 1) % face.len();
+                let edge = if face[i] < face[j] {
+                    (face[i], face[j])
+                } else {
+                    (face[j], face[i])
+                };
+
+                if !edge_set.contains(&edge) {
+                    new_edges.push(edge);
+                    edge_set.insert(edge);
+                }
+            }
+        }
+
+        SubdivisionSurface {
+            vertices: new_vertices,
+            faces: new_faces,
+            edges: new_edges,
+            settings: self.settings.clone(),
+        }
     }
 
     /// Get subdivided vertices
@@ -355,6 +489,27 @@ mod tests {
         let surface = SubdivisionSurface::new(vertices, faces, settings);
 
         let subdivided = surface.subdivide_multiple(2);
+        assert!(subdivided.vertices().len() > surface.vertices().len());
+        assert!(subdivided.faces().len() > surface.faces().len());
+    }
+
+    #[test]
+    fn test_loop_subdivision() {
+        // Create a simple tetrahedron
+        let vertices = vec![
+            Point::new(1.0, 1.0, 1.0),
+            Point::new(-1.0, -1.0, 1.0),
+            Point::new(-1.0, 1.0, -1.0),
+            Point::new(1.0, -1.0, -1.0),
+        ];
+
+        let faces = vec![vec![0, 1, 2], vec![0, 2, 3], vec![0, 3, 1], vec![1, 3, 2]];
+
+        let mut settings = SubdivisionSettings::default();
+        settings.algorithm = SubdivisionType::Loop;
+        let surface = SubdivisionSurface::new(vertices, faces, settings);
+
+        let subdivided = surface.subdivide();
         assert!(subdivided.vertices().len() > surface.vertices().len());
         assert!(subdivided.faces().len() > surface.faces().len());
     }

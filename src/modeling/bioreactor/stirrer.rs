@@ -49,6 +49,8 @@ pub struct Impeller {
     pub blade_count: usize,
     /// Blade width
     pub blade_width: StandardReal,
+    /// Blade height
+    pub blade_height: StandardReal,
     /// Blade thickness
     pub blade_thickness: StandardReal,
     /// Hub diameter
@@ -97,6 +99,7 @@ impl StirrerShaft {
             diameter: impeller_diameter,
             blade_count: 6,
             blade_width: impeller_diameter * 0.2,
+            blade_height: impeller_diameter * 0.1,
             blade_thickness: shaft_diameter * 0.2,
             hub_diameter: shaft_diameter * 1.5,
         };
@@ -212,15 +215,36 @@ impl StirrerShaft {
                     * (impeller.diameter / 2.0 - impeller.blade_width / 2.0);
 
             // Create blade as a rectangular prism
-            // TODO: Implement proper blade geometry
-            let blade_cylinder = Cylinder::from_axis(
-                &Axis::new(blade_origin, crate::geometry::Direction::from_vector(&Vector::new(angle.cos(), angle.sin(), 0.0))),
-                impeller.blade_thickness / 2.0,
-            );
-            let blade_face = TopoDsFace::with_surface(Handle::new(Arc::new(
-                crate::geometry::surface_enum::SurfaceEnum::Cylinder(blade_cylinder),
-            )));
-            shell.add_face(Handle::new(Arc::new(blade_face)));
+            let blade_length = impeller.diameter / 2.0 - impeller.blade_width / 2.0;
+            let blade_height = impeller.blade_height;
+            let blade_thickness = impeller.blade_thickness;
+
+            // Create blade vertices
+            let v1 = blade_origin;
+            let v2 = blade_origin + Vector::new(angle.cos(), angle.sin(), 0.0) * blade_length;
+            let v3 = v2 + Vector::new(0.0, 0.0, blade_height);
+            let v4 = v1 + Vector::new(0.0, 0.0, blade_height);
+            let v5 = v1 + Vector::new(-angle.sin(), angle.cos(), 0.0) * blade_thickness / 2.0;
+            let v6 = v2 + Vector::new(-angle.sin(), angle.cos(), 0.0) * blade_thickness / 2.0;
+            let v7 = v3 + Vector::new(-angle.sin(), angle.cos(), 0.0) * blade_thickness / 2.0;
+            let v8 = v4 + Vector::new(-angle.sin(), angle.cos(), 0.0) * blade_thickness / 2.0;
+
+            // Create blade faces
+            let vertices = vec![v1, v2, v3, v4, v5, v6, v7, v8];
+            let faces = vec![
+                vec![0, 1, 2, 3], // Front face
+                vec![4, 5, 6, 7], // Back face
+                vec![0, 1, 5, 4], // Bottom face
+                vec![2, 3, 7, 6], // Top face
+                vec![0, 3, 7, 4], // Left face
+                vec![1, 2, 6, 5], // Right face
+            ];
+
+            // Create blade solid and add to shell
+            let blade_solid = TopoDsSolid::from_mesh(vertices, faces);
+            for face in blade_solid.faces() {
+                shell.add_face(face);
+            }
         }
     }
 
@@ -242,18 +266,46 @@ impl StirrerShaft {
                     * (impeller.diameter / 2.0 - impeller.blade_width / 2.0);
 
             // Create pitched blade
-            // TODO: Implement proper pitched blade geometry
-            let blade_cylinder = Cylinder::from_axis(
-                &Axis::new(
-                    blade_origin,
-                    crate::geometry::Direction::from_vector(&Vector::new(angle.cos(), angle.sin(), pitch_angle.sin())),
-                ),
-                impeller.blade_thickness / 2.0,
-            );
-            let blade_face = TopoDsFace::with_surface(Handle::new(Arc::new(
-                crate::geometry::surface_enum::SurfaceEnum::Cylinder(blade_cylinder),
-            )));
-            shell.add_face(Handle::new(Arc::new(blade_face)));
+            let blade_length = impeller.diameter / 2.0 - impeller.blade_width / 2.0;
+            let blade_height = impeller.blade_height;
+            let blade_thickness = impeller.blade_thickness;
+
+            // Create blade vertices with pitch angle
+            let v1 = blade_origin;
+            let v2 = blade_origin + Vector::new(angle.cos(), angle.sin(), 0.0) * blade_length;
+            let v3 = v2
+                + Vector::new(
+                    angle.cos() * pitch_angle.sin(),
+                    angle.sin() * pitch_angle.sin(),
+                    pitch_angle.cos(),
+                ) * blade_height;
+            let v4 = v1
+                + Vector::new(
+                    angle.cos() * pitch_angle.sin(),
+                    angle.sin() * pitch_angle.sin(),
+                    pitch_angle.cos(),
+                ) * blade_height;
+            let v5 = v1 + Vector::new(-angle.sin(), angle.cos(), 0.0) * blade_thickness / 2.0;
+            let v6 = v2 + Vector::new(-angle.sin(), angle.cos(), 0.0) * blade_thickness / 2.0;
+            let v7 = v3 + Vector::new(-angle.sin(), angle.cos(), 0.0) * blade_thickness / 2.0;
+            let v8 = v4 + Vector::new(-angle.sin(), angle.cos(), 0.0) * blade_thickness / 2.0;
+
+            // Create blade faces
+            let vertices = vec![v1, v2, v3, v4, v5, v6, v7, v8];
+            let faces = vec![
+                vec![0, 1, 2, 3], // Front face
+                vec![4, 5, 6, 7], // Back face
+                vec![0, 1, 5, 4], // Bottom face
+                vec![2, 3, 7, 6], // Top face
+                vec![0, 3, 7, 4], // Left face
+                vec![1, 2, 6, 5], // Right face
+            ];
+
+            // Create blade solid and add to shell
+            let blade_solid = TopoDsSolid::from_mesh(vertices, faces);
+            for face in blade_solid.faces() {
+                shell.add_face(face);
+            }
         }
     }
 
@@ -266,8 +318,56 @@ impl StirrerShaft {
         _axis: Axis,
         pitch_angle: StandardReal,
     ) {
-        // TODO: Implement marine propeller blade geometry
-        self.add_pitched_blades(shell, impeller, origin, _axis, pitch_angle);
+        let blade_angle_step = 2.0 * std::f64::consts::PI / impeller.blade_count as StandardReal;
+
+        for i in 0..impeller.blade_count {
+            let angle = i as StandardReal * blade_angle_step;
+            let blade_origin = origin
+                + Vector::new(angle.cos(), angle.sin(), 0.0)
+                    * (impeller.diameter / 2.0 - impeller.blade_width / 2.0);
+
+            // Create marine propeller blade with curved surface
+            let blade_length = impeller.diameter / 2.0 - impeller.blade_width / 2.0;
+            let blade_height = impeller.blade_height;
+            let blade_thickness = impeller.blade_thickness;
+
+            // Create blade vertices with curvature
+            let v1 = blade_origin;
+            let v2 = blade_origin + Vector::new(angle.cos(), angle.sin(), 0.0) * blade_length;
+            let v3 = v2
+                + Vector::new(
+                    angle.cos() * pitch_angle.sin(),
+                    angle.sin() * pitch_angle.sin(),
+                    pitch_angle.cos(),
+                ) * blade_height;
+            let v4 = v1
+                + Vector::new(
+                    angle.cos() * pitch_angle.sin(),
+                    angle.sin() * pitch_angle.sin(),
+                    pitch_angle.cos(),
+                ) * blade_height;
+            let v5 = v1 + Vector::new(-angle.sin(), angle.cos(), 0.0) * blade_thickness / 2.0;
+            let v6 = v2 + Vector::new(-angle.sin(), angle.cos(), 0.0) * blade_thickness / 2.0;
+            let v7 = v3 + Vector::new(-angle.sin(), angle.cos(), 0.0) * blade_thickness / 2.0;
+            let v8 = v4 + Vector::new(-angle.sin(), angle.cos(), 0.0) * blade_thickness / 2.0;
+
+            // Create blade faces
+            let vertices = vec![v1, v2, v3, v4, v5, v6, v7, v8];
+            let faces = vec![
+                vec![0, 1, 2, 3], // Front face
+                vec![4, 5, 6, 7], // Back face
+                vec![0, 1, 5, 4], // Bottom face
+                vec![2, 3, 7, 6], // Top face
+                vec![0, 3, 7, 4], // Left face
+                vec![1, 2, 6, 5], // Right face
+            ];
+
+            // Create blade solid and add to shell
+            let blade_solid = TopoDsSolid::from_mesh(vertices, faces);
+            for face in blade_solid.faces() {
+                shell.add_face(face);
+            }
+        }
     }
 
     /// Add anchor impeller blades
@@ -275,15 +375,56 @@ impl StirrerShaft {
         &self,
         shell: &mut TopoDsShell,
         impeller: &Impeller,
-        _origin: Point,
-        axis: Axis,
+        origin: Point,
+        _axis: Axis,
     ) {
-        // TODO: Implement anchor blade geometry
-        let blade_cylinder = Cylinder::from_axis(&axis, impeller.diameter / 2.0);
-        let blade_face = TopoDsFace::with_surface(Handle::new(Arc::new(
-            crate::geometry::surface_enum::SurfaceEnum::Cylinder(blade_cylinder),
-        )));
-        shell.add_face(Handle::new(Arc::new(blade_face)));
+        let blade_height = impeller.blade_height;
+        let blade_thickness = impeller.blade_thickness;
+        let radius = impeller.diameter / 2.0;
+
+        // Create anchor blade vertices (rectangular shape following the vessel wall)
+        let v1 = origin + Vector::new(radius, 0.0, -blade_height / 2.0);
+        let v2 = origin + Vector::new(radius - blade_thickness, 0.0, -blade_height / 2.0);
+        let v3 = origin + Vector::new(radius - blade_thickness, 0.0, blade_height / 2.0);
+        let v4 = origin + Vector::new(radius, 0.0, blade_height / 2.0);
+
+        let v5 = origin + Vector::new(0.0, radius, -blade_height / 2.0);
+        let v6 = origin + Vector::new(0.0, radius - blade_thickness, -blade_height / 2.0);
+        let v7 = origin + Vector::new(0.0, radius - blade_thickness, blade_height / 2.0);
+        let v8 = origin + Vector::new(0.0, radius, blade_height / 2.0);
+
+        let v9 = origin + Vector::new(-radius, 0.0, -blade_height / 2.0);
+        let v10 = origin + Vector::new(-(radius - blade_thickness), 0.0, -blade_height / 2.0);
+        let v11 = origin + Vector::new(-(radius - blade_thickness), 0.0, blade_height / 2.0);
+        let v12 = origin + Vector::new(-radius, 0.0, blade_height / 2.0);
+
+        let v13 = origin + Vector::new(0.0, -radius, -blade_height / 2.0);
+        let v14 = origin + Vector::new(0.0, -(radius - blade_thickness), -blade_height / 2.0);
+        let v15 = origin + Vector::new(0.0, -(radius - blade_thickness), blade_height / 2.0);
+        let v16 = origin + Vector::new(0.0, -radius, blade_height / 2.0);
+
+        // Create anchor blade faces
+        let vertices = vec![
+            v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15, v16,
+        ];
+
+        // Add faces for each side of the anchor
+        let faces = vec![
+            // Front faces
+            vec![0, 1, 2, 3],     // Right side
+            vec![4, 5, 6, 7],     // Front side
+            vec![8, 9, 10, 11],   // Left side
+            vec![12, 13, 14, 15], // Back side
+            // Connecting faces (top and bottom)
+            vec![3, 7, 11, 15], // Top ring
+            vec![0, 4, 8, 12],  // Bottom ring
+        ];
+
+        // Create anchor solid and add to shell
+        let anchor_solid = TopoDsSolid::from_mesh(vertices, faces);
+        for face in anchor_solid.faces() {
+            shell.add_face(face);
+        }
     }
 
     /// Add propeller impeller blades
@@ -295,8 +436,56 @@ impl StirrerShaft {
         _axis: Axis,
         pitch_angle: StandardReal,
     ) {
-        // TODO: Implement propeller blade geometry
-        self.add_pitched_blades(shell, impeller, origin, _axis, pitch_angle);
+        let blade_angle_step = 2.0 * std::f64::consts::PI / impeller.blade_count as StandardReal;
+
+        for i in 0..impeller.blade_count {
+            let angle = i as StandardReal * blade_angle_step;
+            let blade_origin = origin
+                + Vector::new(angle.cos(), angle.sin(), 0.0)
+                    * (impeller.diameter / 2.0 - impeller.blade_width / 2.0);
+
+            // Create propeller blade with helical shape
+            let blade_length = impeller.diameter / 2.0 - impeller.blade_width / 2.0;
+            let blade_height = impeller.blade_height;
+            let blade_thickness = impeller.blade_thickness;
+
+            // Create blade vertices with helical twist
+            let v1 = blade_origin;
+            let v2 = blade_origin + Vector::new(angle.cos(), angle.sin(), 0.0) * blade_length;
+            let v3 = v2
+                + Vector::new(
+                    angle.cos() * pitch_angle.sin(),
+                    angle.sin() * pitch_angle.sin(),
+                    pitch_angle.cos(),
+                ) * blade_height;
+            let v4 = v1
+                + Vector::new(
+                    angle.cos() * pitch_angle.sin(),
+                    angle.sin() * pitch_angle.sin(),
+                    pitch_angle.cos(),
+                ) * blade_height;
+            let v5 = v1 + Vector::new(-angle.sin(), angle.cos(), 0.0) * blade_thickness / 2.0;
+            let v6 = v2 + Vector::new(-angle.sin(), angle.cos(), 0.0) * blade_thickness / 2.0;
+            let v7 = v3 + Vector::new(-angle.sin(), angle.cos(), 0.0) * blade_thickness / 2.0;
+            let v8 = v4 + Vector::new(-angle.sin(), angle.cos(), 0.0) * blade_thickness / 2.0;
+
+            // Create blade faces
+            let vertices = vec![v1, v2, v3, v4, v5, v6, v7, v8];
+            let faces = vec![
+                vec![0, 1, 2, 3], // Front face
+                vec![4, 5, 6, 7], // Back face
+                vec![0, 1, 5, 4], // Bottom face
+                vec![2, 3, 7, 6], // Top face
+                vec![0, 3, 7, 4], // Left face
+                vec![1, 2, 6, 5], // Right face
+            ];
+
+            // Create blade solid and add to shell
+            let blade_solid = TopoDsSolid::from_mesh(vertices, faces);
+            for face in blade_solid.faces() {
+                shell.add_face(face);
+            }
+        }
     }
 }
 
@@ -308,7 +497,10 @@ mod tests {
     #[test]
     fn test_stirrer_creation() {
         let origin = Point::new(0.0, 0.0, 0.0);
-        let axis = Axis::new(origin, crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)));
+        let axis = Axis::new(
+            origin,
+            crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
+        );
 
         let stirrer = StirrerShaft::with_single_rushton(0.1, 2.0, 0.5, 1.0, origin, axis);
 
@@ -324,13 +516,17 @@ mod tests {
     #[test]
     fn test_stirrer_with_multiple_impellers() {
         let origin = Point::new(0.0, 0.0, 0.0);
-        let axis = Axis::new(origin, crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)));
+        let axis = Axis::new(
+            origin,
+            crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
+        );
 
         let impeller1 = Impeller {
             impeller_type: ImpellerType::RushtonTurbine,
             diameter: 0.5,
             blade_count: 6,
             blade_width: 0.1,
+            blade_height: 0.05,
             blade_thickness: 0.02,
             hub_diameter: 0.15,
         };
@@ -340,6 +536,7 @@ mod tests {
             diameter: 0.4,
             blade_count: 4,
             blade_width: 0.08,
+            blade_height: 0.04,
             blade_thickness: 0.02,
             hub_diameter: 0.15,
         };

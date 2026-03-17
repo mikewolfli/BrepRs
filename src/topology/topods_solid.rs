@@ -127,6 +127,68 @@ impl TopoDsSolid {
         &mut self.shape
     }
 
+    /// Get the unique identifier of the solid
+    pub fn shape_id(&self) -> i32 {
+        self.shape.shape_id()
+    }
+
+    /// Set the unique identifier of the solid
+    pub fn set_shape_id(&mut self, id: i32) {
+        self.shape.set_shape_id(id);
+    }
+
+    /// Check if this solid is mutable
+    pub fn is_mutable(&self) -> bool {
+        self.shape.is_mutable()
+    }
+
+    /// Set the mutability of the solid
+    pub fn set_mutable(&mut self, mutable: bool) {
+        self.shape.set_mutable(mutable);
+    }
+
+    /// Get the centroid of the solid
+    pub fn centroid(&self) -> Option<Point> {
+        if let Some(outer_shell) = self.outer_shell() {
+            self.shell_centroid(outer_shell)
+        } else {
+            None
+        }
+    }
+
+    /// Calculate the centroid of a shell
+    fn shell_centroid(&self, shell: &Handle<TopoDsShell>) -> Option<Point> {
+        let faces = shell.faces();
+        if faces.is_empty() {
+            return None;
+        }
+
+        let mut sum_x = 0.0;
+        let mut sum_y = 0.0;
+        let mut sum_z = 0.0;
+        let mut total_area = 0.0;
+
+        for face in faces {
+            let face_area = face.area();
+            if let Some(face_centroid) = face.centroid() {
+                sum_x += face_centroid.x * face_area;
+                sum_y += face_centroid.y * face_area;
+                sum_z += face_centroid.z * face_area;
+                total_area += face_area;
+            }
+        }
+
+        if total_area > 0.0 {
+            Some(Point::new(
+                sum_x / total_area,
+                sum_y / total_area,
+                sum_z / total_area,
+            ))
+        } else {
+            None
+        }
+    }
+
     /// Get the location of the solid
     pub fn location(&self) -> Option<&TopoDsLocation> {
         self.shape.location()
@@ -195,68 +257,6 @@ impl TopoDsSolid {
     /// Get the total surface area of the solid
     pub fn area(&self) -> f64 {
         self.shells.iter().map(|s| s.area()).sum()
-    }
-
-    /// Get the centroid of the solid
-    pub fn centroid(&self) -> Option<Point> {
-        if let Some(outer_shell) = self.outer_shell() {
-            self.shell_centroid(outer_shell)
-        } else {
-            None
-        }
-    }
-
-    /// Calculate the centroid of a shell
-    fn shell_centroid(&self, shell: &Handle<TopoDsShell>) -> Option<Point> {
-        let faces = shell.faces();
-        if faces.is_empty() {
-            return None;
-        }
-
-        let mut sum_x = 0.0;
-        let mut sum_y = 0.0;
-        let mut sum_z = 0.0;
-        let mut total_area = 0.0;
-
-        for face in faces {
-            let face_area = face.area();
-            if let Some(face_centroid) = face.centroid() {
-                sum_x += face_centroid.x * face_area;
-                sum_y += face_centroid.y * face_area;
-                sum_z += face_centroid.z * face_area;
-                total_area += face_area;
-            }
-        }
-
-        if total_area > 0.0 {
-            Some(Point::new(
-                sum_x / total_area,
-                sum_y / total_area,
-                sum_z / total_area,
-            ))
-        } else {
-            None
-        }
-    }
-
-    /// Get the unique identifier of the solid
-    pub fn shape_id(&self) -> i32 {
-        self.shape.shape_id()
-    }
-
-    /// Set the unique identifier of the solid
-    pub fn set_shape_id(&mut self, id: i32) {
-        self.shape.set_shape_id(id);
-    }
-
-    /// Check if this solid is mutable
-    pub fn is_mutable(&self) -> bool {
-        self.shape.is_mutable()
-    }
-
-    /// Set the mutability of the solid
-    pub fn set_mutable(&mut self, mutable: bool) {
-        self.shape.set_mutable(mutable);
     }
 
     /// Check if the solid contains a specific shell
@@ -480,6 +480,63 @@ impl TopoDsSolid {
         let d1 = c0.dot(&c2);
 
         d0 >= 0.0 && d1 >= 0.0
+    }
+
+    /// Create a solid from a mesh (vertices and faces)
+    pub fn from_mesh(vertices: Vec<Point>, faces: Vec<Vec<usize>>) -> Self {
+        use crate::topology::{
+            topods_edge::TopoDsEdge, topods_face::TopoDsFace, topods_vertex::TopoDsVertex,
+            topods_wire::TopoDsWire,
+        };
+
+        let mut solid = Self::new();
+        let shell = TopoDsShell::new();
+        let mut shell_handle = Handle::new(std::sync::Arc::new(shell));
+
+        // Create vertices
+        let mut vertex_handles = Vec::new();
+        for vertex in vertices {
+            let topo_vertex = TopoDsVertex::new(vertex);
+            vertex_handles.push(Handle::new(std::sync::Arc::new(topo_vertex)));
+        }
+
+        // Create faces
+        for face_indices in faces {
+            if face_indices.len() < 3 {
+                continue; // Skip invalid faces
+            }
+
+            // Create edges for the face
+            let mut edges = Vec::new();
+            for i in 0..face_indices.len() {
+                let j = (i + 1) % face_indices.len();
+                let v1 = vertex_handles[face_indices[i]].clone();
+                let v2 = vertex_handles[face_indices[j]].clone();
+
+                let edge = TopoDsEdge::new(v1, v2);
+                edges.push(Handle::new(std::sync::Arc::new(edge)));
+            }
+
+            // Create wire from edges
+            let mut wire = TopoDsWire::new();
+            for edge in edges {
+                wire.add_edge(edge);
+            }
+            let wire_handle = Handle::new(std::sync::Arc::new(wire));
+
+            // Create face from wire
+            let face = TopoDsFace::with_wires(vec![wire_handle]);
+            let face_handle = Handle::new(std::sync::Arc::new(face));
+
+            // Add face to shell
+            if let Some(shell_mut) = Handle::as_mut(&mut shell_handle) {
+                shell_mut.add_face(face_handle);
+            }
+        }
+
+        // Add shell to solid
+        solid.add_shell(shell_handle);
+        solid
     }
 }
 

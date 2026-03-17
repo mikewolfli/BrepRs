@@ -114,18 +114,54 @@ impl Elbow {
     pub fn to_solid(&self) -> TopoDsSolid {
         let mut solid = TopoDsSolid::new();
 
-        // TODO: Implement proper elbow geometry
-        // For now, create a simple cylinder as placeholder
-        let cylinder = Cylinder::from_axis(
-            &self.axis,
-            self.diameter / 2.0,
-        );
+        // Create elbow geometry (90-degree bend)
+        let radius = self.diameter / 2.0;
+        let bend_radius = 2.0 * radius; // Standard bend radius
+
+        // Create vertices for the elbow
+        let origin = self.axis.location;
+        let _direction = self.axis.direction;
+
+        // Calculate elbow points
+        let center = origin + Vector::new(bend_radius, 0.0, 0.0);
+
+        // Create 90-degree elbow vertices
+        let mut vertices = Vec::new();
+        let angle_step = std::f64::consts::PI / 4.0; // 45 degrees per step
+
+        for i in 0..5 {
+            let angle = i as f64 * angle_step;
+            let x = center.x + bend_radius * angle.cos();
+            let y = center.y + bend_radius * angle.sin();
+
+            // Create inner and outer points
+            let inner_x = x - radius * angle.sin();
+            let inner_y = y + radius * angle.cos();
+            let outer_x = x + radius * angle.sin();
+            let outer_y = y - radius * angle.cos();
+
+            vertices.push(Point::new(inner_x, inner_y, origin.z));
+            vertices.push(Point::new(outer_x, outer_y, origin.z));
+        }
+
+        // Create elbow faces
+        let faces = vec![
+            // Outer curve
+            vec![1, 3, 5, 7],
+            // Inner curve
+            vec![0, 2, 4, 6],
+            // Side faces
+            vec![0, 1, 3, 2],
+            vec![2, 3, 5, 4],
+            vec![4, 5, 7, 6],
+        ];
 
         let mut shell = TopoDsShell::new();
-        let face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
-            crate::geometry::surface_enum::SurfaceEnum::Cylinder(cylinder),
-        )))));
-        shell.add_face(face);
+        let elbow_solid = TopoDsSolid::from_mesh(vertices, faces);
+
+        for face in elbow_solid.faces() {
+            shell.add_face(face);
+        }
 
         solid.add_shell(Handle::new(Arc::new(shell)));
         solid
@@ -216,20 +252,19 @@ impl Flange {
         let mut solid = TopoDsSolid::new();
 
         // Create flange body
-        let flange_cylinder =
-            Cylinder::from_axis(&self.axis, self.flange_diameter / 2.0);
+        let flange_cylinder = Cylinder::from_axis(&self.axis, self.flange_diameter / 2.0);
 
         // Create pipe hole
-        let pipe_hole_cylinder =
-            Cylinder::from_axis(&self.axis, self.pipe_diameter / 2.0);
+        let pipe_hole_cylinder = Cylinder::from_axis(&self.axis, self.pipe_diameter / 2.0);
 
         let mut shell = TopoDsShell::new();
         let flange_face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
             crate::geometry::surface_enum::SurfaceEnum::Cylinder(flange_cylinder),
         )))));
-        let pipe_hole_face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
-            crate::geometry::surface_enum::SurfaceEnum::Cylinder(pipe_hole_cylinder),
-        )))));
+        let pipe_hole_face =
+            Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
+                crate::geometry::surface_enum::SurfaceEnum::Cylinder(pipe_hole_cylinder),
+            )))));
 
         shell.add_face(flange_face);
         shell.add_face(pipe_hole_face);
@@ -297,12 +332,14 @@ impl Joint {
                 let pipe_cylinder = Cylinder::from_axis(&self.axis, self.pipe_diameter / 2.0);
 
                 let mut shell = TopoDsShell::new();
-                let socket_face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
-                    crate::geometry::surface_enum::SurfaceEnum::Cylinder(socket_cylinder),
-                )))));
-                let pipe_face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
-                    crate::geometry::surface_enum::SurfaceEnum::Cylinder(pipe_cylinder),
-                )))));
+                let socket_face =
+                    Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
+                        crate::geometry::surface_enum::SurfaceEnum::Cylinder(socket_cylinder),
+                    )))));
+                let pipe_face =
+                    Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
+                        crate::geometry::surface_enum::SurfaceEnum::Cylinder(pipe_cylinder),
+                    )))));
 
                 shell.add_face(socket_face);
                 shell.add_face(pipe_face);
@@ -326,8 +363,7 @@ impl Joint {
             }
             JointType::ButtWeld => {
                 // Butt weld joint is a simple cylinder
-                let joint_cylinder =
-                    Cylinder::from_axis(&self.axis, self.pipe_diameter / 2.0);
+                let joint_cylinder = Cylinder::from_axis(&self.axis, self.pipe_diameter / 2.0);
 
                 let mut shell = TopoDsShell::new();
                 let face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(

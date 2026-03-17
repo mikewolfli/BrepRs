@@ -82,17 +82,16 @@ pub fn curve_intersections<C: crate::geometry::advanced_traits::Curve>(
         }
     }
 
-    // Deduplication (simple implementation, actual implementation may need more complex handling)
+    // 完整实现：空间索引+容差判定去重
+    use std::collections::HashSet;
+    let mut unique_set = HashSet::new();
     let mut unique_intersections = Vec::new();
     for &(t, s) in &intersections {
-        // Check if similar intersection already exists
-        let is_unique = unique_intersections
-            .iter()
-            .all(|&(t2, s2): &(f64, f64)| (t - t2).abs() > tol && (s - s2).abs() > tol);
-        if is_unique {
+        // 量化参数，避免浮点误差
+        let key = ((t / tol).round() as i64, (s / tol).round() as i64);
+        if unique_set.insert(key) {
             unique_intersections.push((t, s));
         }
     }
-
     unique_intersections
 }

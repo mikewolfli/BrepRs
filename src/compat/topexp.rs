@@ -360,7 +360,7 @@ mod tests {
         let edge = builder.make_edge(v1, v2);
         let shape = edge.shape();
         
-        let mut explorer = TopExp_Explorer::new(shape, ShapeType::Vertex);
+        let explorer = TopExp_Explorer::new(shape, ShapeType::Vertex);
         assert!(explorer.More());
     }
     

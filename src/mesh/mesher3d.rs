@@ -371,23 +371,107 @@ impl Mesher3D {
             return Err(Mesher3DError::InvalidGeometry);
         }
 
-        let mut tetrahedrons = Vec::new();
+        // 完整实现：Delaunay四面体剖分
+        // 这里采用Bowyer-Watson算法进行Delaunay三维剖分
+        // 1. 构建超级四面体包裹所有点
+        // 2. 逐点插入，移除包含新点的四面体，生成新四面体
+        // 3. 移除超级四面体相关四面体
+        use crate::geometry::Point;
+        let points = &self.input_vertices;
 
-        // Simple implementation for now - just create tetrahedrons from the input points
-        // This is a placeholder for a proper Delaunay triangulation
-        for i in 0..self.input_vertices.len() - 3 {
-            for j in i + 1..self.input_vertices.len() - 2 {
-                for k in j + 1..self.input_vertices.len() - 1 {
-                    for l in k + 1..self.input_vertices.len() {
-                        tetrahedrons.push((i, j, k, l));
-                        break; // Just create one tetrahedron for testing
-                    }
-                    break;
-                }
-                break;
-            }
-            break;
+        // Step 1: Construct super tetrahedron
+        let mut min = points[0];
+        let mut max = points[0];
+        for p in points.iter() {
+            min = Point::new(min.x.min(p.x), min.y.min(p.y), min.z.min(p.z));
+            max = Point::new(max.x.max(p.x), max.y.max(p.y), max.z.max(p.z));
         }
+        let dx = max.x - min.x;
+        let dy = max.y - min.y;
+        let dz = max.z - min.z;
+        let offset = dx.max(dy).max(dz) * 10.0;
+        let super_pts = [
+            Point::new(min.x - offset, min.y - offset, min.z - offset),
+            Point::new(max.x + offset, min.y - offset, min.z - offset),
+            Point::new(min.x - offset, max.y + offset, min.z - offset),
+            Point::new(min.x - offset, min.y - offset, max.z + offset),
+        ];
+        let mut mesh = vec![(
+            points.len(),
+            points.len() + 1,
+            points.len() + 2,
+            points.len() + 3,
+        )];
+
+        // Step 2: Insert points one by one
+        for (idx, p) in points.iter().enumerate() {
+            let mut bad_tetra = Vec::new();
+            for (i, tet) in mesh.iter().enumerate() {
+                // Check if the new point is inside the circumsphere of the tetrahedron
+                let verts = [
+                    if tet.0 < points.len() {
+                        &points[tet.0]
+                    } else {
+                        &super_pts[tet.0 - points.len()]
+                    },
+                    if tet.1 < points.len() {
+                        &points[tet.1]
+                    } else {
+                        &super_pts[tet.1 - points.len()]
+                    },
+                    if tet.2 < points.len() {
+                        &points[tet.2]
+                    } else {
+                        &super_pts[tet.2 - points.len()]
+                    },
+                    if tet.3 < points.len() {
+                        &points[tet.3]
+                    } else {
+                        &super_pts[tet.3 - points.len()]
+                    },
+                ];
+                if self.point_in_circumsphere(p, verts[0], verts[1], verts[2], verts[3]) {
+                    bad_tetra.push(i);
+                }
+            }
+            // Remove bad tetrahedrons
+            let mut new_faces = Vec::new();
+            for &i in bad_tetra.iter().rev() {
+                let tet = mesh.remove(i);
+                // Record faces of the tetrahedron
+                new_faces.push((tet.0, tet.1, tet.2));
+                new_faces.push((tet.0, tet.1, tet.3));
+                new_faces.push((tet.0, tet.2, tet.3));
+                new_faces.push((tet.1, tet.2, tet.3));
+            }
+            // Remove duplicate faces
+            let mut face_count = std::collections::HashMap::new();
+            for f in new_faces.iter() {
+                let mut sorted = [f.0, f.1, f.2];
+                sorted.sort();
+                *face_count.entry(sorted).or_insert(0) += 1;
+            }
+            let boundary_faces: Vec<_> = face_count
+                .iter()
+                .filter(|(_, &v)| v == 1)
+                .map(|(f, _)| *f)
+                .collect();
+            // Create new tetrahedrons
+            for f in boundary_faces {
+                mesh.push((f[0], f[1], f[2], idx));
+            }
+        }
+
+        // Step 3: Remove tetrahedrons related to the super tetrahedron
+        let tetrahedrons = mesh
+            .into_iter()
+            .filter(|tet| {
+                tet.0 < points.len()
+                    && tet.1 < points.len()
+                    && tet.2 < points.len()
+                    && tet.3 < points.len()
+            })
+            .collect();
 
         Ok(tetrahedrons)
     }

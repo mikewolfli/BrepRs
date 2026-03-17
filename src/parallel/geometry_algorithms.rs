@@ -39,7 +39,7 @@ pub fn parallel_bounding_box(shapes: &[Handle<TopoDsShape>]) -> Option<(Point, P
     let mut min = Point::new(f64::MAX, f64::MAX, f64::MAX);
     let mut max = Point::new(f64::MIN, f64::MIN, f64::MIN);
 
-    for shape in shapes {
+    for _ in shapes {
         // Simplified bounding box calculation
         // In a real implementation, this would use shape-specific bounding box methods
         let center = Point::new(0.0, 0.0, 0.0);

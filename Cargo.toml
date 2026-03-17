@@ -35,7 +35,6 @@ log = "0.4"
 tempfile = "3.10"
 
 
-
 # WebAssembly support
 wasm-bindgen = { version = "0.2", optional = true }
 js-sys = { version = "0.3", optional = true }

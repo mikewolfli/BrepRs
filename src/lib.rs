@@ -24,6 +24,7 @@
 //! Use the native API for new Rust projects, and the compatibility API for
 //! migrating existing OpenCASCADE code.
 
+pub mod ai_ml;
 pub mod api;
 pub mod application;
 pub mod cloud;
@@ -33,12 +34,20 @@ pub mod foundation;
 pub mod geometry;
 pub mod gpu;
 pub mod mesh;
-pub mod ml;
 pub mod modeling;
 pub mod plugins;
 pub mod simulation;
 pub mod topology;
 pub mod visualization;
+
+// Re-export ai_ml module as ai and ml for backward compatibility
+pub mod ai {
+    pub use crate::ai_ml::*;
+}
+
+pub mod ml {
+    pub use crate::ai_ml::*;
+}
 
 /// OpenCASCADE API Compatibility Layer
 ///

@@ -10,6 +10,20 @@ pub struct Point {
     pub z: StandardReal,
 }
 
+/// Eq implementation for Point using bitwise comparison
+/// Note: This considers NaN != NaN and -0.0 != 0.0
+impl Eq for Point {}
+
+/// Hash implementation for Point using bitwise representation
+/// Note: This uses to_bits() which treats -0.0 and 0.0 as different
+impl std::hash::Hash for Point {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.x.to_bits().hash(state);
+        self.y.to_bits().hash(state);
+        self.z.to_bits().hash(state);
+    }
+}
+
 use crate::geometry::traits::{GetCoord, SetCoord};
 impl GetCoord for Point {
     fn coord(&self) -> (f64, f64, f64) {
@@ -298,6 +312,22 @@ impl std::ops::Sub<Point> for Point {
 
     fn sub(self, other: Point) -> Self::Output {
         crate::geometry::Vector::new(self.x - other.x, self.y - other.y, self.z - other.z)
+    }
+}
+
+impl std::ops::AddAssign<crate::geometry::Vector> for Point {
+    fn add_assign(&mut self, other: crate::geometry::Vector) {
+        self.x += other.x;
+        self.y += other.y;
+        self.z += other.z;
+    }
+}
+
+impl std::ops::AddAssign<Point> for Point {
+    fn add_assign(&mut self, other: Point) {
+        self.x += other.x;
+        self.y += other.y;
+        self.z += other.z;
     }
 }
 

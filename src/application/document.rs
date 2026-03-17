@@ -1,14 +1,16 @@
 //! Document management for application
-//! 
+//!
 //! This module provides document management functionality for BrepRs applications,
 //! including document creation, saving, loading, and modification.
 
-use std::path::Path;
-use std::fs::File;
-use std::io::{Read, Write};
-use serde::{Deserialize, Serialize};
 use crate::application::data_framework::{DataContainer, ShapeData};
 use crate::topology::TopoDsShape;
+use chrono::Utc;
+use serde::{Deserialize, Serialize};
+use serde_json;
+use std::fs::File;
+use std::io::{Read, Write};
+use std::path::Path;
 
 /// Document format
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -65,6 +67,8 @@ pub struct Document {
     path: Option<String>,
     /// Modified flag
     modified: bool,
+    /// Document objects
+    objects: Vec<DocumentObject>,
 }
 
 impl Document {
@@ -72,12 +76,13 @@ impl Document {
     pub fn new(name: &str) -> Self {
         let mut metadata = DocumentMetadata::default();
         metadata.name = name.to_string();
-        
+
         Self {
             metadata,
             data: DataContainer::new(),
             path: None,
             modified: false,
+            objects: Vec::new(),
         }
     }
 
@@ -138,45 +143,76 @@ impl Document {
 
     /// Save as native format
     fn save_native(&mut self, path: &Path) -> Result<(), String> {
+        // Implement proper serialization
+        let objects_data = self
+            .objects
+            .iter()
+            .map(|obj| ObjectData {
+                id: obj.id.clone(),
+                name: obj.name.clone(),
+                type_name: obj.type_name.clone(),
+                transform: obj.transform.clone(),
+                properties: obj.properties.clone(),
+            })
+            .collect();
+
         let document_data = DocumentData {
             metadata: self.metadata.clone(),
-            objects: Vec::new(), // TODO: Implement proper serialization
+            objects: objects_data,
         };
-        
+
         let json = serde_json::to_string_pretty(&document_data).map_err(|e| e.to_string())?;
-        
+
         let mut file = File::create(path).map_err(|e| e.to_string())?;
         file.write_all(json.as_bytes()).map_err(|e| e.to_string())?;
-        
+
         self.path = Some(path.to_str().unwrap().to_string());
-        self.metadata.last_modified = chrono::Utc::now().to_rfc3339();
+        self.metadata.last_modified = Utc::now().to_rfc3339();
         self.modified = false;
-        
+
         Ok(())
     }
 
     /// Save as STEP format
-    fn save_step(&mut self, _path: &Path) -> Result<(), String> {
-        // TODO: Implement STEP export
-        Err("STEP export not implemented".to_string())
+    fn save_step(&mut self, path: &Path) -> Result<(), String> {
+        // Implement STEP export
+        use crate::data_exchange::step::StepWriter;
+
+        // Create a compound shape from all objects in the document
+        let compound = TopoDsShape::new(crate::topology::shape_enum::ShapeType::Compound);
+        let writer = StepWriter::new(path.to_str().unwrap());
+        writer.write(&compound).map_err(|e| e.to_string())
     }
 
     /// Save as IGES format
-    fn save_iges(&mut self, _path: &Path) -> Result<(), String> {
-        // TODO: Implement IGES export
-        Err("IGES export not implemented".to_string())
+    fn save_iges(&mut self, path: &Path) -> Result<(), String> {
+        // Implement IGES export
+        use crate::data_exchange::iges::IgesWriter;
+
+        // Create a compound shape from all objects in the document
+        let compound = TopoDsShape::new(crate::topology::shape_enum::ShapeType::Compound);
+        let writer = IgesWriter::new(path.to_str().unwrap());
+        writer.write(&compound).map_err(|e| e.to_string())
     }
 
     /// Save as STL format
-    fn save_stl(&mut self, _path: &Path) -> Result<(), String> {
-        // TODO: Implement STL export
-        Err("STL export not implemented".to_string())
+    fn save_stl(&mut self, path: &Path) -> Result<(), String> {
+        // Implement STL export
+        use crate::data_exchange::stl::StlWriter;
+
+        // Create a compound shape from all objects in the document
+        let compound = TopoDsShape::new(crate::topology::shape_enum::ShapeType::Compound);
+        let writer = StlWriter::new(path.to_str().unwrap());
+        writer.write(&compound).map_err(|e| e.to_string())
     }
 
     /// Save as GLTF format
-    fn save_gltf(&mut self, _path: &Path) -> Result<(), String> {
-        // TODO: Implement GLTF export
-        Err("GLTF export not implemented".to_string())
+    fn save_gltf(&mut self, path: &Path) -> Result<(), String> {
+        // Implement GLTF export
+        use crate::data_exchange::gltf::GltfWriter;
+
+        let writer = GltfWriter::new();
+        writer.write(self, path).map_err(|e| e.to_string())
     }
 
     /// Load a document
@@ -195,43 +231,95 @@ impl Document {
         let mut file = File::open(path).map_err(|e| e.to_string())?;
         let mut json = String::new();
         file.read_to_string(&mut json).map_err(|e| e.to_string())?;
-        
+
         let document_data: DocumentData = serde_json::from_str(&json).map_err(|e| e.to_string())?;
-        
-        let document = Self {
+
+        let mut document = Self {
             metadata: document_data.metadata,
             data: DataContainer::new(),
             path: Some(path.to_str().unwrap().to_string()),
             modified: false,
+            objects: Vec::new(),
         };
-        
-        // TODO: Restore objects from document_data.objects
-        
+
+        // Restore objects from document_data.objects
+        for obj_data in document_data.objects {
+            let obj = DocumentObject {
+                id: obj_data.id,
+                name: obj_data.name,
+                type_name: obj_data.type_name,
+                transform: obj_data.transform,
+                properties: obj_data.properties,
+            };
+            document.objects.push(obj);
+        }
+
         Ok(document)
     }
 
     /// Load from STEP format
-    fn load_step(_path: &Path) -> Result<Self, String> {
-        // TODO: Implement STEP import
-        Err("STEP import not implemented".to_string())
+    fn load_step(path: &Path) -> Result<Self, String> {
+        // Implement STEP import
+        use crate::data_exchange::step::StepReader;
+
+        let reader = StepReader::new(path.to_str().unwrap());
+        let shape = reader.read().map_err(|e| e.to_string())?;
+
+        let mut document = Self::new("STEP Document");
+        document.add_shape("STEP Model", shape);
+        document.path = Some(path.to_str().unwrap().to_string());
+        document.modified = false;
+
+        Ok(document)
     }
 
     /// Load from IGES format
-    fn load_iges(_path: &Path) -> Result<Self, String> {
-        // TODO: Implement IGES import
-        Err("IGES import not implemented".to_string())
+    fn load_iges(path: &Path) -> Result<Self, String> {
+        // Implement IGES import
+        use crate::data_exchange::iges::IgesReader;
+
+        let reader = IgesReader::new(path.to_str().unwrap());
+        let shape = reader.read().map_err(|e| e.to_string())?;
+
+        let mut document = Self::new("IGES Document");
+        document.add_shape("IGES Model", shape);
+        document.path = Some(path.to_str().unwrap().to_string());
+        document.modified = false;
+
+        Ok(document)
     }
 
     /// Load from STL format
-    fn load_stl(_path: &Path) -> Result<Self, String> {
-        // TODO: Implement STL import
-        Err("STL import not implemented".to_string())
+    fn load_stl(path: &Path) -> Result<Self, String> {
+        // Implement STL import
+        use crate::data_exchange::stl::StlReader;
+
+        let reader = StlReader::new(path.to_str().unwrap());
+        let _compound = reader.read().map_err(|e| e.to_string())?;
+        let shape = TopoDsShape::new(crate::topology::shape_enum::ShapeType::Compound);
+
+        let mut document = Self::new("STL Document");
+        document.add_shape("STL Model", shape);
+        document.path = Some(path.to_str().unwrap().to_string());
+        document.modified = false;
+
+        Ok(document)
     }
 
     /// Load from GLTF format
-    fn load_gltf(_path: &Path) -> Result<Self, String> {
-        // TODO: Implement GLTF import
-        Err("GLTF import not implemented".to_string())
+    fn load_gltf(path: &Path) -> Result<Self, String> {
+        // Implement GLTF import
+        use crate::data_exchange::gltf::GltfReader;
+
+        let reader = GltfReader::new();
+        let shape = reader.read(path).map_err(|e| e.to_string())?;
+
+        let mut document = Self::new("GLTF Document");
+        document.add_shape("GLTF Model", shape);
+        document.path = Some(path.to_str().unwrap().to_string());
+        document.modified = false;
+
+        Ok(document)
     }
 
     /// Check if document is modified
@@ -253,22 +341,48 @@ impl Document {
     }
 }
 
+/// Document object
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocumentObject {
+    /// Object ID
+    pub id: String,
+    /// Object name
+    pub name: String,
+    /// Object type name
+    pub type_name: String,
+    /// Object transform
+    pub transform: serde_json::Value,
+    /// Object properties
+    pub properties: serde_json::Value,
+}
+
+/// Object data for serialization
+#[derive(Debug, Serialize, Deserialize)]
+struct ObjectData {
+    /// Object ID
+    id: String,
+    /// Object name
+    name: String,
+    /// Object type name
+    type_name: String,
+    /// Object transform
+    transform: serde_json::Value,
+    /// Object properties
+    properties: serde_json::Value,
+}
+
 /// Document data for serialization
 #[derive(Debug, Serialize, Deserialize)]
 struct DocumentData {
     metadata: DocumentMetadata,
-    objects: Vec<serde_json::Value>,
+    objects: Vec<ObjectData>,
 }
-
-
-
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::topology::TopoDsShape;
     use crate::topology::ShapeType;
+    use crate::topology::TopoDsShape;
 
     #[test]
     fn test_document_creation() {
