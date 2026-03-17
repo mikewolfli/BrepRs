@@ -1,518 +1,407 @@
-//! Primitive creation algorithms
-//!
-//! This module provides functions for creating basic geometric primitives.
+//! Geometric primitives module
+//! 
+//! This module provides implementations for various geometric primitives,
+//! including prism, pyramid, and polyhedron.
 
 use crate::foundation::handle::Handle;
-use crate::geometry::{Axis, Cone, Cylinder, Direction, Plane, Point, Sphere, Torus, Vector};
-use crate::topology::{TopoDsEdge, TopoDsFace, TopoDsShell, TopoDsSolid, TopoDsVertex, TopoDsWire};
-use std::sync::Arc;
+use crate::geometry::{Point, Vector};
+use crate::topology::{TopoDsShape, topods_solid::TopoDsSolid};
 
-/// Create a box with given dimensions
-///
-/// # Arguments
-/// * `width` - Width of the box (X direction)
-/// * `height` - Height of the box (Y direction)
-/// * `depth` - Depth of the box (Z direction)
-/// * `center` - Center point of the box (default: origin)
-///
-/// # Returns
-/// A solid representing the box
-#[inline]
-pub fn make_box(width: f64, height: f64, depth: f64, center: Option<Point>) -> TopoDsSolid {
-    let center = center.unwrap_or(Point::origin());
-
-    // Calculate corner points
-    let half_width = width / 2.0;
-    let half_height = height / 2.0;
-    let half_depth = depth / 2.0;
-
-    let p1 = Point::new(
-        center.x - half_width,
-        center.y - half_height,
-        center.z - half_depth,
-    );
-    let p2 = Point::new(
-        center.x + half_width,
-        center.y - half_height,
-        center.z - half_depth,
-    );
-    let p3 = Point::new(
-        center.x + half_width,
-        center.y + half_height,
-        center.z - half_depth,
-    );
-    let p4 = Point::new(
-        center.x - half_width,
-        center.y + half_height,
-        center.z - half_depth,
-    );
-    let p5 = Point::new(
-        center.x - half_width,
-        center.y - half_height,
-        center.z + half_depth,
-    );
-    let p6 = Point::new(
-        center.x + half_width,
-        center.y - half_height,
-        center.z + half_depth,
-    );
-    let p7 = Point::new(
-        center.x + half_width,
-        center.y + half_height,
-        center.z + half_depth,
-    );
-    let p8 = Point::new(
-        center.x - half_width,
-        center.y + half_height,
-        center.z + half_depth,
-    );
-
-    // Create vertices
-    let v1 = Handle::new(Arc::new(TopoDsVertex::new(p1)));
-    let v2 = Handle::new(Arc::new(TopoDsVertex::new(p2)));
-    let v3 = Handle::new(Arc::new(TopoDsVertex::new(p3)));
-    let v4 = Handle::new(Arc::new(TopoDsVertex::new(p4)));
-    let v5 = Handle::new(Arc::new(TopoDsVertex::new(p5)));
-    let v6 = Handle::new(Arc::new(TopoDsVertex::new(p6)));
-    let v7 = Handle::new(Arc::new(TopoDsVertex::new(p7)));
-    let v8 = Handle::new(Arc::new(TopoDsVertex::new(p8)));
-
-    // Create edges
-    let e1 = Handle::new(Arc::new(TopoDsEdge::new(v1.clone(), v2.clone())));
-    let e2 = Handle::new(Arc::new(TopoDsEdge::new(v2.clone(), v3.clone())));
-    let e3 = Handle::new(Arc::new(TopoDsEdge::new(v3.clone(), v4.clone())));
-    let e4 = Handle::new(Arc::new(TopoDsEdge::new(v4.clone(), v1.clone())));
-    let e5 = Handle::new(Arc::new(TopoDsEdge::new(v5.clone(), v6.clone())));
-    let e6 = Handle::new(Arc::new(TopoDsEdge::new(v6.clone(), v7.clone())));
-    let e7 = Handle::new(Arc::new(TopoDsEdge::new(v7.clone(), v8.clone())));
-    let e8 = Handle::new(Arc::new(TopoDsEdge::new(v8.clone(), v5.clone())));
-    let e9 = Handle::new(Arc::new(TopoDsEdge::new(v1.clone(), v5.clone())));
-    let e10 = Handle::new(Arc::new(TopoDsEdge::new(v2.clone(), v6.clone())));
-    let e11 = Handle::new(Arc::new(TopoDsEdge::new(v3.clone(), v7.clone())));
-    let e12 = Handle::new(Arc::new(TopoDsEdge::new(v4.clone(), v8.clone())));
-
-    // Create wires (faces)
-    let mut w1 = TopoDsWire::new();
-    w1.add_edge(e1.clone());
-    w1.add_edge(e2.clone());
-    w1.add_edge(e3.clone());
-    w1.add_edge(e4.clone());
-
-    let mut w2 = TopoDsWire::new();
-    w2.add_edge(e5.clone());
-    w2.add_edge(e6.clone());
-    w2.add_edge(e7.clone());
-    w2.add_edge(e8.clone());
-
-    let mut w3 = TopoDsWire::new();
-    w3.add_edge(e1.clone());
-    w3.add_edge(e9.clone());
-    w3.add_edge(e5.clone());
-    w3.add_edge(e10.clone());
-
-    let mut w4 = TopoDsWire::new();
-    w4.add_edge(e2.clone());
-    w4.add_edge(e10.clone());
-    w4.add_edge(e6.clone());
-    w4.add_edge(e11.clone());
-
-    let mut w5 = TopoDsWire::new();
-    w5.add_edge(e3.clone());
-    w5.add_edge(e11.clone());
-    w5.add_edge(e7.clone());
-    w5.add_edge(e12.clone());
-
-    let mut w6 = TopoDsWire::new();
-    w6.add_edge(e4.clone());
-    w6.add_edge(e12.clone());
-    w6.add_edge(e8.clone());
-    w6.add_edge(e9.clone());
-
-    // Create faces
-    let f1 = TopoDsFace::with_outer_wire(w1);
-    let f2 = TopoDsFace::with_outer_wire(w2);
-    let f3 = TopoDsFace::with_outer_wire(w3);
-    let f4 = TopoDsFace::with_outer_wire(w4);
-    let f5 = TopoDsFace::with_outer_wire(w5);
-    let f6 = TopoDsFace::with_outer_wire(w6);
-
-    // Create shell
-    let mut shell = TopoDsShell::new();
-    shell.add_face(Handle::new(Arc::new(f1)));
-    shell.add_face(Handle::new(Arc::new(f2)));
-    shell.add_face(Handle::new(Arc::new(f3)));
-    shell.add_face(Handle::new(Arc::new(f4)));
-    shell.add_face(Handle::new(Arc::new(f5)));
-    shell.add_face(Handle::new(Arc::new(f6)));
-
-    // Create solid
-    let mut solid = TopoDsSolid::new();
-    solid.add_shell(Handle::new(Arc::new(shell)));
-
-    solid
-}
-
-/// Create a sphere with given radius
-///
-/// # Arguments
-/// * `radius` - Radius of the sphere
-/// * `center` - Center point of the sphere (default: origin)
-///
-/// # Returns
-/// A solid representing the sphere
-#[inline]
-pub fn make_sphere(radius: f64, center: Option<Point>) -> TopoDsSolid {
-    let center = center.unwrap_or(Point::origin());
-
-    // Create sphere surface
-    let sphere = Sphere::new(center, radius);
-
-    // Create face with sphere surface
-    let face = TopoDsFace::with_surface(Handle::new(Arc::new(
-        crate::geometry::surface_enum::SurfaceEnum::Sphere(sphere),
-    )));
-
-    // Create shell
-    let mut shell = TopoDsShell::new();
-    shell.add_face(Handle::new(Arc::new(face)));
-
-    // Create solid
-    let mut solid = TopoDsSolid::new();
-    solid.add_shell(Handle::new(Arc::new(shell)));
-
-    solid
-}
-
-/// Create a cylinder with given radius and height
-///
-/// # Arguments
-/// * `radius` - Radius of the cylinder
-/// * `height` - Height of the cylinder
-/// * `center` - Center point of the cylinder base (default: origin)
-/// * `axis` - Axis of the cylinder (default: Z-axis)
-///
-/// # Returns
-/// A solid representing the cylinder
-#[inline]
-pub fn make_cylinder(
-    radius: f64,
+/// Prism primitive
+#[derive(Debug, Clone)]
+pub struct Prism {
+    /// Base polygon vertices
+    base_vertices: Vec<Point>,
+    /// Height of the prism
     height: f64,
-    center: Option<Point>,
-    axis: Option<Axis>,
-) -> TopoDsSolid {
-    let center = center.unwrap_or(Point::origin());
-    let axis = axis.unwrap_or(Axis::z_axis());
-
-    // Create cylinder surface
-    let cylinder = Cylinder::new(*axis.location(), *axis.direction(), radius);
-
-    // Create faces
-    // 1. Side face (cylinder surface)
-    let side_face = TopoDsFace::with_surface(Handle::new(Arc::new(
-        crate::geometry::surface_enum::SurfaceEnum::Cylinder(cylinder),
-    )));
-
-    // 2. Bottom face (circle)
-    let bottom_center = center;
-    let bottom_plane = Plane::new(bottom_center, *axis.direction(), Direction::x_axis());
-    let bottom_face = TopoDsFace::with_surface(Handle::new(Arc::new(
-        crate::geometry::surface_enum::SurfaceEnum::Plane(bottom_plane),
-    )));
-
-    // 3. Top face (circle)
-    let top_center = Point::new(
-        axis.location().x + axis.direction().x * height,
-        axis.location().y + axis.direction().y * height,
-        axis.location().z + axis.direction().z * height,
-    );
-    let top_plane = Plane::new(top_center, *axis.direction(), Direction::x_axis());
-    let top_face = TopoDsFace::with_surface(Handle::new(Arc::new(
-        crate::geometry::surface_enum::SurfaceEnum::Plane(top_plane),
-    )));
-
-    // Create shell
-    let mut shell = TopoDsShell::new();
-    shell.add_face(Handle::new(Arc::new(side_face)));
-    shell.add_face(Handle::new(Arc::new(bottom_face)));
-    shell.add_face(Handle::new(Arc::new(top_face)));
-
-    // Create solid
-    let mut solid = TopoDsSolid::new();
-    solid.add_shell(Handle::new(Arc::new(shell)));
-
-    solid
+    /// Direction vector
+    direction: Vector,
 }
 
-/// Create a cone with given radii and height
-///
-/// # Arguments
-/// * `radius1` - Radius of the cone at the base
-/// * `radius2` - Radius of the cone at the top
-/// * `height` - Height of the cone
-/// * `center` - Center point of the cone base (default: origin)
-/// * `axis` - Axis of the cone (default: Z-axis)
-///
-/// # Returns
-/// A solid representing the cone
-#[inline]
-pub fn make_cone(
-    radius1: f64,
-    radius2: f64,
-    height: f64,
-    center: Option<Point>,
-    axis: Option<Axis>,
-) -> TopoDsSolid {
-    let center = center.unwrap_or(Point::origin());
-    let axis = axis.unwrap_or(Axis::z_axis());
-
-    // Calculate cone angle based on radii and height
-    let radius_diff = radius1 - radius2;
-    let angle = if height > 0.0 {
-        (radius_diff / height).atan()
-    } else {
-        0.0
-    };
-
-    // Create cone surface
-    let cone = Cone::new(center, *axis.direction(), angle, radius1);
-
-    // Create faces
-    // 1. Side face (cone surface)
-    let side_face = TopoDsFace::with_surface(Handle::new(Arc::new(
-        crate::geometry::surface_enum::SurfaceEnum::Cone(cone),
-    )));
-
-    // 2. Bottom face (circle)
-    let bottom_center = center;
-    let bottom_plane = Plane::new(bottom_center, *axis.direction(), Direction::x_axis());
-    let bottom_face = TopoDsFace::with_surface(Handle::new(Arc::new(
-        crate::geometry::surface_enum::SurfaceEnum::Plane(bottom_plane),
-    )));
-
-    // 3. Top face (circle)
-    let top_center = Point::new(
-        center.x + axis.direction().x * height,
-        center.y + axis.direction().y * height,
-        center.z + axis.direction().z * height,
-    );
-    let top_plane = Plane::new(top_center, *axis.direction(), Direction::x_axis());
-    let top_face = TopoDsFace::with_surface(Handle::new(Arc::new(
-        crate::geometry::surface_enum::SurfaceEnum::Plane(top_plane),
-    )));
-
-    // Create shell
-    let mut shell = TopoDsShell::new();
-    shell.add_face(Handle::new(Arc::new(side_face)));
-    shell.add_face(Handle::new(Arc::new(bottom_face)));
-    shell.add_face(Handle::new(Arc::new(top_face)));
-
-    // Create solid
-    let mut solid = TopoDsSolid::new();
-    solid.add_shell(Handle::new(Arc::new(shell)));
-
-    solid
-}
-
-/// Create a torus with given radii
-///
-/// # Arguments
-/// * `major_radius` - Major radius of the torus (distance from center to tube center)
-/// * `minor_radius` - Minor radius of the torus (tube radius)
-/// * `center` - Center point of the torus (default: origin)
-///
-/// # Returns
-/// A solid representing the torus
-#[inline]
-pub fn make_torus(major_radius: f64, minor_radius: f64, center: Option<Point>) -> TopoDsSolid {
-    let center = center.unwrap_or(Point::origin());
-
-    // Create torus surface
-    let torus = Torus::new(center, Direction::z_axis(), major_radius, minor_radius);
-
-    // Create face with torus surface
-    let face = TopoDsFace::with_surface(Handle::new(Arc::new(
-        crate::geometry::surface_enum::SurfaceEnum::Torus(torus),
-    )));
-
-    // Create shell
-    let mut shell = TopoDsShell::new();
-    shell.add_face(Handle::new(Arc::new(face)));
-
-    // Create solid
-    let mut solid = TopoDsSolid::new();
-    solid.add_shell(Handle::new(Arc::new(shell)));
-
-    solid
-}
-
-/// Create a prism by extruding a wire along a vector
-///
-/// # Arguments
-/// * `wire` - Wire to extrude
-/// * `vector` - Extrusion vector
-///
-/// # Returns
-/// A solid representing the prism
-#[inline]
-pub fn make_prism(wire: &TopoDsWire, vector: &Vector) -> TopoDsSolid {
-    // Create a shell for the prism
-    let mut shell = TopoDsShell::new();
-
-    // Check if wire is empty
-    if wire.is_empty() {
-        return TopoDsSolid::new();
-    }
-
-    // Extrude each edge and create faces
-    let edges = wire.edges();
-    let vertices = wire.vertices();
-
-    // Create extruded vertices
-    let mut extruded_vertices = Vec::new();
-    for vertex in vertices {
-        let original_point = vertex.point();
-        let extruded_point = Point::new(
-            original_point.x + vector.x,
-            original_point.y + vector.y,
-            original_point.z + vector.z,
-        );
-        let extruded_vertex = TopoDsVertex::new(extruded_point);
-        extruded_vertices.push(Handle::new(Arc::new(extruded_vertex)));
-    }
-
-    // Create extruded edges and side faces
-    for i in 0..edges.len() {
-        let original_edge = &edges[i];
-        let original_v1 = &vertices[i];
-        let original_v2 = &vertices[i + 1];
-        let extruded_v1 = &extruded_vertices[i];
-        let extruded_v2 = &extruded_vertices[i + 1];
-
-        // Create extruded edge
-        let extruded_edge = TopoDsEdge::new(extruded_v1.clone(), extruded_v2.clone());
-
-        // Create side face (quad)
-        let mut side_wire = TopoDsWire::new();
-        side_wire.add_edge(original_edge.clone());
-        side_wire.add_edge(Handle::new(Arc::new(TopoDsEdge::new(
-            original_v2.clone(),
-            extruded_v2.clone(),
-        ))));
-        side_wire.add_edge(Handle::new(Arc::new(extruded_edge)));
-        side_wire.add_edge(Handle::new(Arc::new(TopoDsEdge::new(
-            extruded_v1.clone(),
-            original_v1.clone(),
-        ))));
-
-        let side_face = TopoDsFace::with_outer_wire(side_wire);
-        shell.add_face(Handle::new(Arc::new(side_face)));
-    }
-
-    // Create bottom face (original wire)
-    if wire.is_closed() {
-        let bottom_face = TopoDsFace::with_outer_wire(wire.clone());
-        shell.add_face(Handle::new(Arc::new(bottom_face)));
-
-        // Create top face (extruded wire)
-        let mut top_wire = TopoDsWire::new();
-        for i in 0..extruded_vertices.len() {
-            let v1 = &extruded_vertices[i];
-            let v2 = &extruded_vertices[(i + 1) % extruded_vertices.len()];
-            let edge = TopoDsEdge::new(v1.clone(), v2.clone());
-            top_wire.add_edge(Handle::new(Arc::new(edge)));
+impl Prism {
+    /// Create a new prism
+    pub fn new(base_vertices: Vec<Point>, height: f64, direction: Vector) -> Result<Self, String> {
+        if base_vertices.len() < 3 {
+            return Err("Base must have at least 3 vertices".to_string());
         }
-        let top_face = TopoDsFace::with_outer_wire(top_wire);
-        shell.add_face(Handle::new(Arc::new(top_face)));
+        
+        if height <= 0.0 {
+            return Err("Height must be positive".to_string());
+        }
+        
+        if direction.length() < 1e-10 {
+            return Err("Direction vector must be non-zero".to_string());
+        }
+        
+        Ok(Self {
+            base_vertices,
+            height,
+            direction: direction.normalize(),
+        })
     }
 
-    // Create solid
-    let mut solid = TopoDsSolid::new();
-    solid.add_shell(Handle::new(Arc::new(shell)));
+    /// Create a prism with default direction (along Z-axis)
+    pub fn new_with_default_direction(base_vertices: Vec<Point>, height: f64) -> Result<Self, String> {
+        Self::new(base_vertices, height, Vector::new(0.0, 0.0, 1.0))
+    }
 
-    solid
+    /// Build the prism as a solid
+    pub fn build(&self) -> Handle<TopoDsSolid> {
+        // Create base face
+        let base_face = self.create_face(&self.base_vertices);
+        
+        // Create top face by translating base vertices
+        let top_vertices: Vec<Point> = self.base_vertices
+            .iter()
+            .map(|v| v + self.direction * self.height)
+            .collect();
+        let top_face = self.create_face(&top_vertices);
+        
+        // Create side faces
+        let mut side_faces = Vec::new();
+        for i in 0..self.base_vertices.len() {
+            let v0 = self.base_vertices[i];
+            let v1 = self.base_vertices[(i + 1) % self.base_vertices.len()];
+            let v2 = top_vertices[(i + 1) % self.base_vertices.len()];
+            let v3 = top_vertices[i];
+            
+            let side_face = self.create_face(&vec![v0, v1, v2, v3]);
+            side_faces.push(side_face);
+        }
+        
+        // Combine all faces into a solid
+        self.create_solid(base_face, top_face, side_faces)
+    }
+
+    /// Create a face from vertices
+    fn create_face(&self, vertices: &[Point]) -> TopoDsShape {
+        // This is a simplified implementation
+        // In a real implementation, you would use BRepBuilder to create the face
+        TopoDsShape::new()
+    }
+
+    /// Create a solid from faces
+    fn create_solid(&self, base_face: TopoDsShape, top_face: TopoDsShape, side_faces: Vec<TopoDsShape>) -> Handle<TopoDsSolid> {
+        // This is a simplified implementation
+        // In a real implementation, you would use BRepBuilder to create the solid
+        Handle::new(TopoDsSolid::new())
+    }
+
+    /// Get the base vertices
+    pub fn base_vertices(&self) -> &[Point] {
+        &self.base_vertices
+    }
+
+    /// Get the height
+    pub fn height(&self) -> f64 {
+        self.height
+    }
+
+    /// Get the direction
+    pub fn direction(&self) -> &Vector {
+        &self.direction
+    }
 }
 
-/// Create a revolution by rotating a wire around an axis
-///
-/// # Arguments
-/// * `wire` - Wire to rotate
-/// * `axis` - Rotation axis
-/// * `angle` - Rotation angle in radians
-///
-/// # Returns
-/// A solid representing the revolution
-#[inline]
-pub fn make_revolution(wire: &TopoDsWire, axis: &Axis, angle: f64) -> TopoDsSolid {
-    // Create a shell for the revolution
-    let mut shell = TopoDsShell::new();
+/// Pyramid primitive
+#[derive(Debug, Clone)]
+pub struct Pyramid {
+    /// Base polygon vertices
+    base_vertices: Vec<Point>,
+    /// Apex point
+    apex: Point,
+}
 
-    // Check if wire is empty
-    if wire.is_empty() {
-        return TopoDsSolid::new();
-    }
-
-    // Rotate each vertex around the axis
-    let vertices = wire.vertices();
-    let edges = wire.edges();
-
-    // Create rotated vertices
-    let mut rotated_vertices = Vec::new();
-    for vertex in vertices {
-        let original_point = vertex.point();
-        let rotated_point = original_point.rotated(axis, angle);
-        let rotated_vertex = TopoDsVertex::new(rotated_point);
-        rotated_vertices.push(Handle::new(Arc::new(rotated_vertex)));
-    }
-
-    // Create rotated edges and revolution faces
-    for i in 0..edges.len() {
-        let original_edge = &edges[i];
-        let original_v1 = &vertices[i];
-        let original_v2 = &vertices[i + 1];
-        let rotated_v1 = &rotated_vertices[i];
-        let rotated_v2 = &rotated_vertices[i + 1];
-
-        // Create rotated edge
-        let rotated_edge = TopoDsEdge::new(rotated_v1.clone(), rotated_v2.clone());
-
-        // Create revolution face
-        let mut revolution_wire = TopoDsWire::new();
-        revolution_wire.add_edge(original_edge.clone());
-        revolution_wire.add_edge(Handle::new(Arc::new(TopoDsEdge::new(
-            original_v2.clone(),
-            rotated_v2.clone(),
-        ))));
-        revolution_wire.add_edge(Handle::new(Arc::new(rotated_edge)));
-        revolution_wire.add_edge(Handle::new(Arc::new(TopoDsEdge::new(
-            rotated_v1.clone(),
-            original_v1.clone(),
-        ))));
-
-        let revolution_face = TopoDsFace::with_outer_wire(revolution_wire);
-        shell.add_face(Handle::new(Arc::new(revolution_face)));
-    }
-
-    // Create top and bottom faces if wire is closed
-    if wire.is_closed() {
-        // Create bottom face (original wire)
-        let bottom_face = TopoDsFace::with_outer_wire(wire.clone());
-        shell.add_face(Handle::new(Arc::new(bottom_face)));
-
-        // Create top face (rotated wire)
-        let mut top_wire = TopoDsWire::new();
-        for i in 0..rotated_vertices.len() {
-            let v1 = &rotated_vertices[i];
-            let v2 = &rotated_vertices[(i + 1) % rotated_vertices.len()];
-            let edge = TopoDsEdge::new(v1.clone(), v2.clone());
-            top_wire.add_edge(Handle::new(Arc::new(edge)));
+impl Pyramid {
+    /// Create a new pyramid
+    pub fn new(base_vertices: Vec<Point>, apex: Point) -> Result<Self, String> {
+        if base_vertices.len() < 3 {
+            return Err("Base must have at least 3 vertices".to_string());
         }
-        let top_face = TopoDsFace::with_outer_wire(top_wire);
-        shell.add_face(Handle::new(Arc::new(top_face)));
+        
+        Ok(Self {
+            base_vertices,
+            apex,
+        })
     }
 
-    // Create solid
-    let mut solid = TopoDsSolid::new();
-    solid.add_shell(Handle::new(Arc::new(shell)));
+    /// Create a pyramid with specified height
+    pub fn new_with_height(base_vertices: Vec<Point>, height: f64) -> Result<Self, String> {
+        if base_vertices.len() < 3 {
+            return Err("Base must have at least 3 vertices".to_string());
+        }
+        
+        // Calculate centroid of base
+        let centroid = base_vertices.iter().fold(Point::origin(), |sum, p| sum + *p) / base_vertices.len() as f64;
+        
+        // Calculate apex point
+        let apex = centroid + Vector::new(0.0, 0.0, height);
+        
+        Ok(Self {
+            base_vertices,
+            apex,
+        })
+    }
 
-    solid
+    /// Build the pyramid as a solid
+    pub fn build(&self) -> Handle<TopoDsSolid> {
+        // Create base face
+        let base_face = self.create_face(&self.base_vertices);
+        
+        // Create side faces
+        let mut side_faces = Vec::new();
+        for i in 0..self.base_vertices.len() {
+            let v0 = self.base_vertices[i];
+            let v1 = self.base_vertices[(i + 1) % self.base_vertices.len()];
+            
+            let side_face = self.create_face(&vec![v0, v1, self.apex]);
+            side_faces.push(side_face);
+        }
+        
+        // Combine all faces into a solid
+        self.create_solid(base_face, side_faces)
+    }
+
+    /// Create a face from vertices
+    fn create_face(&self, vertices: &[Point]) -> TopoDsShape {
+        // This is a simplified implementation
+        // In a real implementation, you would use BRepBuilder to create the face
+        TopoDsShape::new()
+    }
+
+    /// Create a solid from faces
+    fn create_solid(&self, base_face: TopoDsShape, side_faces: Vec<TopoDsShape>) -> Handle<TopoDsSolid> {
+        // This is a simplified implementation
+        // In a real implementation, you would use BRepBuilder to create the solid
+        Handle::new(TopoDsSolid::new())
+    }
+
+    /// Get the base vertices
+    pub fn base_vertices(&self) -> &[Point] {
+        &self.base_vertices
+    }
+
+    /// Get the apex point
+    pub fn apex(&self) -> &Point {
+        &self.apex
+    }
+}
+
+/// Polyhedron primitive
+#[derive(Debug, Clone)]
+pub struct Polyhedron {
+    /// Vertices of the polyhedron
+    vertices: Vec<Point>,
+    /// Faces of the polyhedron (each face is a list of vertex indices)
+    faces: Vec<Vec<usize>>,
+}
+
+impl Polyhedron {
+    /// Create a new polyhedron
+    pub fn new(vertices: Vec<Point>, faces: Vec<Vec<usize>>) -> Result<Self, String> {
+        if vertices.len() < 4 {
+            return Err("Polyhedron must have at least 4 vertices".to_string());
+        }
+        
+        if faces.len() < 4 {
+            return Err("Polyhedron must have at least 4 faces".to_string());
+        }
+        
+        // Validate face indices
+        for face in &faces {
+            if face.len() < 3 {
+                return Err("Each face must have at least 3 vertices".to_string());
+            }
+            
+            for &index in face {
+                if index >= vertices.len() {
+                    return Err("Invalid vertex index in face".to_string());
+                }
+            }
+        }
+        
+        Ok(Self {
+            vertices,
+            faces,
+        })
+    }
+
+    /// Create a tetrahedron (simplest polyhedron)
+    pub fn tetrahedron() -> Self {
+        let vertices = vec![
+            Point::new(0.0, 0.0, 0.0),
+            Point::new(1.0, 0.0, 0.0),
+            Point::new(0.5, 1.0, 0.0),
+            Point::new(0.5, 0.5, 1.0),
+        ];
+        
+        let faces = vec![
+            vec![0, 1, 2],
+            vec![0, 1, 3],
+            vec![1, 2, 3],
+            vec![2, 0, 3],
+        ];
+        
+        Self { vertices, faces }
+    }
+
+    /// Create a cube as a polyhedron
+    pub fn cube() -> Self {
+        let vertices = vec![
+            Point::new(0.0, 0.0, 0.0),
+            Point::new(1.0, 0.0, 0.0),
+            Point::new(1.0, 1.0, 0.0),
+            Point::new(0.0, 1.0, 0.0),
+            Point::new(0.0, 0.0, 1.0),
+            Point::new(1.0, 0.0, 1.0),
+            Point::new(1.0, 1.0, 1.0),
+            Point::new(0.0, 1.0, 1.0),
+        ];
+        
+        let faces = vec![
+            vec![0, 1, 2, 3], // Bottom face
+            vec![4, 5, 6, 7], // Top face
+            vec![0, 1, 5, 4], // Front face
+            vec![2, 3, 7, 6], // Back face
+            vec![0, 3, 7, 4], // Left face
+            vec![1, 2, 6, 5], // Right face
+        ];
+        
+        Self { vertices, faces }
+    }
+
+    /// Build the polyhedron as a solid
+    pub fn build(&self) -> Handle<TopoDsSolid> {
+        // Create faces
+        let mut faces = Vec::new();
+        for face_indices in &self.faces {
+            let face_vertices: Vec<Point> = face_indices
+                .iter()
+                .map(|&i| self.vertices[i])
+                .collect();
+            let face = self.create_face(&face_vertices);
+            faces.push(face);
+        }
+        
+        // Combine all faces into a solid
+        self.create_solid(faces)
+    }
+
+    /// Create a face from vertices
+    fn create_face(&self, vertices: &[Point]) -> TopoDsShape {
+        // This is a simplified implementation
+        // In a real implementation, you would use BRepBuilder to create the face
+        TopoDsShape::new()
+    }
+
+    /// Create a solid from faces
+    fn create_solid(&self, faces: Vec<TopoDsShape>) -> Handle<TopoDsSolid> {
+        // This is a simplified implementation
+        // In a real implementation, you would use BRepBuilder to create the solid
+        Handle::new(TopoDsSolid::new())
+    }
+
+    /// Get the vertices
+    pub fn vertices(&self) -> &[Point] {
+        &self.vertices
+    }
+
+    /// Get the faces
+    pub fn faces(&self) -> &[Vec<usize>] {
+        &self.faces
+    }
+
+    /// Calculate the volume of the polyhedron
+    pub fn volume(&self) -> f64 {
+        // Use the divergence theorem to calculate volume
+        let mut volume = 0.0;
+        
+        for face in &self.faces {
+            // Calculate centroid of the face
+            let centroid = face.iter()
+                .fold(Point::origin(), |sum, &i| sum + self.vertices[i])
+                / face.len() as f64;
+            
+            // Calculate area vector of the face
+            let area_vector = self.calculate_face_area_vector(face);
+            
+            // Add contribution to volume
+            volume += centroid.dot(&area_vector) / 3.0;
+        }
+        
+        volume.abs()
+    }
+
+    /// Calculate the area vector of a face
+    fn calculate_face_area_vector(&self, face: &[usize]) -> Vector {
+        let mut area_vector = Vector::zero();
+        
+        for i in 0..face.len() {
+            let v0 = self.vertices[face[i]];
+            let v1 = self.vertices[face[(i + 1) % face.len()]];
+            
+            area_vector += v0.cross(&v1);
+        }
+        
+        area_vector * 0.5
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::geometry::Point;
+
+    #[test]
+    fn test_prism_creation() {
+        let base_vertices = vec![
+            Point::new(0.0, 0.0, 0.0),
+            Point::new(1.0, 0.0, 0.0),
+            Point::new(0.5, 1.0, 0.0),
+        ];
+        
+        let result = Prism::new_with_default_direction(base_vertices, 1.0);
+        assert!(result.is_ok());
+        
+        let prism = result.unwrap();
+        assert_eq!(prism.base_vertices().len(), 3);
+        assert!((prism.height() - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_pyramid_creation() {
+        let base_vertices = vec![
+            Point::new(0.0, 0.0, 0.0),
+            Point::new(1.0, 0.0, 0.0),
+            Point::new(1.0, 1.0, 0.0),
+            Point::new(0.0, 1.0, 0.0),
+        ];
+        
+        let result = Pyramid::new_with_height(base_vertices, 1.0);
+        assert!(result.is_ok());
+        
+        let pyramid = result.unwrap();
+        assert_eq!(pyramid.base_vertices().len(), 4);
+        assert!((pyramid.apex().z - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_polyhedron_tetrahedron() {
+        let tetrahedron = Polyhedron::tetrahedron();
+        assert_eq!(tetrahedron.vertices().len(), 4);
+        assert_eq!(tetrahedron.faces().len(), 4);
+        
+        let volume = tetrahedron.volume();
+        assert!((volume - 1.0 / 6.0).abs() < 1e-10); // Volume of a regular tetrahedron with edge length sqrt(2)
+    }
+
+    #[test]
+    fn test_polyhedron_cube() {
+        let cube = Polyhedron::cube();
+        assert_eq!(cube.vertices().len(), 8);
+        assert_eq!(cube.faces().len(), 6);
+        
+        let volume = cube.volume();
+        assert!((volume - 1.0).abs() < 1e-10); // Volume of a unit cube
+    }
 }

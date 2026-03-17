@@ -9,8 +9,10 @@ pub mod hex_mesher;
 pub mod mesh_data;
 pub mod mesher2d;
 pub mod mesher3d;
+pub mod polygon_face;
 pub mod quad_mesher;
 pub mod quality;
+pub mod triangle_mesh;
 
 #[cfg(test)]
 mod tests;
@@ -20,8 +22,10 @@ pub use hex_mesher::*;
 pub use mesh_data::*;
 pub use mesher2d::*;
 pub use mesher3d::*;
+pub use polygon_face::PolygonFace;
 pub use quad_mesher::*;
 pub use quality::*;
+pub use triangle_mesh::TriangleMesh;
 
 use crate::foundation::handle::Handle;
 use crate::topology::topods_shape::TopoDsShape;
