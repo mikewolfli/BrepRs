@@ -9,18 +9,21 @@
 //! OpenCASCADE ML Compatibility Module
 //!
 //! Provides OpenCASCADE-compatible type aliases and wrappers
-//! for machine learning functionality.
+//! for machine learning functionality (now integrated into AI_ML module).
 
-// Re-export ML types with OpenCASCADE naming
-pub use crate::ml::{
-    AiMlUtils as ML_Utils, FeatureRecognitionModel as ML_FeatureRecognitionModel,
-    MeshGenerationModel as ML_MeshGenerationModel, ModelRepairModel as ML_ModelRepairModel,
+// Re-export ML types with OpenCASCADE naming from AI_ML
+pub use crate::ai_ml::{
+    models::{
+        FeatureRecognitionModel as ML_FeatureRecognitionModel,
+        MeshGenerationModel as ML_MeshGenerationModel, ModelRepairModel as ML_ModelRepairModel,
+    },
+    utils::AiMlUtils as ML_Utils,
 };
 
 // Re-export PyTorch integration if feature is enabled
 #[cfg(feature = "pytorch")]
-pub use crate::ml::frameworks::pytorch as ML_PyTorch;
+pub use crate::ai_ml::frameworks::pytorch as ML_PyTorch;
 
 // Re-export TensorFlow integration if feature is enabled
 #[cfg(feature = "tensorflow")]
-pub use crate::ml::frameworks::tensorflow as ML_TensorFlow;
+pub use crate::ai_ml::frameworks::tensorflow as ML_TensorFlow;

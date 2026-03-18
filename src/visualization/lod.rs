@@ -323,32 +323,197 @@ impl LodSystem {
 
     /// Simplify mesh by a given factor
     fn simplify_mesh(&self, mesh: &Mesh3D, simplification_factor: f64) -> Mesh3D {
-        // Edge collapse decimation for simplification
+        // Edge collapse decimation for simplification with quadric error metric
         let target_triangles = (mesh.faces.len() as f64 / simplification_factor).max(1.0) as usize;
         let mut decimated = mesh.clone();
+
+        // Pre-calculate edge costs using quadric error metric
+        let mut edge_costs = self.calculate_edge_costs(&decimated);
+
         while decimated.faces.len() > target_triangles {
-            let mut min_len = std::f64::MAX;
+            // Find edge with minimum cost
+            let mut min_cost = std::f64::MAX;
             let mut min_edge = None;
-            for edge in &decimated.edges {
-                let v0 = &decimated.vertices[edge.vertices[0]];
-                let v1 = &decimated.vertices[edge.vertices[1]];
-                let len = ((v0.point.x - v1.point.x).powi(2)
-                    + (v0.point.y - v1.point.y).powi(2)
-                    + (v0.point.z - v1.point.z).powi(2))
-                .sqrt();
-                if len < min_len {
-                    min_len = len;
-                    min_edge = Some(edge.id);
+
+            for (edge, cost) in &edge_costs {
+                if *cost < min_cost {
+                    min_cost = *cost;
+                    min_edge = Some(*edge);
                 }
             }
-            if let Some(edge_id) = min_edge {
-                decimated.edges.retain(|e| e.id != edge_id);
-                decimated.faces.retain(|f| !f.edges.contains(&edge_id));
+
+            if let Some((v0, v1)) = min_edge {
+                // Collapse the edge
+                if self.collapse_edge(&mut decimated, v0, v1) {
+                    // Update edge costs
+                    self.update_edge_costs(&mut decimated, v0, v1, &mut edge_costs);
+                }
             } else {
                 break;
             }
         }
         decimated
+    }
+
+    /// Calculate edge costs using quadric error metric
+    fn calculate_edge_costs(
+        &self,
+        mesh: &Mesh3D,
+    ) -> std::collections::HashMap<(usize, usize), f64> {
+        let mut edge_costs = std::collections::HashMap::new();
+
+        // For each face, add edges and calculate costs
+        for face in &mesh.faces {
+            let vertices = &face.vertices;
+            for i in 0..vertices.len() {
+                let v0 = vertices[i];
+                let v1 = vertices[(i + 1) % vertices.len()];
+                let edge = if v0 < v1 { (v0, v1) } else { (v1, v0) };
+
+                // Skip if edge already processed
+                if edge_costs.contains_key(&edge) {
+                    continue;
+                }
+
+                // Calculate quadric error metric cost
+                let cost = self.calculate_quadric_error(mesh, v0, v1);
+                edge_costs.insert(edge, cost);
+            }
+        }
+
+        edge_costs
+    }
+
+    /// Calculate quadric error metric for edge collapse
+    fn calculate_quadric_error(&self, mesh: &Mesh3D, v0: usize, v1: usize) -> f64 {
+        // Simplified quadric error calculation
+        let p0 = &mesh.vertices[v0].point;
+        let p1 = &mesh.vertices[v1].point;
+
+        // Calculate distance between vertices
+        let distance = p0.distance(p1);
+
+        // Calculate normal difference
+        let normal_diff = match (mesh.vertices[v0].normal, mesh.vertices[v1].normal) {
+            (Some(n1), Some(n2)) => {
+                let dot = n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2];
+                1.0 - dot.abs()
+            }
+            _ => 0.0,
+        };
+
+        // Combine distance and normal difference
+        distance * (1.0 + normal_diff * 2.0)
+    }
+
+    /// Collapse an edge
+    fn collapse_edge(&self, mesh: &mut Mesh3D, v0: usize, v1: usize) -> bool {
+        // Calculate new vertex position (midpoint)
+        let p0 = &mesh.vertices[v0].point;
+        let p1 = &mesh.vertices[v1].point;
+        let new_point = crate::geometry::Point::new(
+            (p0.x + p1.x) / 2.0,
+            (p0.y + p1.y) / 2.0,
+            (p0.z + p1.z) / 2.0,
+        );
+
+        // Create new vertex with average normal
+        let new_normal = match (mesh.vertices[v0].normal, mesh.vertices[v1].normal) {
+            (Some(n1), Some(n2)) => {
+                let avg = [
+                    (n1[0] + n2[0]) / 2.0,
+                    (n1[1] + n2[1]) / 2.0,
+                    (n1[2] + n2[2]) / 2.0,
+                ];
+                Some(avg)
+            }
+            (Some(n), None) => Some(n),
+            (None, Some(n)) => Some(n),
+            (None, None) => None,
+        };
+
+        let new_vertex = crate::mesh::mesh_data::MeshVertex::new(mesh.vertices.len(), new_point);
+        let new_vertex_id = mesh.vertices.len();
+        mesh.vertices.push(new_vertex);
+
+        // Update faces
+        let mut new_faces = Vec::new();
+
+        for face in &mesh.faces {
+            // Skip faces that use both vertices
+            if face.vertices.contains(&v0) && face.vertices.contains(&v1) {
+                continue;
+            }
+
+            // Update vertices in the face
+            let mut new_face_vertices = Vec::new();
+            for &vid in &face.vertices {
+                if vid == v0 || vid == v1 {
+                    new_face_vertices.push(new_vertex_id);
+                } else {
+                    new_face_vertices.push(vid);
+                }
+            }
+
+            // Add face if it's still valid
+            if new_face_vertices.len() >= 3 {
+                // Remove duplicate vertices
+                let mut unique_vertices = Vec::new();
+                for &vid in &new_face_vertices {
+                    if !unique_vertices.contains(&vid) {
+                        unique_vertices.push(vid);
+                    }
+                }
+
+                if unique_vertices.len() >= 3 {
+                    new_faces.push(crate::mesh::mesh_data::MeshFace::new(
+                        new_faces.len(),
+                        unique_vertices,
+                    ));
+                }
+            }
+        }
+
+        // Replace faces
+        if !new_faces.is_empty() {
+            mesh.faces = new_faces;
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Update edge costs after edge collapse
+    fn update_edge_costs(
+        &self,
+        mesh: &Mesh3D,
+        v0: usize,
+        v1: usize,
+        edge_costs: &mut std::collections::HashMap<(usize, usize), f64>,
+    ) {
+        // Remove old edges
+        edge_costs.remove(&(v0, v1));
+        edge_costs.remove(&(v1, v0));
+
+        // Add new edges for the new vertex
+        let new_vertex_id = mesh.vertices.len() - 1;
+        for face in &mesh.faces {
+            for i in 0..face.vertices.len() {
+                let v = face.vertices[i];
+                if v == new_vertex_id {
+                    let next_v = face.vertices[(i + 1) % face.vertices.len()];
+                    let edge = if new_vertex_id < next_v {
+                        (new_vertex_id, next_v)
+                    } else {
+                        (next_v, new_vertex_id)
+                    };
+                    if !edge_costs.contains_key(&edge) {
+                        let cost = self.calculate_quadric_error(mesh, new_vertex_id, next_v);
+                        edge_costs.insert(edge, cost);
+                    }
+                }
+            }
+        }
     }
 
     /// Calculate average edge length for a mesh

@@ -251,7 +251,7 @@ impl CellColony {
         bounds: (Point, Point),
     ) -> Self {
         use rand::Rng;
-        let mut rng = rand::rng();
+        let mut rng = rand::thread_rng();
         let mut cells = Vec::with_capacity(cell_count);
 
         let (min, max) = bounds;

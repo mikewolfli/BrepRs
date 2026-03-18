@@ -24,9 +24,7 @@ impl Mesh {
 
 use crate::foundation::handle::Handle;
 use crate::geometry::{Axis, Direction, Point, Vector};
-use crate::topology::{
-    topods_shape::TopoDsShape, ShapeType,
-};
+use crate::topology::{topods_shape::TopoDsShape, ShapeType};
 
 /// Trait for types that can be transformed (moved, rotated, scaled)
 pub trait Transformable {
@@ -37,10 +35,10 @@ pub trait Transformable {
     fn rotate(&mut self, axis: Axis, angle: f64) -> &mut Self;
 
     /// Scale the object uniformly
-    fn scale(&mut self, factor: f64) -> &mut Self;
+    fn scale(&mut self, factor: f64) -> Result<&mut Self, String>;
 
     /// Scale the object non-uniformly
-    fn scale_xyz(&mut self, sx: f64, sy: f64, sz: f64) -> &mut Self;
+    fn scale_xyz(&mut self, sx: f64, sy: f64, sz: f64) -> Result<&mut Self, String>;
 
     /// Mirror the object across a plane
     fn mirror(&mut self, point: Point, normal: Direction) -> &mut Self;
@@ -77,22 +75,22 @@ pub trait BooleanOps {
 /// Trait for types that support fillet and chamfer operations
 pub trait FilletChamferOps {
     /// Apply fillet to all edges with the given radius
-    fn fillet(&self, radius: f64) -> Self
+    fn fillet(&self, radius: f64) -> Result<Self, String>
     where
         Self: Sized;
 
     /// Apply fillet to specific edges
-    fn fillet_edges(&self, edge_indices: &[usize], radius: f64) -> Self
+    fn fillet_edges(&self, edge_indices: &[usize], radius: f64) -> Result<Self, String>
     where
         Self: Sized;
 
     /// Apply chamfer to all edges with the given distance
-    fn chamfer(&self, distance: f64) -> Self
+    fn chamfer(&self, distance: f64) -> Result<Self, String>
     where
         Self: Sized;
 
     /// Apply chamfer to specific faces
-    fn chamfer_faces(&self, face_indices: &[usize], distance: f64) -> Self
+    fn chamfer_faces(&self, face_indices: &[usize], distance: f64) -> Result<Self, String>
     where
         Self: Sized;
 }

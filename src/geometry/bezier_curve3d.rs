@@ -190,7 +190,7 @@ impl BezierCurve3D {
         let step = 0.01;
         
         while t < 1.0 {
-            let next_t = (t + step).min(1.0);
+            let next_t = if t + step > 1.0 { 1.0 } else { t + step };
             let p1 = self.evaluate(t);
             let p2 = self.evaluate(next_t);
             length += p1.distance(&p2);

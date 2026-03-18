@@ -171,7 +171,7 @@ impl TriangleMesh {
         }
 
         let triangle_count = self.faces.len() as f64;
-        if triangle_count > 0 {
+        if triangle_count > 0.0 {
             self.quality.insert("total_area".to_string(), total_area);
             self.quality.insert("average_aspect_ratio".to_string(), total_aspect_ratio / triangle_count);
         }

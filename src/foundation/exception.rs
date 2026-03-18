@@ -39,8 +39,6 @@ pub enum Failure {
     DivideByZeroError { msg: String },
     #[error("Construction error: {msg}")]
     ConstructionError { msg: String },
-    #[error("Not implemented: {msg}")]
-    NotImplemented { msg: String },
     #[error("Runtime error: {msg}")]
     RuntimeError { msg: String },
     #[error("Unknown error: {msg}")]
@@ -50,25 +48,33 @@ pub enum Failure {
 // Implement From conversions for common error types
 impl From<std::io::Error> for Failure {
     fn from(err: std::io::Error) -> Self {
-        Failure::RuntimeError { msg: err.to_string() }
+        Failure::RuntimeError {
+            msg: err.to_string(),
+        }
     }
 }
 
 impl From<std::num::TryFromIntError> for Failure {
     fn from(err: std::num::TryFromIntError) -> Self {
-        Failure::NumericError { msg: err.to_string() }
+        Failure::NumericError {
+            msg: err.to_string(),
+        }
     }
 }
 
 impl From<std::num::ParseIntError> for Failure {
     fn from(err: std::num::ParseIntError) -> Self {
-        Failure::NumericError { msg: err.to_string() }
+        Failure::NumericError {
+            msg: err.to_string(),
+        }
     }
 }
 
 impl From<std::num::ParseFloatError> for Failure {
     fn from(err: std::num::ParseFloatError) -> Self {
-        Failure::NumericError { msg: err.to_string() }
+        Failure::NumericError {
+            msg: err.to_string(),
+        }
     }
 }
 
@@ -106,11 +112,6 @@ impl Failure {
     #[inline]
     pub fn construction_error(msg: impl Into<String>) -> Self {
         Self::ConstructionError { msg: msg.into() }
-    }
-
-    #[inline]
-    pub fn not_implemented(msg: impl Into<String>) -> Self {
-        Self::NotImplemented { msg: msg.into() }
     }
 
     #[inline]
@@ -286,14 +287,20 @@ mod tests {
 
     #[test]
     fn test_failure_variant_context_source_backtrace() {
-        let domain = Failure::DomainError { msg: "domain".to_string() };
+        let domain = Failure::DomainError {
+            msg: "domain".to_string(),
+        };
         assert!(matches!(domain, Failure::DomainError { .. }));
 
-        let numeric = Failure::NumericError { msg: "numeric".to_string() };
+        let numeric = Failure::NumericError {
+            msg: "numeric".to_string(),
+        };
         assert!(matches!(numeric, Failure::NumericError { .. }));
 
-        let not_impl = Failure::NotImplemented { msg: "notimpl".to_string() };
-        assert!(matches!(not_impl, Failure::NotImplemented { .. }));
+        let runtime = Failure::RuntimeError {
+            msg: "runtime".to_string(),
+        };
+        assert!(matches!(runtime, Failure::RuntimeError { .. }));
     }
 
     #[test]
@@ -319,9 +326,6 @@ mod tests {
         let err = Failure::construction_error("test");
         assert!(matches!(err, Failure::ConstructionError { .. }));
 
-        let err = Failure::not_implemented("test");
-        assert!(matches!(err, Failure::NotImplemented { .. }));
-
         let err = Failure::runtime_error("test");
         assert!(matches!(err, Failure::RuntimeError { .. }));
 
@@ -340,8 +344,8 @@ mod tests {
         let err = Failure::numeric_error("numeric test");
         assert_eq!(err.to_string(), "Numeric error: numeric test");
 
-        let err = Failure::not_implemented("feature");
-        assert_eq!(err.to_string(), "Not implemented: feature");
+        let err = Failure::runtime_error("feature");
+        assert_eq!(err.to_string(), "Runtime error: feature");
     }
 
     #[test]

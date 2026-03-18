@@ -2,9 +2,10 @@
 //!
 //! This module provides functionality to import and export PLY files.
 
-use crate::mesh::mesh_data::Mesh3D;
+use crate::geometry::Point;
+use crate::mesh::mesh_data::{Mesh3D, MeshVertex};
 use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 
 /// PLY file format writer
 pub struct PlyWriter {
@@ -82,11 +83,32 @@ impl PlyWriter {
     fn write_vertices(&mut self, mesh: &Mesh3D) -> Result<(), std::io::Error> {
         for vertex in &mesh.vertices {
             if self.binary {
-                // Binary format not implemented yet
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Unsupported,
-                    "Binary PLY format not implemented",
-                ));
+                // Write binary format
+                let x = vertex.point.x as f32;
+                let y = vertex.point.y as f32;
+                let z = vertex.point.z as f32;
+                self.file.write_all(&x.to_le_bytes())?;
+                self.file.write_all(&y.to_le_bytes())?;
+                self.file.write_all(&z.to_le_bytes())?;
+
+                // Write normal if available
+                if let Some(normal) = vertex.normal {
+                    let nx = normal[0] as f32;
+                    let ny = normal[1] as f32;
+                    let nz = normal[2] as f32;
+                    self.file.write_all(&nx.to_le_bytes())?;
+                    self.file.write_all(&ny.to_le_bytes())?;
+                    self.file.write_all(&nz.to_le_bytes())?;
+                }
+
+                // Write color if available
+                if let Some(color) = vertex.color {
+                    let r = (color[0] * 255.0) as u8;
+                    let g = (color[1] * 255.0) as u8;
+                    let b = (color[2] * 255.0) as u8;
+                    let a = (color[3] * 255.0) as u8;
+                    self.file.write_all(&[r, g, b, a])?;
+                }
             } else {
                 write!(
                     self.file,
@@ -119,11 +141,13 @@ impl PlyWriter {
         // Write regular faces
         for face in &mesh.faces {
             if self.binary {
-                // Binary format not implemented yet
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Unsupported,
-                    "Binary PLY format not implemented",
-                ));
+                // Write binary format
+                let count = face.vertices.len() as u8;
+                self.file.write_all(&[count])?;
+                for &v in &face.vertices {
+                    let vertex_index = v as i32;
+                    self.file.write_all(&vertex_index.to_le_bytes())?;
+                }
             } else {
                 write!(self.file, "{}", face.vertices.len())?;
                 for &v in &face.vertices {
@@ -137,11 +161,11 @@ impl PlyWriter {
         for tetra in &mesh.tetrahedrons {
             let vertices = [tetra.vertices[0], tetra.vertices[1], tetra.vertices[2]];
             if self.binary {
-                // Binary format not implemented yet
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Unsupported,
-                    "Binary PLY format not implemented",
-                ));
+                self.file.write_all(&[3])?;
+                for &v in &vertices {
+                    let vertex_index = v as i32;
+                    self.file.write_all(&vertex_index.to_le_bytes())?;
+                }
             } else {
                 write!(
                     self.file,
@@ -153,11 +177,11 @@ impl PlyWriter {
 
             let vertices = [tetra.vertices[0], tetra.vertices[2], tetra.vertices[3]];
             if self.binary {
-                // Binary format not implemented yet
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Unsupported,
-                    "Binary PLY format not implemented",
-                ));
+                self.file.write_all(&[3])?;
+                for &v in &vertices {
+                    let vertex_index = v as i32;
+                    self.file.write_all(&vertex_index.to_le_bytes())?;
+                }
             } else {
                 write!(
                     self.file,
@@ -169,11 +193,11 @@ impl PlyWriter {
 
             let vertices = [tetra.vertices[0], tetra.vertices[3], tetra.vertices[1]];
             if self.binary {
-                // Binary format not implemented yet
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Unsupported,
-                    "Binary PLY format not implemented",
-                ));
+                self.file.write_all(&[3])?;
+                for &v in &vertices {
+                    let vertex_index = v as i32;
+                    self.file.write_all(&vertex_index.to_le_bytes())?;
+                }
             } else {
                 write!(
                     self.file,
@@ -185,11 +209,11 @@ impl PlyWriter {
 
             let vertices = [tetra.vertices[1], tetra.vertices[3], tetra.vertices[2]];
             if self.binary {
-                // Binary format not implemented yet
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Unsupported,
-                    "Binary PLY format not implemented",
-                ));
+                self.file.write_all(&[3])?;
+                for &v in &vertices {
+                    let vertex_index = v as i32;
+                    self.file.write_all(&vertex_index.to_le_bytes())?;
+                }
             } else {
                 write!(
                     self.file,
@@ -244,11 +268,11 @@ impl PlyWriter {
 
             for face in &faces {
                 if self.binary {
-                    // Binary format not implemented yet
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::Unsupported,
-                        "Binary PLY format not implemented",
-                    ));
+                    self.file.write_all(&[4])?;
+                    for &v in face {
+                        let vertex_index = v as i32;
+                        self.file.write_all(&vertex_index.to_le_bytes())?;
+                    }
                 } else {
                     write!(self.file, "4")?;
                     for &v in face {
@@ -286,10 +310,11 @@ impl PlyWriter {
 
             for face in tri_faces.iter() {
                 if self.binary {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::Unsupported,
-                        "Binary PLY format not implemented",
-                    ));
+                    self.file.write_all(&[3])?;
+                    for &v in face {
+                        let vertex_index = v as i32;
+                        self.file.write_all(&vertex_index.to_le_bytes())?;
+                    }
                 } else {
                     write!(self.file, "3")?;
                     for &v in face {
@@ -301,10 +326,11 @@ impl PlyWriter {
 
             for face in quad_faces.iter() {
                 if self.binary {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::Unsupported,
-                        "Binary PLY format not implemented",
-                    ));
+                    self.file.write_all(&[4])?;
+                    for &v in face {
+                        let vertex_index = v as i32;
+                        self.file.write_all(&vertex_index.to_le_bytes())?;
+                    }
                 } else {
                     write!(self.file, "4")?;
                     for &v in face {
@@ -317,6 +343,14 @@ impl PlyWriter {
 
         Ok(())
     }
+}
+
+/// PLY header information
+pub struct PlyHeaderInfo {
+    pub vertex_count: usize,
+    pub face_count: usize,
+    pub has_normals: bool,
+    pub has_colors: bool,
 }
 
 /// PLY file format reader
@@ -365,10 +399,295 @@ impl PlyReader {
 
     /// Read mesh from PLY file
     pub fn read_mesh(&mut self) -> Result<Mesh3D, std::io::Error> {
-        // Implementation will be added in a future update
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Unsupported,
-            "PLY reading not implemented yet",
-        ))
+        let mut mesh = Mesh3D::new();
+
+        // Read header information
+        let header_info = self.read_header()?;
+
+        // Read vertices
+        self.read_vertices(&mut mesh, &header_info)?;
+
+        // Read faces
+        self.read_faces(&mut mesh, &header_info)?;
+
+        Ok(mesh)
+    }
+
+    /// Read header information
+    fn read_header(&mut self) -> Result<PlyHeaderInfo, std::io::Error> {
+        let mut vertex_count = 0;
+        let mut face_count = 0;
+        let mut has_normals = false;
+        let mut has_colors = false;
+
+        let mut line = String::new();
+        loop {
+            line.clear();
+            let bytes_read = self.reader.read_line(&mut line)?;
+            if bytes_read == 0 {
+                break;
+            }
+
+            let trimmed = line.trim();
+            if trimmed.starts_with("element vertex") {
+                if let Some(count_str) = trimmed.split_whitespace().nth(2) {
+                    vertex_count = count_str.parse().map_err(|_| {
+                        std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            "Invalid vertex count in PLY header",
+                        )
+                    })?;
+                }
+            } else if trimmed.starts_with("element face") {
+                if let Some(count_str) = trimmed.split_whitespace().nth(2) {
+                    face_count = count_str.parse().map_err(|_| {
+                        std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            "Invalid face count in PLY header",
+                        )
+                    })?;
+                }
+            } else if trimmed.starts_with("property float nx") {
+                has_normals = true;
+            } else if trimmed.starts_with("property uchar red") {
+                has_colors = true;
+            } else if trimmed.eq("end_header") {
+                break;
+            }
+        }
+
+        Ok(PlyHeaderInfo {
+            vertex_count,
+            face_count,
+            has_normals,
+            has_colors,
+        })
+    }
+
+    /// Read vertices
+    fn read_vertices(
+        &mut self,
+        mesh: &mut Mesh3D,
+        header: &PlyHeaderInfo,
+    ) -> Result<(), std::io::Error> {
+        for _ in 0..header.vertex_count {
+            let mut vertex = MeshVertex::default();
+
+            if self.binary {
+                // Read binary format
+                let mut buffer = [0u8; 4];
+
+                // Read x, y, z
+                self.reader.read_exact(&mut buffer)?;
+                let x = f32::from_le_bytes(buffer) as f64;
+
+                self.reader.read_exact(&mut buffer)?;
+                let y = f32::from_le_bytes(buffer) as f64;
+
+                self.reader.read_exact(&mut buffer)?;
+                let z = f32::from_le_bytes(buffer) as f64;
+
+                vertex.point = Point::new(x, y, z);
+
+                // Read normals if available
+                if header.has_normals {
+                    self.reader.read_exact(&mut buffer)?;
+                    let nx = f32::from_le_bytes(buffer) as f64;
+
+                    self.reader.read_exact(&mut buffer)?;
+                    let ny = f32::from_le_bytes(buffer) as f64;
+
+                    self.reader.read_exact(&mut buffer)?;
+                    let nz = f32::from_le_bytes(buffer) as f64;
+
+                    vertex.normal = Some([nx, ny, nz]);
+                }
+
+                // Read colors if available
+                if header.has_colors {
+                    let mut color_buffer = [0u8; 4];
+                    self.reader.read_exact(&mut color_buffer)?;
+                    let r = color_buffer[0] as f64 / 255.0;
+                    let g = color_buffer[1] as f64 / 255.0;
+                    let b = color_buffer[2] as f64 / 255.0;
+                    let a = color_buffer[3] as f64 / 255.0;
+
+                    vertex.color = Some([r, g, b, a]);
+                }
+            } else {
+                // Read ASCII format
+                let mut line = String::new();
+                self.reader.read_line(&mut line)?;
+                let parts: Vec<&str> = line.trim().split_whitespace().collect();
+
+                if parts.len() < 3 {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "Invalid vertex data",
+                    ));
+                }
+
+                let x = parts[0].parse().map_err(|_| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "Invalid vertex x coordinate",
+                    )
+                })?;
+
+                let y = parts[1].parse().map_err(|_| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "Invalid vertex y coordinate",
+                    )
+                })?;
+
+                let z = parts[2].parse().map_err(|_| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "Invalid vertex z coordinate",
+                    )
+                })?;
+
+                vertex.point = Point::new(x, y, z);
+
+                // Read normals if available
+                if header.has_normals && parts.len() >= 6 {
+                    let nx = parts[3].parse().map_err(|_| {
+                        std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            "Invalid vertex normal x component",
+                        )
+                    })?;
+
+                    let ny = parts[4].parse().map_err(|_| {
+                        std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            "Invalid vertex normal y component",
+                        )
+                    })?;
+
+                    let nz = parts[5].parse().map_err(|_| {
+                        std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            "Invalid vertex normal z component",
+                        )
+                    })?;
+
+                    vertex.normal = Some([nx, ny, nz]);
+                }
+
+                // Read colors if available
+                if header.has_colors {
+                    let offset = if header.has_normals { 6 } else { 3 };
+                    if parts.len() >= offset + 4 {
+                        let r: u8 = parts[offset].parse().map_err(|_| {
+                            std::io::Error::new(
+                                std::io::ErrorKind::InvalidData,
+                                "Invalid vertex red color component",
+                            )
+                        })?;
+
+                        let g: u8 = parts[offset + 1].parse().map_err(|_| {
+                            std::io::Error::new(
+                                std::io::ErrorKind::InvalidData,
+                                "Invalid vertex green color component",
+                            )
+                        })?;
+
+                        let b: u8 = parts[offset + 2].parse().map_err(|_| {
+                            std::io::Error::new(
+                                std::io::ErrorKind::InvalidData,
+                                "Invalid vertex blue color component",
+                            )
+                        })?;
+
+                        let a: u8 = parts[offset + 3].parse().map_err(|_| {
+                            std::io::Error::new(
+                                std::io::ErrorKind::InvalidData,
+                                "Invalid vertex alpha color component",
+                            )
+                        })?;
+
+                        vertex.color = Some([
+                            r as f64 / 255.0,
+                            g as f64 / 255.0,
+                            b as f64 / 255.0,
+                            a as f64 / 255.0,
+                        ]);
+                    }
+                }
+            }
+
+            mesh.add_vertex(vertex.point);
+        }
+
+        Ok(())
+    }
+
+    /// Read faces
+    fn read_faces(
+        &mut self,
+        mesh: &mut Mesh3D,
+        header: &PlyHeaderInfo,
+    ) -> Result<(), std::io::Error> {
+        for _ in 0..header.face_count {
+            if self.binary {
+                // Read binary format
+                let mut count_buffer = [0u8; 1];
+                self.reader.read_exact(&mut count_buffer)?;
+                let count = count_buffer[0] as usize;
+
+                let mut vertices = Vec::with_capacity(count);
+                for _ in 0..count {
+                    let mut index_buffer = [0u8; 4];
+                    self.reader.read_exact(&mut index_buffer)?;
+                    let index = i32::from_le_bytes(index_buffer) as usize;
+                    vertices.push(index);
+                }
+
+                mesh.add_face(vertices);
+            } else {
+                // Read ASCII format
+                let mut line = String::new();
+                self.reader.read_line(&mut line)?;
+                let parts: Vec<&str> = line.trim().split_whitespace().collect();
+
+                if parts.is_empty() {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "Invalid face data",
+                    ));
+                }
+
+                let count = parts[0].parse().map_err(|_| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "Invalid face vertex count",
+                    )
+                })?;
+
+                if parts.len() < count + 1 {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "Insufficient face vertex indices",
+                    ));
+                }
+
+                let mut vertices = Vec::with_capacity(count);
+                for i in 1..=count {
+                    let index = parts[i].parse().map_err(|_| {
+                        std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            "Invalid face vertex index",
+                        )
+                    })?;
+                    vertices.push(index);
+                }
+
+                mesh.add_face(vertices);
+            }
+        }
+
+        Ok(())
     }
 }

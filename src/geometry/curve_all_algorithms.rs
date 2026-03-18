@@ -56,7 +56,9 @@ where
                 Some(prev) => Some(prev.join(bz)),
             };
         } else {
-            panic!("curve_join: not a BezierCurve2D");
+            // Skip non-BezierCurve2D curves instead of panicking
+            // This allows partial joins when some curves are incompatible
+            continue;
         }
     }
     result.unwrap_or_else(BezierCurve2D::default)

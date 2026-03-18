@@ -159,7 +159,7 @@ impl WasmCylinder {
     /// Create a cylinder
     #[wasm_bindgen(constructor)]
     pub fn new(radius: f64, height: f64) -> Self {
-        let solid = primitives::make_cylinder(radius, height, None, None);
+        let solid = primitives::make_cylinder(radius, height, None);
         Self {
             inner: Handle::new(std::sync::Arc::new(solid)),
             radius,
@@ -170,7 +170,7 @@ impl WasmCylinder {
     /// Create a cylinder at a specific position
     #[wasm_bindgen(js_name = at)]
     pub fn at(radius: f64, height: f64, position: &WasmPoint) -> Self {
-        let solid = primitives::make_cylinder(radius, height, Some(position.inner.clone()), None);
+        let solid = primitives::make_cylinder(radius, height, Some(position.inner.clone()));
         Self {
             inner: Handle::new(std::sync::Arc::new(solid)),
             radius,
@@ -226,7 +226,7 @@ impl WasmCone {
     /// Create a cone
     #[wasm_bindgen(constructor)]
     pub fn new(radius1: f64, radius2: f64, height: f64) -> Self {
-        let solid = primitives::make_cone(radius1, radius2, height, None, None);
+        let solid = primitives::make_cone(radius1, height, None);
         Self {
             inner: Handle::new(std::sync::Arc::new(solid)),
             radius1,

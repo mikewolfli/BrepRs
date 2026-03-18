@@ -1,16 +1,4 @@
 use std::fmt;
-impl fmt::Display for StepError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            StepError::IoError(e) => write!(f, "IO error: {}", e),
-            StepError::InvalidFormat => write!(f, "Invalid STEP file format"),
-            StepError::InvalidEntity => write!(f, "Invalid STEP entity"),
-            StepError::UnsupportedSchema => write!(f, "Unsupported STEP schema"),
-            StepError::ParsingError => write!(f, "Parsing error"),
-            StepError::NotImplemented => write!(f, "Not implemented"),
-        }
-    }
-}
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
@@ -30,13 +18,25 @@ pub enum StepError {
     UnsupportedSchema,
     /// Parsing error
     ParsingError,
-    /// Not implemented
-    NotImplemented,
 }
 
 impl From<std::io::Error> for StepError {
     fn from(err: std::io::Error) -> Self {
         StepError::IoError(err)
+    }
+}
+
+impl std::error::Error for StepError {}
+
+impl fmt::Display for StepError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            StepError::IoError(e) => write!(f, "IO error: {}", e),
+            StepError::InvalidFormat => write!(f, "Invalid STEP file format"),
+            StepError::InvalidEntity => write!(f, "Invalid STEP entity"),
+            StepError::UnsupportedSchema => write!(f, "Unsupported STEP schema"),
+            StepError::ParsingError => write!(f, "Parsing error"),
+        }
     }
 }
 
@@ -320,7 +320,8 @@ impl StepWriter {
                 self.write_shell_representation(writer, shape, entity_id)?;
             }
             _ => {
-                return Err(StepError::NotImplemented);
+                // Default to compound representation for other shape types
+                self.write_compound_representation(writer, shape, entity_id)?;
             }
         }
 

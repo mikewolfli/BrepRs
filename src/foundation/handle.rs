@@ -123,6 +123,23 @@ impl<T: ?Sized> Handle<T> {
             None => None,
         }
     }
+
+    #[inline]
+    pub fn into_inner(self) -> T
+    where
+        T: Sized,
+    {
+        match self.inner {
+            Some(arc) => {
+                let ptr = Arc::as_ptr(&arc);
+                unsafe {
+                    std::mem::forget(arc);
+                    ptr.read()
+                }
+            }
+            None => panic!("Cannot extract inner value from null handle"),
+        }
+    }
 }
 
 // Provide as_any for Handle<T> where T: Any + 'static

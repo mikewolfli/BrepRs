@@ -27,6 +27,8 @@
 pub mod ai_ml;
 pub mod api;
 pub mod application;
+pub mod benchmarking;
+pub mod build;
 pub mod cloud;
 pub mod collections;
 pub mod data_exchange;
@@ -35,8 +37,10 @@ pub mod geometry;
 pub mod gpu;
 pub mod mesh;
 pub mod modeling;
+pub mod plugin;
 pub mod plugins;
 pub mod simulation;
+pub mod surface;
 pub mod topology;
 pub mod visualization;
 

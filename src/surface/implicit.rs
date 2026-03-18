@@ -1,28 +1,108 @@
 //! Implicit surfaces module
-//! 
+//!
 //! This module provides surfaces defined by mathematical equations,
 //! including various implicit surface types and mesh generation.
 
 use crate::geometry::{Point, Vector};
-use crate::mesh::mesh_data::{Mesh3D, Vertex};
+use crate::mesh::mesh_data::{Mesh3D, MeshVertex};
 
 /// Implicit surface type
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum ImplicitSurfaceType {
     /// Sphere: (x-cx)^2 + (y-cy)^2 + (z-cz)^2 = r^2
     Sphere { center: Point, radius: f64 },
     /// Ellipsoid: (x-cx)^2/a^2 + (y-cy)^2/b^2 + (z-cz)^2/c^2 = 1
-    Ellipsoid { center: Point, radii: (f64, f64, f64) },
+    Ellipsoid {
+        center: Point,
+        radii: (f64, f64, f64),
+    },
     /// Cylinder: (x-cx)^2 + (y-cy)^2 = r^2, bounded in z
-    Cylinder { center: Point, radius: f64, height: f64, axis: Vector },
+    Cylinder {
+        center: Point,
+        radius: f64,
+        height: f64,
+        axis: Vector,
+    },
     /// Cone: sqrt((x-cx)^2 + (y-cy)^2) = r * (z-cz)/h
-    Cone { apex: Point, radius: f64, height: f64, axis: Vector },
+    Cone {
+        apex: Point,
+        radius: f64,
+        height: f64,
+        axis: Vector,
+    },
     /// Torus: (sqrt((x-cx)^2 + (y-cy)^2) - R)^2 + (z-cz)^2 = r^2
-    Torus { center: Point, major_radius: f64, minor_radius: f64, axis: Vector },
+    Torus {
+        center: Point,
+        major_radius: f64,
+        minor_radius: f64,
+        axis: Vector,
+    },
     /// Metaballs: Sum of radial basis functions
-    Metaballs { centers: Vec<Point>, radii: Vec<f64>, threshold: f64 },
+    Metaballs {
+        centers: Vec<Point>,
+        radii: Vec<f64>,
+        threshold: f64,
+    },
     /// Custom implicit surface
-    Custom(Box<dyn Fn(&Point) -> f64 + Send + Sync>),
+    Custom(Box<dyn Fn(&Point) -> f64 + Send + Sync + Clone>),
+}
+
+impl Clone for ImplicitSurfaceType {
+    fn clone(&self) -> Self {
+        match self {
+            ImplicitSurfaceType::Sphere { center, radius } => ImplicitSurfaceType::Sphere {
+                center: center.clone(),
+                radius: *radius,
+            },
+            ImplicitSurfaceType::Ellipsoid { center, radii } => ImplicitSurfaceType::Ellipsoid {
+                center: center.clone(),
+                radii: *radii,
+            },
+            ImplicitSurfaceType::Cylinder {
+                center,
+                radius,
+                height,
+                axis,
+            } => ImplicitSurfaceType::Cylinder {
+                center: center.clone(),
+                radius: *radius,
+                height: *height,
+                axis: axis.clone(),
+            },
+            ImplicitSurfaceType::Cone {
+                apex,
+                radius,
+                height,
+                axis,
+            } => ImplicitSurfaceType::Cone {
+                apex: apex.clone(),
+                radius: *radius,
+                height: *height,
+                axis: axis.clone(),
+            },
+            ImplicitSurfaceType::Torus {
+                center,
+                major_radius,
+                minor_radius,
+                axis,
+            } => ImplicitSurfaceType::Torus {
+                center: center.clone(),
+                major_radius: *major_radius,
+                minor_radius: *minor_radius,
+                axis: axis.clone(),
+            },
+            ImplicitSurfaceType::Metaballs {
+                centers,
+                radii,
+                threshold,
+            } => ImplicitSurfaceType::Metaballs {
+                centers: centers.clone(),
+                radii: radii.clone(),
+                threshold: *threshold,
+            },
+            ImplicitSurfaceType::Custom(f) => ImplicitSurfaceType::Custom(f.clone()),
+        }
+    }
 }
 
 /// Implicit surface parameters
@@ -80,24 +160,36 @@ impl ImplicitSurface {
                 let dz = (point.z - center.z) / radii.2;
                 dx * dx + dy * dy + dz * dz - 1.0
             }
-            ImplicitSurfaceType::Cylinder { center, radius, height, axis } => {
-                let vec = point - center;
-                let axis_normalized = axis.normalize();
+            ImplicitSurfaceType::Cylinder {
+                center,
+                radius,
+                height,
+                axis,
+            } => {
+                let vec = Vector::from_point(&point, &center);
+                let mut axis_normalized = axis.clone();
+                axis_normalized.normalize();
                 let parallel = vec.dot(&axis_normalized);
                 let perp = vec - axis_normalized * parallel;
-                
+
                 if parallel.abs() > height / 2.0 {
                     parallel.abs() - height / 2.0
                 } else {
-                    perp.length() - radius
+                    perp.magnitude() - radius
                 }
             }
-            ImplicitSurfaceType::Cone { apex, radius, height, axis } => {
-                let vec = point - apex;
-                let axis_normalized = axis.normalize();
+            ImplicitSurfaceType::Cone {
+                apex,
+                radius,
+                height,
+                axis,
+            } => {
+                let vec = Vector::from_point(&point, &apex);
+                let mut axis_normalized = axis.clone();
+                axis_normalized.normalize();
                 let parallel = vec.dot(&axis_normalized);
                 let perp = vec - axis_normalized * parallel;
-                
+
                 if parallel < 0.0 || parallel > height {
                     if parallel < 0.0 {
                         -parallel
@@ -106,19 +198,29 @@ impl ImplicitSurface {
                     }
                 } else {
                     let expected_radius = radius * parallel / height;
-                    perp.length() - expected_radius
+                    perp.magnitude() - expected_radius
                 }
             }
-            ImplicitSurfaceType::Torus { center, major_radius, minor_radius, axis } => {
-                let vec = point - center;
-                let axis_normalized = axis.normalize();
+            ImplicitSurfaceType::Torus {
+                center,
+                major_radius,
+                minor_radius,
+                axis,
+            } => {
+                let vec = Vector::from_point(&point, &center);
+                let mut axis_normalized = axis.clone();
+                axis_normalized.normalize();
                 let parallel = vec.dot(&axis_normalized);
                 let perp = vec - axis_normalized * parallel;
-                
-                let dist_from_major = perp.length() - major_radius;
+
+                let dist_from_major = perp.magnitude() - major_radius;
                 (dist_from_major * dist_from_major + parallel * parallel).sqrt() - minor_radius
             }
-            ImplicitSurfaceType::Metaballs { centers, radii, threshold } => {
+            ImplicitSurfaceType::Metaballs {
+                centers,
+                radii,
+                threshold,
+            } => {
                 let mut sum = 0.0;
                 for (center, radius) in centers.iter().zip(radii.iter()) {
                     let dist = point.distance(center);
@@ -136,16 +238,12 @@ impl ImplicitSurface {
     pub fn gradient(&self, point: &Point) -> Vector {
         let epsilon = 1e-6;
         let f = self.evaluate(point);
-        
+
         let fx = self.evaluate(&Point::new(point.x + epsilon, point.y, point.z));
         let fy = self.evaluate(&Point::new(point.x, point.y + epsilon, point.z));
         let fz = self.evaluate(&Point::new(point.x, point.y, point.z + epsilon));
-        
-        Vector::new(
-            (fx - f) / epsilon,
-            (fy - f) / epsilon,
-            (fz - f) / epsilon,
-        )
+
+        Vector::new((fx - f) / epsilon, (fy - f) / epsilon, (fz - f) / epsilon)
     }
 
     /// Generate mesh from implicit surface using marching cubes
@@ -162,47 +260,37 @@ impl ImplicitSurface {
         let mut mesh = Mesh3D::new();
         let (min, max) = self.params.bounds;
         let resolution = self.params.resolution;
-        
+
         let dx = (max.x - min.x) / resolution as f64;
         let dy = (max.y - min.y) / resolution as f64;
         let dz = (max.z - min.z) / resolution as f64;
-        
+
         // Marching cubes lookup table
         let edge_table = [
-            0x0, 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
-            0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
-            0x190, 0x99, 0x393, 0x29a, 0x596, 0x49f, 0x795, 0x69c,
-            0x99c, 0x895, 0xb9f, 0xa96, 0xd9a, 0xc93, 0xf99, 0xe90,
-            0x230, 0x339, 0x33, 0x13a, 0x636, 0x73f, 0x435, 0x53c,
-            0xa3c, 0xb35, 0x83f, 0x936, 0xe3a, 0xf33, 0xc39, 0xd30,
-            0x3a0, 0x2a9, 0x1a3, 0xaa, 0x7a6, 0x6af, 0x5a5, 0x4ac,
-            0xbac, 0xaa5, 0x9af, 0x8a6, 0xfaa, 0xea3, 0xda9, 0xca0,
-            0x460, 0x569, 0x663, 0x76a, 0x66, 0x16f, 0x265, 0x36c,
-            0xc6c, 0xd65, 0xe6f, 0xf66, 0x86a, 0x963, 0xa69, 0xb60,
-            0x5f0, 0x4f9, 0x7f3, 0x6fa, 0x1f6, 0xff, 0x3f5, 0x2fc,
-            0xdfc, 0xcf5, 0xfff, 0xef6, 0x9fa, 0x8f3, 0xbf9, 0xaf0,
-            0x650, 0x759, 0x453, 0x55a, 0x256, 0x35f, 0x55, 0x15c,
-            0xe5c, 0xf55, 0xc5f, 0xd56, 0xa5a, 0xb53, 0x859, 0x950,
-            0x7c0, 0x6c9, 0x5c3, 0x4ca, 0x3c6, 0x2cf, 0x1c5, 0xcc,
-            0xfcc, 0xec5, 0xdcf, 0xcc6, 0xbca, 0xac3, 0x9c9, 0x8c0,
-            0x8c0, 0x9c9, 0xac3, 0xbca, 0xcc6, 0xdcf, 0xec5, 0xfcc,
-            0xcc, 0x1c5, 0x2cf, 0x3c6, 0x4ca, 0x5c3, 0x6c9, 0x7c0,
-            0x950, 0x859, 0xb53, 0xa5a, 0xd56, 0xc5f, 0xf55, 0xe5c,
-            0x15c, 0x55, 0x35f, 0x256, 0x55a, 0x453, 0x759, 0x650,
-            0xaf0, 0xbf9, 0x8f3, 0x9fa, 0xef6, 0xfff, 0xcf5, 0xdfc,
-            0x2fc, 0x3f5, 0xff, 0x1f6, 0x6fa, 0x7f3, 0x4f9, 0x5f0,
-            0xb60, 0xa69, 0x963, 0x86a, 0xf66, 0xe6f, 0xd65, 0xc6c,
-            0x36c, 0x265, 0x16f, 0x66, 0x76a, 0x663, 0x569, 0x460,
-            0xca0, 0xda9, 0xea3, 0xfaa, 0x8a6, 0x9af, 0xaa5, 0xbac,
-            0x4ac, 0x5a5, 0x6af, 0x7a6, 0xaa, 0x1a3, 0x2a9, 0x3a0,
-            0xd30, 0xc39, 0xf33, 0xe3a, 0x936, 0x83f, 0xb35, 0xa3c,
-            0x53c, 0x435, 0x73f, 0x636, 0x13a, 0x33, 0x339, 0x230,
-            0xe90, 0xf99, 0xc93, 0xd9a, 0xa96, 0xb9f, 0x895, 0x99c,
-            0x69c, 0x795, 0x49f, 0x596, 0x29a, 0x393, 0x99, 0x190,
-            0xf00, 0xe09, 0xd03, 0xc0a, 0xb06, 0xa0f, 0x905, 0x80c,
-            0x70c, 0x605, 0x50f, 0x406, 0x30a, 0x203, 0x109, 0x0,
+            0x0, 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c, 0x80c, 0x905, 0xa0f, 0xb06,
+            0xc0a, 0xd03, 0xe09, 0xf00, 0x190, 0x99, 0x393, 0x29a, 0x596, 0x49f, 0x795, 0x69c,
+            0x99c, 0x895, 0xb9f, 0xa96, 0xd9a, 0xc93, 0xf99, 0xe90, 0x230, 0x339, 0x33, 0x13a,
+            0x636, 0x73f, 0x435, 0x53c, 0xa3c, 0xb35, 0x83f, 0x936, 0xe3a, 0xf33, 0xc39, 0xd30,
+            0x3a0, 0x2a9, 0x1a3, 0xaa, 0x7a6, 0x6af, 0x5a5, 0x4ac, 0xbac, 0xaa5, 0x9af, 0x8a6,
+            0xfaa, 0xea3, 0xda9, 0xca0, 0x460, 0x569, 0x663, 0x76a, 0x66, 0x16f, 0x265, 0x36c,
+            0xc6c, 0xd65, 0xe6f, 0xf66, 0x86a, 0x963, 0xa69, 0xb60, 0x5f0, 0x4f9, 0x7f3, 0x6fa,
+            0x1f6, 0xff, 0x3f5, 0x2fc, 0xdfc, 0xcf5, 0xfff, 0xef6, 0x9fa, 0x8f3, 0xbf9, 0xaf0,
+            0x650, 0x759, 0x453, 0x55a, 0x256, 0x35f, 0x55, 0x15c, 0xe5c, 0xf55, 0xc5f, 0xd56,
+            0xa5a, 0xb53, 0x859, 0x950, 0x7c0, 0x6c9, 0x5c3, 0x4ca, 0x3c6, 0x2cf, 0x1c5, 0xcc,
+            0xfcc, 0xec5, 0xdcf, 0xcc6, 0xbca, 0xac3, 0x9c9, 0x8c0, 0x8c0, 0x9c9, 0xac3, 0xbca,
+            0xcc6, 0xdcf, 0xec5, 0xfcc, 0xcc, 0x1c5, 0x2cf, 0x3c6, 0x4ca, 0x5c3, 0x6c9, 0x7c0,
+            0x950, 0x859, 0xb53, 0xa5a, 0xd56, 0xc5f, 0xf55, 0xe5c, 0x15c, 0x55, 0x35f, 0x256,
+            0x55a, 0x453, 0x759, 0x650, 0xaf0, 0xbf9, 0x8f3, 0x9fa, 0xef6, 0xfff, 0xcf5, 0xdfc,
+            0x2fc, 0x3f5, 0xff, 0x1f6, 0x6fa, 0x7f3, 0x4f9, 0x5f0, 0xb60, 0xa69, 0x963, 0x86a,
+            0xf66, 0xe6f, 0xd65, 0xc6c, 0x36c, 0x265, 0x16f, 0x66, 0x76a, 0x663, 0x569, 0x460,
+            0xca0, 0xda9, 0xea3, 0xfaa, 0x8a6, 0x9af, 0xaa5, 0xbac, 0x4ac, 0x5a5, 0x6af, 0x7a6,
+            0xaa, 0x1a3, 0x2a9, 0x3a0, 0xd30, 0xc39, 0xf33, 0xe3a, 0x936, 0x83f, 0xb35, 0xa3c,
+            0x53c, 0x435, 0x73f, 0x636, 0x13a, 0x33, 0x339, 0x230, 0xe90, 0xf99, 0xc93, 0xd9a,
+            0xa96, 0xb9f, 0x895, 0x99c, 0x69c, 0x795, 0x49f, 0x596, 0x29a, 0x393, 0x99, 0x190,
+            0xf00, 0xe09, 0xd03, 0xc0a, 0xb06, 0xa0f, 0x905, 0x80c, 0x70c, 0x605, 0x50f, 0x406,
+            0x30a, 0x203, 0x109, 0x0,
         ];
-        
+
         let tri_table = [
             [-1],
             [0, 8, 3, -1],
@@ -461,7 +549,7 @@ impl ImplicitSurface {
             [0, 3, 8, -1],
             [-1],
         ];
-        
+
         // Process each cell
         for i in 0..resolution {
             for j in 0..resolution {
@@ -469,7 +557,7 @@ impl ImplicitSurface {
                     let x = min.x + i as f64 * dx;
                     let y = min.y + j as f64 * dy;
                     let z = min.z + k as f64 * dz;
-                    
+
                     // Evaluate at cell corners
                     let corners = [
                         Point::new(x, y, z),
@@ -481,9 +569,9 @@ impl ImplicitSurface {
                         Point::new(x + dx, y + dy, z + dz),
                         Point::new(x, y + dy, z + dz),
                     ];
-                    
+
                     let values: Vec<f64> = corners.iter().map(|p| self.evaluate(p)).collect();
-                    
+
                     // Calculate cube index
                     let mut cube_index = 0;
                     for (idx, &val) in values.iter().enumerate() {
@@ -491,14 +579,14 @@ impl ImplicitSurface {
                             cube_index |= 1 << idx;
                         }
                     }
-                    
+
                     if cube_index == 0 || cube_index == 255 {
                         continue;
                     }
-                    
+
                     // Get triangulation for this cube
                     let tri = tri_table[cube_index];
-                    
+
                     // Interpolate vertices on edges
                     let mut vertices = Vec::new();
                     let mut idx = 0;
@@ -506,39 +594,39 @@ impl ImplicitSurface {
                         let edge = tri[idx] as usize;
                         let v0 = edge / 2;
                         let v1 = if edge % 2 == 0 { v0 + 1 } else { v0 + 2 };
-                        
+
                         let p0 = &corners[v0];
                         let p1 = &corners[v1];
                         let val0 = values[v0];
                         let val1 = values[v1];
-                        
+
                         let t = val0 / (val0 - val1);
                         let point = Point::new(
                             p0.x + t * (p1.x - p0.x),
                             p0.y + t * (p1.y - p0.y),
                             p0.z + t * (p1.z - p0.z),
                         );
-                        
+
                         let normal = self.gradient(&point).normalize();
                         vertices.push((point, normal));
-                        
+
                         idx += 1;
                     }
-                    
+
                     // Create triangles
                     for tri_idx in (0..vertices.len()).step_by(3) {
                         if tri_idx + 2 < vertices.len() {
-                            let v0 = mesh.add_vertex(vertices[tri_idx].0, vertices[tri_idx].1);
-                            let v1 = mesh.add_vertex(vertices[tri_idx + 1].0, vertices[tri_idx + 1].1);
-                            let v2 = mesh.add_vertex(vertices[tri_idx + 2].0, vertices[tri_idx + 2].1);
-                            
+                            let v0 = mesh.add_vertex(vertices[tri_idx].0);
+                            let v1 = mesh.add_vertex(vertices[tri_idx + 1].0);
+                            let v2 = mesh.add_vertex(vertices[tri_idx + 2].0);
+
                             mesh.add_tetrahedron(v0, v1, v2, v0);
                         }
                     }
                 }
             }
         }
-        
+
         mesh
     }
 
@@ -573,15 +661,15 @@ mod tests {
             adaptive: false,
             min_cell_size: 0.01,
         };
-        
+
         let surface = ImplicitSurface::new(params);
-        
+
         let origin = Point::origin();
         assert_eq!(surface.evaluate(&origin), -1.0);
-        
+
         let on_surface = Point::new(1.0, 0.0, 0.0);
         assert_eq!(surface.evaluate(&on_surface), 0.0);
-        
+
         let outside = Point::new(2.0, 0.0, 0.0);
         assert_eq!(surface.evaluate(&outside), 1.0);
     }
@@ -598,9 +686,9 @@ mod tests {
             adaptive: false,
             min_cell_size: 0.01,
         };
-        
+
         let surface = ImplicitSurface::new(params);
-        
+
         let origin = Point::origin();
         assert_eq!(surface.evaluate(&origin), -1.0);
     }
@@ -609,10 +697,7 @@ mod tests {
     fn test_metaballs() {
         let params = ImplicitSurfaceParams {
             surface_type: ImplicitSurfaceType::Metaballs {
-                centers: vec![
-                    Point::new(0.0, 0.0, 0.0),
-                    Point::new(1.0, 0.0, 0.0),
-                ],
+                centers: vec![Point::new(0.0, 0.0, 0.0), Point::new(1.0, 0.0, 0.0)],
                 radii: vec![1.0, 1.0],
                 threshold: 0.5,
             },
@@ -621,9 +706,9 @@ mod tests {
             adaptive: false,
             min_cell_size: 0.01,
         };
-        
+
         let surface = ImplicitSurface::new(params);
-        
+
         let origin = Point::origin();
         let value = surface.evaluate(&origin);
         assert!(value < 0.0);
@@ -641,12 +726,12 @@ mod tests {
             adaptive: false,
             min_cell_size: 0.01,
         };
-        
+
         let surface = ImplicitSurface::new(params);
-        
+
         let point = Point::new(1.0, 0.0, 0.0);
         let gradient = surface.gradient(&point);
-        
+
         assert!((gradient.x - 1.0).abs() < 0.1);
         assert!(gradient.y.abs() < 0.1);
         assert!(gradient.z.abs() < 0.1);
@@ -664,10 +749,10 @@ mod tests {
             adaptive: false,
             min_cell_size: 0.01,
         };
-        
+
         let surface = ImplicitSurface::new(params);
         let mesh = surface.generate_mesh();
-        
+
         assert!(mesh.vertices.len() > 0);
     }
 }

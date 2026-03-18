@@ -32,6 +32,7 @@ use thiserror::Error;
 pub mod fbx;
 pub mod gltf;
 pub mod iges;
+pub mod modern_formats;
 pub mod obj;
 pub mod ode;
 pub mod ply;
@@ -46,6 +47,7 @@ pub mod vtk;
 pub use fbx::*;
 pub use gltf::*;
 pub use iges::*;
+pub use modern_formats::*;
 pub use obj::*;
 pub use ode::*;
 pub use ply::*;
@@ -73,9 +75,6 @@ pub enum DataExchangeError {
 
     #[error("Parse error: {0}")]
     ParseError(String),
-
-    #[error("Not implemented: {0}")]
-    NotImplemented(String),
 
     #[error("Validation error: {0}")]
     ValidationError(String),

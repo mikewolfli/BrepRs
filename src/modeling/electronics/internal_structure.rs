@@ -205,7 +205,6 @@ impl ChipStructure {
             bond_wire.diameter / 2.0,
             length,
             Some(bond_wire.start),
-            Some(axis),
         );
         solid
     }
@@ -347,12 +346,8 @@ impl PcbInternalStructure {
 
         // Create via cylinder solid
         let center = via.position + Vector::new(0.0, 0.0, start_position + height / 2.0);
-        let via_solid = crate::modeling::primitives::make_cylinder(
-            via.pad_size / 2.0,
-            height,
-            Some(center),
-            None,
-        );
+        let via_solid =
+            crate::modeling::primitives::make_cylinder(via.pad_size / 2.0, height, Some(center));
         // Extract the first shell from the solid (if any)
         if let Some(shell_handle) = via_solid.shells().get(0) {
             return (**shell_handle).clone();

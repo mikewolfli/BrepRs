@@ -12,6 +12,7 @@ pub mod mesher3d;
 pub mod polygon_face;
 pub mod quad_mesher;
 pub mod quality;
+pub mod quality_repair;
 pub mod triangle_mesh;
 
 #[cfg(test)]
@@ -25,6 +26,7 @@ pub use mesher3d::*;
 pub use polygon_face::PolygonFace;
 pub use quad_mesher::*;
 pub use quality::*;
+pub use quality_repair::*;
 pub use triangle_mesh::TriangleMesh;
 
 use crate::foundation::handle::Handle;

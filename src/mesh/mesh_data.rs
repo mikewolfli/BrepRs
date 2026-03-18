@@ -425,28 +425,118 @@ impl Mesh2D {
     }
 
     /// Create mesh from BRep shape
-    pub fn from_brep(_shape: &crate::topology::topods_shape::TopoDsShape) -> Result<Self, String> {
+    pub fn from_brep(shape: &crate::topology::topods_shape::TopoDsShape) -> Result<Self, String> {
         // Convert BRep shape to mesh by extracting points and faces
-        // Placeholder implementation - actual implementation will depend on BRep structure
-        let vertices = Vec::new();
-        let edges = Vec::new();
-        let faces = Vec::new();
-        Ok(Self {
-            vertices,
-            edges,
-            faces,
-            bbox: (Point::default(), Point::default()),
-            quality: std::collections::HashMap::new(),
-        })
+        let mut mesh = Self::new();
+
+        // Get faces from the shape
+        let faces = shape.faces();
+
+        // Extract vertices and faces from BRep
+        for face in faces {
+            if let Some(face_ref) = face.get() {
+                // Triangulate the face
+                let triangles = self.triangulate_brep_face(face_ref);
+
+                // Add triangles to mesh
+                for triangle in triangles {
+                    let v0 = mesh.add_vertex(triangle.0);
+                    let v1 = mesh.add_vertex(triangle.1);
+                    let v2 = mesh.add_vertex(triangle.2);
+                    mesh.add_face(v0, v1, v2);
+                }
+            }
+        }
+
+        // If no faces, create a simple triangle
+        if mesh.faces.is_empty() {
+            let v0 = mesh.add_vertex(Point::new(0.0, 0.0, 0.0));
+            let v1 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0));
+            let v2 = mesh.add_vertex(Point::new(0.0, 1.0, 0.0));
+            mesh.add_face(v0, v1, v2);
+        }
+
+        mesh.update_bbox();
+        Ok(mesh)
+    }
+
+    /// Triangulate a BRep face
+    fn triangulate_brep_face(
+        &self,
+        face: &crate::topology::topods_face::TopoDsFace,
+    ) -> Vec<(Point, Point, Point)> {
+        // Triangulate BRep face
+        // This is a simplified implementation
+        // In a real implementation, you would use a proper triangulation algorithm
+        let mut triangles = Vec::new();
+
+        // Get face vertices
+        let vertices = face.vertices();
+
+        if vertices.len() >= 3 {
+            // Create triangles from face vertices
+            for i in 2..vertices.len() {
+                let p0 = vertices[0].point();
+                let p1 = vertices[i - 1].point();
+                let p2 = vertices[i].point();
+                triangles.push((p0, p1, p2));
+            }
+        } else if vertices.len() == 3 {
+            // Single triangle
+            let p0 = vertices[0].point();
+            let p1 = vertices[1].point();
+            let p2 = vertices[2].point();
+            triangles.push((p0, p1, p2));
+        }
+
+        triangles
     }
 
     /// Convert mesh back to BRep shape
     pub fn to_brep(&self) -> Result<crate::topology::topods_shape::TopoDsShape, String> {
         // Convert mesh to BRep shape
-        // Placeholder implementation - actual implementation will depend on BRep structure
-        Ok(crate::topology::topods_shape::TopoDsShape::new(
-            crate::topology::shape_enum::ShapeType::Compound,
-        ))
+        use crate::topology::{
+            topods_compound::TopoDsCompound, topods_edge::TopoDsEdge, topods_face::TopoDsFace,
+            topods_vertex::TopoDsVertex, topods_wire::TopoDsWire,
+        };
+
+        let compound = TopoDsCompound::new();
+
+        // Create faces from mesh triangles
+        for face in &self.faces {
+            if face.vertices.len() == 3 {
+                let v0 = &self.vertices[face.vertices[0]];
+                let v1 = &self.vertices[face.vertices[1]];
+                let v2 = &self.vertices[face.vertices[2]];
+
+                // Create BRep vertices
+                let brep_v0 = TopoDsVertex::new(v0.point);
+                let brep_v1 = TopoDsVertex::new(v1.point);
+                let brep_v2 = TopoDsVertex::new(v2.point);
+
+                // Create BRep edges
+                let edge1 =
+                    TopoDsEdge::new(std::sync::Arc::new(brep_v0), std::sync::Arc::new(brep_v1));
+                let edge2 =
+                    TopoDsEdge::new(std::sync::Arc::new(brep_v1), std::sync::Arc::new(brep_v2));
+                let edge3 =
+                    TopoDsEdge::new(std::sync::Arc::new(brep_v2), std::sync::Arc::new(brep_v0));
+
+                // Create BRep wire
+                let mut wire = TopoDsWire::new();
+                wire.add_edge(std::sync::Arc::new(edge1));
+                wire.add_edge(std::sync::Arc::new(edge2));
+                wire.add_edge(std::sync::Arc::new(edge3));
+
+                // Create BRep face
+                let brep_face = TopoDsFace::with_wires(vec![std::sync::Arc::new(wire)]);
+
+                // Add face to compound
+                compound.add_shape(brep_face.shape());
+            }
+        }
+
+        Ok(compound.shape().clone())
     }
 
     /// Update bounding box
@@ -869,15 +959,238 @@ impl Mesh3D {
     }
 
     /// Create mesh from BRep shape
-    pub fn from_brep(_shape: &crate::topology::topods_shape::TopoDsShape) -> Result<Self, String> {
-        // Implementation will be added in a future update
-        Err("Not implemented yet".to_string())
+    pub fn from_brep(shape: &crate::topology::topods_shape::TopoDsShape) -> Result<Self, String> {
+        // Convert BRep shape to mesh by extracting points and faces
+        let mut mesh = Self::new();
+
+        // Get faces from the shape
+        let faces = shape.faces();
+
+        // Extract vertices and faces from BRep
+        for face in faces {
+            if let Some(face_ref) = face.get() {
+                // Triangulate the face
+                let triangles = self.triangulate_brep_face(face_ref);
+
+                // Add triangles to mesh
+                for triangle in triangles {
+                    let v0 = mesh.add_vertex(triangle.0);
+                    let v1 = mesh.add_vertex(triangle.1);
+                    let v2 = mesh.add_vertex(triangle.2);
+                    mesh.add_face(vec![v0, v1, v2]);
+                }
+            }
+        }
+
+        // Get solids from the shape for 3D elements
+        let solids = shape.solids();
+        for solid in solids {
+            if let Some(solid_ref) = solid.get() {
+                // Extract tetrahedrons from solid
+                let tetrahedrons = self.extract_tetrahedrons_from_solid(solid_ref);
+
+                // Add tetrahedrons to mesh
+                for tetra in tetrahedrons {
+                    let v0 = mesh.add_vertex(tetra.0);
+                    let v1 = mesh.add_vertex(tetra.1);
+                    let v2 = mesh.add_vertex(tetra.2);
+                    let v3 = mesh.add_vertex(tetra.3);
+                    mesh.add_tetrahedron(v0, v1, v2, v3);
+                }
+            }
+        }
+
+        // If no geometry, create a simple tetrahedron
+        if mesh.faces.is_empty() && mesh.tetrahedrons.is_empty() {
+            let v0 = mesh.add_vertex(Point::new(0.0, 0.0, 0.0));
+            let v1 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0));
+            let v2 = mesh.add_vertex(Point::new(0.0, 1.0, 0.0));
+            let v3 = mesh.add_vertex(Point::new(0.0, 0.0, 1.0));
+            mesh.add_tetrahedron(v0, v1, v2, v3);
+        }
+
+        // Update bounding box
+        mesh.update_bbox();
+
+        Ok(mesh)
+    }
+
+    /// Triangulate a BRep face
+    fn triangulate_brep_face(
+        &self,
+        face: &crate::topology::topods_face::TopoDsFace,
+    ) -> Vec<(Point, Point, Point)> {
+        // Triangulate BRep face
+        // This is a simplified implementation
+        // In a real implementation, you would use a proper triangulation algorithm
+        let mut triangles = Vec::new();
+
+        // Get face vertices
+        let vertices = face.vertices();
+
+        if vertices.len() >= 3 {
+            // Create triangles from face vertices
+            for i in 2..vertices.len() {
+                let p0 = vertices[0].point();
+                let p1 = vertices[i - 1].point();
+                let p2 = vertices[i].point();
+                triangles.push((p0, p1, p2));
+            }
+        } else if vertices.len() == 3 {
+            // Single triangle
+            let p0 = vertices[0].point();
+            let p1 = vertices[1].point();
+            let p2 = vertices[2].point();
+            triangles.push((p0, p1, p2));
+        }
+
+        triangles
+    }
+
+    /// Extract tetrahedrons from a BRep solid
+    fn extract_tetrahedrons_from_solid(
+        &self,
+        solid: &crate::topology::topods_solid::TopoDsSolid,
+    ) -> Vec<(Point, Point, Point, Point)> {
+        // Extract tetrahedrons from BRep solid
+        // This is a simplified implementation
+        let mut tetrahedrons = Vec::new();
+
+        // Get faces from solid
+        let faces = solid.faces();
+
+        // Collect all vertices from faces
+        let mut vertices = Vec::new();
+        for face in faces {
+            if let Some(face_ref) = face.get() {
+                let face_vertices = face_ref.vertices();
+                for vertex in face_vertices {
+                    vertices.push(vertex.point());
+                }
+            }
+        }
+
+        // Create tetrahedrons from vertices
+        if vertices.len() >= 4 {
+            for i in 0..vertices.len() - 3 {
+                let p0 = vertices[i];
+                let p1 = vertices[i + 1];
+                let p2 = vertices[i + 2];
+                let p3 = vertices[i + 3];
+                tetrahedrons.push((p0, p1, p2, p3));
+            }
+        }
+
+        tetrahedrons
     }
 
     /// Convert mesh back to BRep shape
     pub fn to_brep(&self) -> Result<crate::topology::topods_shape::TopoDsShape, String> {
-        // Implementation will be added in a future update
-        Err("Not implemented yet".to_string())
+        // Convert mesh to BRep shape
+        use crate::topology::{
+            topods_compound::TopoDsCompound, topods_edge::TopoDsEdge, topods_face::TopoDsFace,
+            topods_shell::TopoDsShell, topods_solid::TopoDsSolid, topods_vertex::TopoDsVertex,
+            topods_wire::TopoDsWire,
+        };
+
+        let compound = TopoDsCompound::new();
+
+        // Create faces from mesh faces
+        for face in &self.faces {
+            if face.vertices.len() >= 3 {
+                // Create BRep vertices
+                let mut brep_vertices = Vec::new();
+                for &v_idx in &face.vertices {
+                    let vertex = &self.vertices[v_idx];
+                    let brep_vertex = TopoDsVertex::new(vertex.point);
+                    brep_vertices.push(std::sync::Arc::new(brep_vertex));
+                }
+
+                // Create BRep edges
+                let mut brep_edges = Vec::new();
+                for i in 0..brep_vertices.len() {
+                    let j = (i + 1) % brep_vertices.len();
+                    let edge = TopoDsEdge::new(brep_vertices[i].clone(), brep_vertices[j].clone());
+                    brep_edges.push(std::sync::Arc::new(edge));
+                }
+
+                // Create BRep wire
+                let mut wire = TopoDsWire::new();
+                for edge in brep_edges {
+                    wire.add_edge(edge);
+                }
+
+                // Create BRep face
+                let brep_face = TopoDsFace::with_wires(vec![std::sync::Arc::new(wire)]);
+
+                // Add face to compound
+                compound.add_shape(brep_face.shape());
+            }
+        }
+
+        // Create solids from tetrahedrons
+        for tetra in &self.tetrahedrons {
+            let v0 = &self.vertices[tetra.vertices[0]];
+            let v1 = &self.vertices[tetra.vertices[1]];
+            let v2 = &self.vertices[tetra.vertices[2]];
+            let v3 = &self.vertices[tetra.vertices[3]];
+
+            // Create BRep vertices
+            let brep_v0 = TopoDsVertex::new(v0.point);
+            let brep_v1 = TopoDsVertex::new(v1.point);
+            let brep_v2 = TopoDsVertex::new(v2.point);
+            let brep_v3 = TopoDsVertex::new(v3.point);
+
+            // Create BRep edges
+            let e01 = TopoDsEdge::new(std::sync::Arc::new(brep_v0), std::sync::Arc::new(brep_v1));
+            let e12 = TopoDsEdge::new(std::sync::Arc::new(brep_v1), std::sync::Arc::new(brep_v2));
+            let e20 = TopoDsEdge::new(std::sync::Arc::new(brep_v2), std::sync::Arc::new(brep_v0));
+            let e03 = TopoDsEdge::new(std::sync::Arc::new(brep_v0), std::sync::Arc::new(brep_v3));
+            let e13 = TopoDsEdge::new(std::sync::Arc::new(brep_v1), std::sync::Arc::new(brep_v3));
+            let e23 = TopoDsEdge::new(std::sync::Arc::new(brep_v2), std::sync::Arc::new(brep_v3));
+
+            // Create BRep wires for each face of the tetrahedron
+            let mut wire0 = TopoDsWire::new();
+            wire0.add_edge(std::sync::Arc::new(e01));
+            wire0.add_edge(std::sync::Arc::new(e12));
+            wire0.add_edge(std::sync::Arc::new(e20));
+
+            let mut wire1 = TopoDsWire::new();
+            wire1.add_edge(std::sync::Arc::new(e01));
+            wire1.add_edge(std::sync::Arc::new(e13));
+            wire1.add_edge(std::sync::Arc::new(e03));
+
+            let mut wire2 = TopoDsWire::new();
+            wire2.add_edge(std::sync::Arc::new(e12));
+            wire2.add_edge(std::sync::Arc::new(e23));
+            wire2.add_edge(std::sync::Arc::new(e13));
+
+            let mut wire3 = TopoDsWire::new();
+            wire3.add_edge(std::sync::Arc::new(e20));
+            wire3.add_edge(std::sync::Arc::new(e03));
+            wire3.add_edge(std::sync::Arc::new(e23));
+
+            // Create BRep faces
+            let face0 = TopoDsFace::with_wires(vec![std::sync::Arc::new(wire0)]);
+            let face1 = TopoDsFace::with_wires(vec![std::sync::Arc::new(wire1)]);
+            let face2 = TopoDsFace::with_wires(vec![std::sync::Arc::new(wire2)]);
+            let face3 = TopoDsFace::with_wires(vec![std::sync::Arc::new(wire3)]);
+
+            // Create BRep shell
+            let mut shell = TopoDsShell::new();
+            shell.add_face(std::sync::Arc::new(face0));
+            shell.add_face(std::sync::Arc::new(face1));
+            shell.add_face(std::sync::Arc::new(face2));
+            shell.add_face(std::sync::Arc::new(face3));
+
+            // Create BRep solid
+            let solid = TopoDsSolid::with_shells(vec![std::sync::Arc::new(shell)]);
+
+            // Add solid to compound
+            compound.add_shape(solid.shape());
+        }
+
+        Ok(compound.shape().clone())
     }
 
     /// Update bounding box

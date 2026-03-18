@@ -1,3 +1,18 @@
+/**
+ * BSON Serialization Support
+ *
+ * This module provides BSON (Binary JSON) serialization/deserialization support.
+ * BSON is designed to be efficient in space, but in many cases is not much more
+ * efficient than JSON. In some cases BSON uses even more space than JSON.
+ */
+#[cfg(feature = "serde")]
+use bson::{de, doc, ser, Bson, Document};
+
+#[cfg(not(feature = "serde"))]
+use bson::{doc, Bson};
+
+use serde::{Deserialize, Serialize};
+
 /// Flatten BSON document to key-value pairs
 pub fn flatten_bson_doc(doc: &bson::Document) -> Vec<(String, String)> {
     doc.iter()
@@ -155,15 +170,6 @@ pub fn validate_bson_fields(doc: &bson::Document, required: &[&str]) -> Result<(
         Err(missing)
     }
 }
-/**
- * BSON Serialization Support
- *
- * This module provides BSON (Binary JSON) serialization/deserialization support.
- * BSON is designed to be efficient in space, but in many cases is not much more
- * efficient than JSON. In some cases BSON uses even more space than JSON.
- */
-use bson::{doc, Bson};
-use serde::{Deserialize, Serialize};
 
 /// BSON compression options
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -176,9 +182,6 @@ pub enum BsonCompression {
 /// BSON error types
 #[derive(Debug, thiserror::Error)]
 pub enum BsonError {
-    #[error("BSON serialization not implemented")]
-    NotImplemented,
-
     #[error("Invalid BSON data: {0}")]
     InvalidData(String),
 
@@ -244,10 +247,20 @@ pub fn to_bson<T: Serialize>(_value: &T) -> Result<Vec<u8>, BsonError> {
 
 /// Deserialize from BSON bytes
 pub fn from_bson<T: for<'de> Deserialize<'de>>(_bytes: &[u8]) -> Result<T, BsonError> {
-    // Manual mapping required: stub
-    Err(BsonError::DeserializationError(
-        "Manual mapping required".to_string(),
-    ))
+    #[cfg(feature = "serde")]
+    {
+        // Real implementation using bson crate
+        let value =
+            de::from_slice(_bytes).map_err(|e| BsonError::DeserializationError(e.to_string()))?;
+        Ok(value)
+    }
+
+    #[cfg(not(feature = "serde"))]
+    {
+        Err(BsonError::NotImplemented(
+            "BSON deserialization requires serde feature".to_string(),
+        ))
+    }
 }
 
 /// BSON reader for streaming deserialization
@@ -265,18 +278,39 @@ impl<R: std::io::Read> BsonReader<R> {
     }
 
     pub fn read_document<T: for<'de> Deserialize<'de>>(&mut self) -> Result<Option<T>, BsonError> {
-        // Real implementation
-        let mut buf = Vec::new();
-        self.reader
-            .read_to_end(&mut buf)
-            .map_err(|e| BsonError::DeserializationError(e.to_string()))?;
-        if buf.is_empty() {
-            Ok(None)
-        } else {
-            let doc = serde_json::from_slice(&buf)
-                .map_err(|e| BsonError::DeserializationError(e.to_string()))?;
-            self.document_count += 1;
-            Ok(Some(doc))
+        // Read document size (4 bytes, little-endian)
+        let mut size_buf = [0u8; 4];
+        match self.reader.read_exact(&mut size_buf) {
+            Ok(_) => {
+                let size = u32::from_le_bytes(size_buf) as usize;
+                if size < 4 {
+                    return Err(BsonError::InvalidData(
+                        "Invalid BSON document size".to_string(),
+                    ));
+                }
+
+                // Read entire document
+                let mut doc_buf = vec![0u8; size];
+                doc_buf[0..4].copy_from_slice(&size_buf);
+                self.reader
+                    .read_exact(&mut doc_buf[4..])
+                    .map_err(|e| BsonError::DeserializationError(e.to_string()))?;
+
+                // Deserialize document
+                #[cfg(feature = "serde")]
+                let value = de::from_slice(&doc_buf)
+                    .map_err(|e| BsonError::DeserializationError(e.to_string()))?;
+
+                #[cfg(not(feature = "serde"))]
+                return Err(BsonError::NotImplemented(
+                    "BSON deserialization requires serde feature".to_string(),
+                ));
+
+                self.document_count += 1;
+                Ok(Some(value))
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => Ok(None),
+            Err(e) => Err(BsonError::DeserializationError(e.to_string())),
         }
     }
 
@@ -286,29 +320,56 @@ impl<R: std::io::Read> BsonReader<R> {
 }
 
 /// Convert any serializable value to BSON Document
-pub fn to_bson_document<T: Serialize>(value: &T) -> Result<bson::Document, BsonError> {
-    let json =
-        serde_json::to_string(value).map_err(|e| BsonError::SerializationError(e.to_string()))?;
-    let doc = bson::Document::from_reader(json.as_bytes())
-        .map_err(|e| BsonError::SerializationError(e.to_string()))?;
-    Ok(doc)
+#[cfg(feature = "serde")]
+pub fn to_bson_document<T: Serialize>(value: &T) -> Result<Document, BsonError> {
+    // Use ser::to_bson and convert to Document
+    match ser::to_bson(value).map_err(|e| BsonError::SerializationError(e.to_string()))? {
+        Bson::Document(doc) => Ok(doc),
+        _ => Err(BsonError::SerializationError(
+            "Value is not a document".to_string(),
+        )),
+    }
+}
+
+#[cfg(not(feature = "serde"))]
+pub fn to_bson_document<T: Serialize>(_value: &T) -> Result<bson::Document, BsonError> {
+    Err(BsonError::NotImplemented(
+        "BSON serialization requires serde feature".to_string(),
+    ))
 }
 
 /// Serialize BSON document to binary
-pub fn serialize_bson(doc: &bson::Document) -> Result<Vec<u8>, BsonError> {
+#[cfg(feature = "serde")]
+pub fn serialize_bson(doc: &Document) -> Result<Vec<u8>, BsonError> {
     let mut buf = Vec::new();
     doc.to_writer(&mut buf)
         .map_err(|e| BsonError::SerializationError(e.to_string()))?;
     Ok(buf)
 }
 
+#[cfg(not(feature = "serde"))]
+pub fn serialize_bson(_doc: &bson::Document) -> Result<Vec<u8>, BsonError> {
+    Err(BsonError::NotImplemented(
+        "BSON serialization requires serde feature".to_string(),
+    ))
+}
+
 /// Deserialize BSON document from binary
-pub fn deserialize_bson(bytes: &[u8]) -> Result<bson::Document, BsonError> {
-    bson::Document::from_reader(bytes).map_err(|e| BsonError::DeserializationError(e.to_string()))
+#[cfg(feature = "serde")]
+pub fn deserialize_bson(bytes: &[u8]) -> Result<Document, BsonError> {
+    Document::from_reader(bytes).map_err(|e| BsonError::DeserializationError(e.to_string()))
+}
+
+#[cfg(not(feature = "serde"))]
+pub fn deserialize_bson(_bytes: &[u8]) -> Result<bson::Document, BsonError> {
+    Err(BsonError::NotImplemented(
+        "BSON deserialization requires serde feature".to_string(),
+    ))
 }
 
 /// Merge two BSON documents (shallow)
-pub fn merge_bson_docs(doc1: &bson::Document, doc2: &bson::Document) -> bson::Document {
+#[cfg(feature = "serde")]
+pub fn merge_bson_docs(doc1: &Document, doc2: &Document) -> Document {
     let mut merged = doc1.clone();
     for (k, v) in doc2.iter() {
         merged.insert(k.clone(), v.clone());
@@ -316,8 +377,14 @@ pub fn merge_bson_docs(doc1: &bson::Document, doc2: &bson::Document) -> bson::Do
     merged
 }
 
+#[cfg(not(feature = "serde"))]
+pub fn merge_bson_docs(_doc1: &bson::Document, _doc2: &bson::Document) -> bson::Document {
+    bson::Document::new()
+}
+
 /// Deep merge two BSON documents (recursive)
-pub fn deep_merge_bson_docs(doc1: &bson::Document, doc2: &bson::Document) -> bson::Document {
+#[cfg(feature = "serde")]
+pub fn deep_merge_bson_docs(doc1: &Document, doc2: &Document) -> Document {
     let mut merged = doc1.clone();
     for (k, v2) in doc2.iter() {
         if let Some(v1) = merged.get(k) {
@@ -331,8 +398,14 @@ pub fn deep_merge_bson_docs(doc1: &bson::Document, doc2: &bson::Document) -> bso
     merged
 }
 
+#[cfg(not(feature = "serde"))]
+pub fn deep_merge_bson_docs(_doc1: &bson::Document, _doc2: &bson::Document) -> bson::Document {
+    bson::Document::new()
+}
+
 /// Compute diff between two BSON documents (returns changed fields)
-pub fn diff_bson_docs(doc1: &bson::Document, doc2: &bson::Document) -> Vec<String> {
+#[cfg(feature = "serde")]
+pub fn diff_bson_docs(doc1: &Document, doc2: &Document) -> Vec<String> {
     let mut diffs = Vec::new();
     for (k, v2) in doc2.iter() {
         match doc1.get(k) {
@@ -348,13 +421,25 @@ pub fn diff_bson_docs(doc1: &bson::Document, doc2: &bson::Document) -> Vec<Strin
     diffs
 }
 
+#[cfg(not(feature = "serde"))]
+pub fn diff_bson_docs(_doc1: &bson::Document, _doc2: &bson::Document) -> Vec<String> {
+    Vec::new()
+}
+
 /// Extract a field from BSON document
-pub fn extract_bson_field(doc: &bson::Document, field: &str) -> Option<Bson> {
+#[cfg(feature = "serde")]
+pub fn extract_bson_field(doc: &Document, field: &str) -> Option<Bson> {
     doc.get(field).cloned()
 }
 
+#[cfg(not(feature = "serde"))]
+pub fn extract_bson_field(_doc: &bson::Document, _field: &str) -> Option<Bson> {
+    None
+}
+
 /// Extract nested field from BSON document (dot notation)
-pub fn extract_nested_bson_field(doc: &bson::Document, path: &str) -> Option<Bson> {
+#[cfg(feature = "serde")]
+pub fn extract_nested_bson_field(doc: &Document, path: &str) -> Option<Bson> {
     let mut current = Bson::Document(doc.clone());
     for key in path.split('.') {
         match current {
@@ -367,13 +452,25 @@ pub fn extract_nested_bson_field(doc: &bson::Document, path: &str) -> Option<Bso
     Some(current)
 }
 
+#[cfg(not(feature = "serde"))]
+pub fn extract_nested_bson_field(_doc: &bson::Document, _path: &str) -> Option<Bson> {
+    None
+}
+
 /// Remove a field from BSON document
-pub fn remove_bson_field(doc: &mut bson::Document, field: &str) -> bool {
+#[cfg(feature = "serde")]
+pub fn remove_bson_field(doc: &mut Document, field: &str) -> bool {
     doc.remove(field).is_some()
 }
 
+#[cfg(not(feature = "serde"))]
+pub fn remove_bson_field(_doc: &mut bson::Document, _field: &str) -> bool {
+    false
+}
+
 /// Rename a field in BSON document
-pub fn rename_bson_field(doc: &mut bson::Document, old: &str, new: &str) -> bool {
+#[cfg(feature = "serde")]
+pub fn rename_bson_field(doc: &mut Document, old: &str, new: &str) -> bool {
     if let Some(val) = doc.remove(old) {
         doc.insert(new.to_string(), val);
         true
@@ -382,9 +479,15 @@ pub fn rename_bson_field(doc: &mut bson::Document, old: &str, new: &str) -> bool
     }
 }
 
+#[cfg(not(feature = "serde"))]
+pub fn rename_bson_field(_doc: &mut bson::Document, _old: &str, _new: &str) -> bool {
+    false
+}
+
 /// Filter BSON document by allowed fields
-pub fn filter_bson_fields(doc: &bson::Document, allowed: &[&str]) -> bson::Document {
-    let mut filtered = bson::Document::new();
+#[cfg(feature = "serde")]
+pub fn filter_bson_fields(doc: &Document, allowed: &[&str]) -> Document {
+    let mut filtered = Document::new();
     for &field in allowed {
         if let Some(val) = doc.get(field) {
             filtered.insert(field.to_string(), val.clone());
@@ -393,15 +496,28 @@ pub fn filter_bson_fields(doc: &bson::Document, allowed: &[&str]) -> bson::Docum
     filtered
 }
 
+#[cfg(not(feature = "serde"))]
+pub fn filter_bson_fields(_doc: &bson::Document, _allowed: &[&str]) -> bson::Document {
+    bson::Document::new()
+}
+
 /// Validate BSON bytes
+#[cfg(feature = "serde")]
 pub fn validate_bson(bytes: &[u8]) -> Result<(), BsonError> {
-    bson::Document::from_reader(bytes)
-        .map_err(|e| BsonError::DeserializationError(e.to_string()))?;
+    Document::from_reader(bytes).map_err(|e| BsonError::DeserializationError(e.to_string()))?;
     Ok(())
 }
 
+#[cfg(not(feature = "serde"))]
+pub fn validate_bson(_bytes: &[u8]) -> Result<(), BsonError> {
+    Err(BsonError::NotImplemented(
+        "BSON validation requires serde feature".to_string(),
+    ))
+}
+
 /// Serialize array of BSON documents
-pub fn bson_array_to_bytes(docs: &[bson::Document]) -> Result<Vec<u8>, BsonError> {
+#[cfg(feature = "serde")]
+pub fn bson_array_to_bytes(docs: &[Document]) -> Result<Vec<u8>, BsonError> {
     let mut buf = Vec::new();
     for doc in docs {
         doc.to_writer(&mut buf)
@@ -410,17 +526,28 @@ pub fn bson_array_to_bytes(docs: &[bson::Document]) -> Result<Vec<u8>, BsonError
     Ok(buf)
 }
 
+#[cfg(not(feature = "serde"))]
+pub fn bson_array_to_bytes(_docs: &[bson::Document]) -> Result<Vec<u8>, BsonError> {
+    Err(BsonError::NotImplemented(
+        "BSON serialization requires serde feature".to_string(),
+    ))
+}
+
 /// Pretty-print BSON document
-pub fn pretty_print_bson(doc: &bson::Document) -> String {
+#[cfg(feature = "serde")]
+pub fn pretty_print_bson(doc: &Document) -> String {
     let bson = Bson::Document(doc.clone());
-    match bson.to_string() {
-        s if !s.is_empty() => s,
-        _ => "<invalid BSON>".to_string(),
-    }
+    format!("{:#?}", bson)
+}
+
+#[cfg(not(feature = "serde"))]
+pub fn pretty_print_bson(_doc: &bson::Document) -> String {
+    String::new()
 }
 
 /// Convert BSON document to JSON value
-pub fn bson_to_json(doc: &bson::Document) -> serde_json::Value {
+#[cfg(feature = "serde")]
+pub fn bson_to_json(doc: &Document) -> serde_json::Value {
     let bson = Bson::Document(doc.clone());
     match bson {
         Bson::Document(ref d) => {
@@ -434,7 +561,13 @@ pub fn bson_to_json(doc: &bson::Document) -> serde_json::Value {
     }
 }
 
+#[cfg(not(feature = "serde"))]
+pub fn bson_to_json(_doc: &bson::Document) -> serde_json::Value {
+    serde_json::Value::Null
+}
+
 /// Convert BSON value to JSON value
+#[cfg(feature = "serde")]
 pub fn bson_to_json_value(bson: &Bson) -> serde_json::Value {
     match bson {
         Bson::Double(f) => serde_json::Value::Number(
@@ -451,27 +584,50 @@ pub fn bson_to_json_value(bson: &Bson) -> serde_json::Value {
     }
 }
 
+#[cfg(not(feature = "serde"))]
+pub fn bson_to_json_value(_bson: &Bson) -> serde_json::Value {
+    serde_json::Value::Null
+}
+
 /// Stream BSON array deserialization
+#[cfg(feature = "serde")]
 pub fn stream_bson_array<R: std::io::Read>(
     reader: R,
-) -> impl Iterator<Item = Result<bson::Document, BsonError>> {
+) -> impl Iterator<Item = Result<Document, BsonError>> {
     let mut r = reader;
-    std::iter::from_fn(move || match bson::Document::from_reader(&mut r) {
+    std::iter::from_fn(move || match Document::from_reader(&mut r) {
         Ok(doc) => Some(Ok(doc)),
         Err(_) => None,
     })
 }
 
+#[cfg(not(feature = "serde"))]
+pub fn stream_bson_array<R: std::io::Read>(
+    _reader: R,
+) -> impl Iterator<Item = Result<bson::Document, BsonError>> {
+    std::iter::empty()
+}
+
 /// Deserialize array of BSON documents
-pub fn bytes_to_bson_array(bytes: &[u8]) -> Result<Vec<bson::Document>, BsonError> {
+#[cfg(feature = "serde")]
+pub fn bytes_to_bson_array(bytes: &[u8]) -> Result<Vec<Document>, BsonError> {
     let mut docs = Vec::new();
-    let slice = bytes;
+    let mut slice = bytes;
     while !slice.is_empty() {
-        match bson::Document::from_reader(slice) {
+        // Read document size
+        if slice.len() < 4 {
+            break;
+        }
+        let size = u32::from_le_bytes([slice[0], slice[1], slice[2], slice[3]]) as usize;
+        if slice.len() < size {
+            break;
+        }
+
+        // Parse document
+        match Document::from_reader(&slice[0..size]) {
             Ok(doc) => {
-                docs.push(doc.clone());
-                // Advance slice (not implemented here, placeholder)
-                break; // Remove this break if you implement proper slice advancement
+                docs.push(doc);
+                slice = &slice[size..];
             }
             Err(_) => break,
         }
@@ -479,8 +635,16 @@ pub fn bytes_to_bson_array(bytes: &[u8]) -> Result<Vec<bson::Document>, BsonErro
     Ok(docs)
 }
 
+#[cfg(not(feature = "serde"))]
+pub fn bytes_to_bson_array(_bytes: &[u8]) -> Result<Vec<bson::Document>, BsonError> {
+    Err(BsonError::NotImplemented(
+        "BSON deserialization requires serde feature".to_string(),
+    ))
+}
+
 /// Read metadata field from BSON document
-pub fn get_bson_metadata(doc: &bson::Document) -> Option<BsonMetadata> {
+#[cfg(feature = "serde")]
+pub fn get_bson_metadata(doc: &Document) -> Option<BsonMetadata> {
     doc.get("_meta").and_then(|v| {
         if let Bson::Document(meta_doc) = v {
             // You may need to manually map meta_doc to BsonMetadata
@@ -495,17 +659,29 @@ pub fn get_bson_metadata(doc: &bson::Document) -> Option<BsonMetadata> {
     })
 }
 
+#[cfg(not(feature = "serde"))]
+pub fn get_bson_metadata(_doc: &bson::Document) -> Option<BsonMetadata> {
+    None
+}
+
 /// Write metadata field to BSON document
-pub fn set_bson_metadata(doc: &mut bson::Document, meta: &BsonMetadata) {
-    let mut meta_doc = bson::Document::new();
+#[cfg(feature = "serde")]
+pub fn set_bson_metadata(doc: &mut Document, meta: &BsonMetadata) {
+    let mut meta_doc = Document::new();
     meta_doc.insert("version", meta.version as i32);
     meta_doc.insert("document_count", meta.document_count as i32);
     // Add compression if needed
     doc.insert("_meta", Bson::Document(meta_doc));
 }
 
+#[cfg(not(feature = "serde"))]
+pub fn set_bson_metadata(_doc: &mut bson::Document, _meta: &BsonMetadata) {
+    // Do nothing when serde is not enabled
+}
+
 /// Inspect the type of a field in a BSON document
-pub fn bson_field_type(doc: &bson::Document, field: &str) -> Option<&'static str> {
+#[cfg(feature = "serde")]
+pub fn bson_field_type(doc: &Document, field: &str) -> Option<&'static str> {
     doc.get(field).map(|v| match v {
         Bson::Double(_) => "Double",
         Bson::String(_) => "String",
@@ -524,6 +700,11 @@ pub fn bson_field_type(doc: &bson::Document, field: &str) -> Option<&'static str
         Bson::Decimal128(_) => "Decimal128",
         _ => "Other",
     })
+}
+
+#[cfg(not(feature = "serde"))]
+pub fn bson_field_type(_doc: &bson::Document, _field: &str) -> Option<&'static str> {
+    None
 }
 
 // ...existing code...

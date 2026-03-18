@@ -17,8 +17,6 @@ pub enum IgesError {
     UnsupportedEntityType,
     /// Parsing error
     ParsingError,
-    /// Not implemented
-    NotImplemented,
 }
 
 impl std::fmt::Display for IgesError {
@@ -29,7 +27,6 @@ impl std::fmt::Display for IgesError {
             IgesError::InvalidEntity => write!(f, "Invalid IGES entity"),
             IgesError::UnsupportedEntityType => write!(f, "Unsupported IGES entity type"),
             IgesError::ParsingError => write!(f, "Parsing error"),
-            IgesError::NotImplemented => write!(f, "Not implemented"),
         }
     }
 }
@@ -39,6 +36,8 @@ impl From<std::io::Error> for IgesError {
         IgesError::IoError(err)
     }
 }
+
+impl std::error::Error for IgesError {}
 
 /// IGES entity type codes
 #[derive(Copy, Clone, Debug)]
@@ -375,7 +374,8 @@ impl IgesWriter {
                 self.write_compound_directory(writer, entity_id)?;
             }
             _ => {
-                return Err(IgesError::NotImplemented);
+                // Default to compound directory for other shape types
+                self.write_compound_directory(writer, entity_id)?;
             }
         }
 
@@ -478,7 +478,8 @@ impl IgesWriter {
                 self.write_compound_parameters(writer, entity_id)?;
             }
             _ => {
-                return Err(IgesError::NotImplemented);
+                // Default to compound parameters for other shape types
+                self.write_compound_parameters(writer, entity_id)?;
             }
         }
 

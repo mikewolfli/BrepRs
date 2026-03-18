@@ -33,6 +33,7 @@ zip = "0.6"
 quick-xml = "0.31"
 log = "0.4"
 tempfile = "3.10"
+libloading = "0.8"
 
 
 # WebAssembly support
@@ -53,7 +54,7 @@ rand = { version = "0.9", features = ["std"] }
 lz4 = "1.28.1"
 zstd = "0.13.3"
 rmp-serde = "1.3.1"
-bson = "3.1.0"
+bson = { version = "3.1.0", features = ["serde"] }
 
 # ML Framework dependencies
 tch = { version = "0.14", optional = true }

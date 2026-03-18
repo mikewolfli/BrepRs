@@ -57,9 +57,6 @@ pub fn stream_msgpack<T: Serialize, W: std::io::Write>(value: &T, writer: W) -> 
 /// MessagePack error types
 #[derive(Debug, thiserror::Error)]
 pub enum MsgPackError {
-    #[error("MessagePack serialization not implemented")]
-    NotImplemented,
-
     #[error("MessagePack encoding error: {0}")]
     EncodingError(String),
 

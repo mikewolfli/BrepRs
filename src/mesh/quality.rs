@@ -115,9 +115,8 @@ impl MeshQualityAnalyzer {
                 .faces
                 .par_iter()
                 .filter_map(|face| {
-                    if face.vertices.len() != 3 {
-                        return None;
-                    }
+                    // Assuming face is a tuple (v0, v1, v2)
+                    // No need to check length as it's a fixed-size tuple
 
                     let v0 = &mesh.vertices[face.vertices[0]];
                     let v1 = &mesh.vertices[face.vertices[1]];

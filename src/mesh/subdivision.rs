@@ -1,9 +1,9 @@
 //! Mesh subdivision module
-//! 
+//!
 //! This module provides various mesh subdivision algorithms,
 //! including Loop subdivision, Catmull-Clark subdivision, and others.
 
-use super::mesh_data::{Mesh2D, Mesh3D, Vertex};
+use super::mesh_data::{Mesh2D, Mesh3D, MeshVertex};
 use crate::geometry::{Point, Vector};
 
 /// Subdivision algorithm type

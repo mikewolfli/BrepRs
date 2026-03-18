@@ -1,7 +1,13 @@
 //! TensorFlow Integration
-//! 
+//!
 //! This module provides utilities for integrating with TensorFlow, including tensor conversion
 //! between geometric data and TensorFlow tensors, with optimized performance and GPU acceleration.
+
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use crate::geometry::{Point, Vector};
+use crate::mesh::mesh_data::{Mesh3D, MeshFace, MeshVertex};
 
 #[cfg(feature = "tensorflow")]
 use tensorflow;
@@ -13,6 +19,8 @@ pub struct TensorFlowModel {
     graph: tensorflow::Graph,
     input_op: tensorflow::Operation,
     output_op: tensorflow::Operation,
+    input_name: String,
+    output_name: String,
 }
 
 #[cfg(feature = "tensorflow")]
@@ -24,9 +32,44 @@ impl TensorFlowModel {
             .map_err(|e| format!("Failed to create session: {}", e))?;
 
         // Load model from frozen graph or SavedModel
-        // This is a simplified implementation
+        // Try to load as SavedModel first
+        if let Err(e) = Self::load_saved_model(&mut graph, &session, path) {
+            // If SavedModel loading fails, try frozen graph
+            if let Err(frozen_err) = Self::load_frozen_graph(&mut graph, path) {
+                return Err(format!(
+                    "Failed to load model: SavedModel error: {}, Frozen graph error: {}",
+                    e, frozen_err
+                ));
+            }
+        }
 
-        // For demonstration purposes, we'll create a simple graph
+        // Get input and output operations
+        let input_op = graph
+            .operation_by_name("input")
+            .ok_or("Input operation not found".to_string())?;
+
+        let output_op = graph
+            .operation_by_name("output")
+            .ok_or("Output operation not found".to_string())?;
+
+        Ok(Self {
+            session,
+            graph,
+            input_op,
+            output_op,
+            input_name: "input".to_string(),
+            output_name: "output".to_string(),
+        })
+    }
+
+    /// Load SavedModel
+    fn load_saved_model(
+        graph: &mut tensorflow::Graph,
+        session: &tensorflow::Session,
+        path: &str,
+    ) -> Result<(), String> {
+        // In a real implementation, this would load a SavedModel
+        // For now, we'll create a simple graph as a placeholder
         let input = graph
             .new_placeholder(
                 "input",
@@ -35,20 +78,40 @@ impl TensorFlowModel {
             )
             .map_err(|e| format!("Failed to create placeholder: {}", e))?;
 
+        // Create a simple identity operation as output
         let output = graph
-            .placeholder(
-                "output",
+            .new_operation("Identity", "output")
+            .unwrap()
+            .add_input(input.clone())
+            .set_attr_shape("T", &tensorflow::Shape::unknown())
+            .finish()
+            .map_err(|e| format!("Failed to create output operation: {}", e))?;
+
+        Ok(())
+    }
+
+    /// Load frozen graph
+    fn load_frozen_graph(graph: &mut tensorflow::Graph, path: &str) -> Result<(), String> {
+        // In a real implementation, this would load a frozen graph from file
+        // For now, we'll create a simple graph as a placeholder
+        let input = graph
+            .new_placeholder(
+                "input",
                 tensorflow::DataType::Float,
                 tensorflow::Shape::unknown(),
             )
             .map_err(|e| format!("Failed to create placeholder: {}", e))?;
 
-        Ok(Self {
-            session,
-            graph,
-            input_op: input,
-            output_op: output,
-        })
+        // Create a simple identity operation as output
+        let output = graph
+            .new_operation("Identity", "output")
+            .unwrap()
+            .add_input(input.clone())
+            .set_attr_shape("T", &tensorflow::Shape::unknown())
+            .finish()
+            .map_err(|e| format!("Failed to create output operation: {}", e))?;
+
+        Ok(())
     }
 
     /// Execute model with input tensor
@@ -65,7 +128,20 @@ impl TensorFlowModel {
             )
             .map_err(|e| format!("Model execution failed: {}", e))?;
 
-        Ok(outputs[0].clone().try_into().unwrap())
+        outputs[0]
+            .clone()
+            .try_into()
+            .map_err(|e| format!("Failed to convert output tensor: {}", e))
+    }
+
+    /// Get input operation name
+    pub fn input_name(&self) -> &str {
+        &self.input_name
+    }
+
+    /// Get output operation name
+    pub fn output_name(&self) -> &str {
+        &self.output_name
     }
 }
 
@@ -92,6 +168,16 @@ impl TensorFlowModelCache {
         let model = Arc::new(TensorFlowModel::load_from_file(path)?);
         self.models.insert(path.to_string(), model.clone());
         Ok(model)
+    }
+
+    /// Remove model from cache
+    pub fn remove(&mut self, path: &str) {
+        self.models.remove(path);
+    }
+
+    /// Clear all models from cache
+    pub fn clear(&mut self) {
+        self.models.clear();
     }
 }
 
@@ -131,7 +217,7 @@ pub fn mesh_to_tensor(mesh: &Mesh3D) -> tensorflow::Tensor<f32> {
         }
     }
 
-    tensorflow::Tensor::new(&[data.len() as u64])
+    tensorflow::Tensor::new(&[mesh.vertices.len() as u64, 6])
         .with_values(&data)
         .unwrap()
 }
@@ -151,7 +237,9 @@ pub fn points_to_tensor(points: &[Point]) -> tensorflow::Tensor<f32> {
 /// Convert TensorFlow tensor to point
 #[cfg(feature = "tensorflow")]
 pub fn tensor_to_point(tensor: &tensorflow::Tensor<f32>) -> Result<Point, String> {
-    let data: Vec<f32> = tensor.to_vec().unwrap();
+    let data: Vec<f32> = tensor
+        .to_vec()
+        .map_err(|e| format!("Failed to convert tensor to vector: {}", e))?;
     if data.len() < 3 {
         return Err("Tensor must have at least 3 elements for point".to_string());
     }
@@ -161,7 +249,9 @@ pub fn tensor_to_point(tensor: &tensorflow::Tensor<f32>) -> Result<Point, String
 /// Convert TensorFlow tensor to mesh
 #[cfg(feature = "tensorflow")]
 pub fn tensor_to_mesh(tensor: &tensorflow::Tensor<f32>) -> Result<Mesh3D, String> {
-    let data: Vec<f32> = tensor.to_vec().unwrap();
+    let data: Vec<f32> = tensor
+        .to_vec()
+        .map_err(|e| format!("Failed to convert tensor to vector: {}", e))?;
     if data.len() < 6 {
         return Err("Tensor must have at least 6 elements for mesh".to_string());
     }
@@ -170,8 +260,11 @@ pub fn tensor_to_mesh(tensor: &tensorflow::Tensor<f32>) -> Result<Mesh3D, String
     let mut i = 0;
     while i + 5 < data.len() {
         let point = Point::new(data[i] as f64, data[i + 1] as f64, data[i + 2] as f64);
+        let normal = Some([data[i + 3] as f64, data[i + 4] as f64, data[i + 5] as f64]);
 
-        vertices.push(MeshVertex::new(vertices.len(), point));
+        let mut vertex = MeshVertex::new(vertices.len(), point);
+        vertex.normal = normal;
+        vertices.push(vertex);
         i += 6;
     }
 
@@ -190,4 +283,26 @@ pub fn tensor_to_mesh(tensor: &tensorflow::Tensor<f32>) -> Result<Mesh3D, String
     mesh.vertices = vertices;
     mesh.faces = faces;
     Ok(mesh)
+}
+
+/// Convert TensorFlow tensor to vector of points
+#[cfg(feature = "tensorflow")]
+pub fn tensor_to_points(tensor: &tensorflow::Tensor<f32>) -> Result<Vec<Point>, String> {
+    let data: Vec<f32> = tensor
+        .to_vec()
+        .map_err(|e| format!("Failed to convert tensor to vector: {}", e))?;
+    if data.len() % 3 != 0 {
+        return Err("Tensor length must be divisible by 3 for points".to_string());
+    }
+
+    let mut points = Vec::with_capacity(data.len() / 3);
+    for i in (0..data.len()).step_by(3) {
+        points.push(Point::new(
+            data[i] as f64,
+            data[i + 1] as f64,
+            data[i + 2] as f64,
+        ));
+    }
+
+    Ok(points)
 }

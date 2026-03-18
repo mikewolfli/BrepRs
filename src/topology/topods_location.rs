@@ -170,23 +170,25 @@ impl TopoDsLocation {
     }
 
     /// Scale the location uniformly
-    pub fn scale(&mut self, factor: f64) {
+    pub fn scale(&mut self, factor: f64) -> Result<(), String> {
         if factor <= 0.0 {
-            panic!("Scale factor must be positive");
+            return Err("Scale factor must be positive".to_string());
         }
         let scaling = Transform::from_scale(factor);
         self.transformation = scaling.multiply(&self.transformation);
+        Ok(())
     }
 
     /// Scale the location non-uniformly
-    pub fn scale_xyz(&mut self, sx: f64, sy: f64, sz: f64) {
+    pub fn scale_xyz(&mut self, sx: f64, sy: f64, sz: f64) -> Result<(), String> {
         if sx <= 0.0 || sy <= 0.0 || sz <= 0.0 {
-            panic!("Scale factors must be positive");
+            return Err("Scale factors must be positive".to_string());
         }
         // Create a custom transformation for non-uniform scaling
         let mut scaling = Transform::identity();
         scaling.set_values(sx, &Vector::zero(), &Matrix::from_array([[1.0, 0.0, 0.0], [0.0, sy/sx, 0.0], [0.0, 0.0, sz/sx]]));
         self.transformation = scaling.multiply(&self.transformation);
+        Ok(())
     }
 
     /// Mirror the location across a plane

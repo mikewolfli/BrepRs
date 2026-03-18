@@ -236,6 +236,110 @@ impl FeatureRecognitionModel {
         }
         Ok(())
     }
+
+    /// Recognize geometric features in the mesh
+    pub fn recognize_features(&self, mesh: &Mesh3D) -> Vec<String> {
+        let mut features = Vec::new();
+
+        // Check for planes
+        if self.detect_planes(mesh) {
+            features.push("plane".to_string());
+        }
+
+        // Check for cylinders
+        if self.detect_cylinders(mesh) {
+            features.push("cylinder".to_string());
+        }
+
+        // Check for spheres
+        if self.detect_spheres(mesh) {
+            features.push("sphere".to_string());
+        }
+
+        // Check for boxes
+        if self.detect_boxes(mesh) {
+            features.push("box".to_string());
+        }
+
+        // Check for cones
+        if self.detect_cones(mesh) {
+            features.push("cone".to_string());
+        }
+
+        // Add any features from training data
+        let mut sorted: Vec<_> = self.feature_counts.iter().collect();
+        sorted.sort_by(|a, b| b.1.cmp(a.1));
+        for (feature, _) in sorted.iter().take(2) {
+            if !features.contains(feature) {
+                features.push(feature.to_string());
+            }
+        }
+
+        features
+    }
+
+    /// Detect planes in the mesh
+    pub fn detect_planes(&self, mesh: &Mesh3D) -> bool {
+        // Simplified plane detection: check if there are flat faces
+        for face in &mesh.faces {
+            if face.vertices.len() >= 3 {
+                let v0 = &mesh.vertices[face.vertices[0]].point;
+                let v1 = &mesh.vertices[face.vertices[1]].point;
+                let v2 = &mesh.vertices[face.vertices[2]].point;
+
+                let vec1 = v1.clone() - v0.clone();
+                let vec2 = v2.clone() - v0.clone();
+                let normal = vec1.cross(&vec2);
+
+                // Check if face is flat (normal has non-zero length)
+                if normal.magnitude() > 1e-6 {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Detect cylinders in the mesh
+    pub fn detect_cylinders(&self, mesh: &Mesh3D) -> bool {
+        // Simplified cylinder detection: check for circular patterns
+        // This is a basic implementation and would be more complex in a real system
+        let face_count = mesh.faces.len();
+        let vertex_count = mesh.vertices.len();
+
+        // Cylinders typically have many faces and vertices
+        face_count > 10 && vertex_count > 20
+    }
+
+    /// Detect spheres in the mesh
+    pub fn detect_spheres(&self, mesh: &Mesh3D) -> bool {
+        // Simplified sphere detection: check for many small faces
+        // This is a basic implementation and would be more complex in a real system
+        let face_count = mesh.faces.len();
+        let vertex_count = mesh.vertices.len();
+
+        // Spheres typically have many small faces
+        face_count > 50 && vertex_count > 100
+    }
+
+    /// Detect boxes in the mesh
+    pub fn detect_boxes(&self, mesh: &Mesh3D) -> bool {
+        // Simplified box detection: check for 6 faces
+        mesh.faces.len() == 6
+    }
+
+    /// Detect cones in the mesh
+    pub fn detect_cones(&self, mesh: &Mesh3D) -> bool {
+        // Simplified cone detection: check for triangular faces
+        // This is a basic implementation and would be more complex in a real system
+        let mut triangular_faces = 0;
+        for face in &mesh.faces {
+            if face.vertices.len() == 3 {
+                triangular_faces += 1;
+            }
+        }
+        triangular_faces > 10
+    }
 }
 
 impl AiModel for FeatureRecognitionModel {
@@ -250,13 +354,12 @@ impl AiModel for FeatureRecognitionModel {
     fn execute(&self, input: &AiDataType, _protocol: &dyn AiProtocol) -> AiResult<AiDataType> {
         // Implement feature recognition logic
         match input {
-            AiDataType::Mesh(_mesh) => {
-                // Return most common features
+            AiDataType::Mesh(mesh) => {
+                // Recognize geometric features
+                let recognized_features = self.recognize_features(mesh);
                 let mut features = Vec::new();
-                let mut sorted: Vec<_> = self.feature_counts.iter().collect();
-                sorted.sort_by(|a, b| b.1.cmp(a.1));
-                for (feature, _) in sorted.iter().take(3) {
-                    features.push(AiDataType::Text(feature.to_string()));
+                for feature in recognized_features {
+                    features.push(AiDataType::Text(feature));
                 }
                 Ok(AiDataType::Array(features))
             }
@@ -398,6 +501,163 @@ impl ModelRepairModel {
         self.training_pairs = training_data.to_vec();
         Ok(())
     }
+
+    /// Repair the mesh
+    pub fn repair_mesh(&self, mesh: &Mesh3D) -> Mesh3D {
+        let mut repaired = mesh.clone();
+
+        // Apply basic repairs
+        self.repair_duplicate_vertices(&mut repaired);
+        self.repair_degenerate_faces(&mut repaired);
+        self.repair_unreferenced_vertices(&mut repaired);
+        self.repair_non_manifold_edges(&mut repaired);
+
+        // Use training data if available
+        if !self.training_pairs.is_empty() {
+            repaired = self.enhance_with_training_data(&repaired);
+        }
+
+        repaired
+    }
+
+    /// Repair duplicate vertices
+    pub fn repair_duplicate_vertices(&self, mesh: &mut Mesh3D) {
+        use std::collections::HashMap;
+
+        let tolerance = 1e6; // Use inverse tolerance for rounding
+        let mut vertex_map: HashMap<(i64, i64, i64), usize> = HashMap::new();
+        let mut new_vertices = Vec::new();
+        let mut vertex_mapping = Vec::new();
+
+        for (i, vertex) in mesh.vertices.iter().enumerate() {
+            // Convert f64 to i64 by scaling and rounding to avoid floating point issues
+            let key = (
+                (vertex.point.x * tolerance).round() as i64,
+                (vertex.point.y * tolerance).round() as i64,
+                (vertex.point.z * tolerance).round() as i64,
+            );
+
+            if let Some(&existing) = vertex_map.get(&key) {
+                vertex_mapping.push(existing);
+            } else {
+                let new_index = new_vertices.len();
+                vertex_map.insert(key, new_index);
+                new_vertices.push(vertex.clone());
+                vertex_mapping.push(new_index);
+            }
+        }
+
+        // Update faces
+        for face in &mut mesh.faces {
+            for vertex_id in &mut face.vertices {
+                *vertex_id = vertex_mapping[*vertex_id];
+            }
+        }
+
+        mesh.vertices = new_vertices;
+    }
+
+    /// Repair degenerate faces
+    pub fn repair_degenerate_faces(&self, mesh: &mut Mesh3D) {
+        mesh.faces.retain(|face| {
+            if face.vertices.len() < 3 {
+                return false;
+            }
+
+            // Check if all vertices are the same
+            let first = &mesh.vertices[face.vertices[0]].point;
+            let all_same = face.vertices.iter().all(|&vid| {
+                let v = &mesh.vertices[vid].point;
+                (v.x - first.x).abs() < 1e-6
+                    && (v.y - first.y).abs() < 1e-6
+                    && (v.z - first.z).abs() < 1e-6
+            });
+
+            !all_same
+        });
+    }
+
+    /// Repair unreferenced vertices
+    pub fn repair_unreferenced_vertices(&self, mesh: &mut Mesh3D) {
+        use std::collections::HashSet;
+
+        let mut referenced = HashSet::new();
+        for face in &mesh.faces {
+            for &vid in &face.vertices {
+                referenced.insert(vid);
+            }
+        }
+
+        let mut new_vertices = Vec::new();
+        let mut mapping = vec![0; mesh.vertices.len()];
+
+        for (i, vertex) in mesh.vertices.iter().enumerate() {
+            if referenced.contains(&i) {
+                mapping[i] = new_vertices.len();
+                new_vertices.push(vertex.clone());
+            }
+        }
+
+        // Update faces
+        for face in &mut mesh.faces {
+            for vertex_id in &mut face.vertices {
+                *vertex_id = mapping[*vertex_id];
+            }
+        }
+
+        mesh.vertices = new_vertices;
+    }
+
+    /// Repair non-manifold edges
+    pub fn repair_non_manifold_edges(&self, mesh: &mut Mesh3D) {
+        use std::collections::HashMap;
+
+        // Count edge occurrences
+        let mut edge_count: HashMap<(usize, usize), usize> = HashMap::new();
+
+        for face in &mesh.faces {
+            let vertices = &face.vertices;
+            for i in 0..vertices.len() {
+                let v1 = vertices[i];
+                let v2 = vertices[(i + 1) % vertices.len()];
+                let edge = if v1 < v2 { (v1, v2) } else { (v2, v1) };
+                *edge_count.entry(edge).or_default() += 1;
+            }
+        }
+
+        // Remove faces with non-manifold edges (simplified approach)
+        mesh.faces.retain(|face| {
+            let vertices = &face.vertices;
+            for i in 0..vertices.len() {
+                let v1 = vertices[i];
+                let v2 = vertices[(i + 1) % vertices.len()];
+                let edge = if v1 < v2 { (v1, v2) } else { (v2, v1) };
+                if let Some(&count) = edge_count.get(&edge) {
+                    if count != 2 {
+                        return false;
+                    }
+                }
+            }
+            true
+        });
+    }
+
+    /// Enhance repair with training data
+    pub fn enhance_with_training_data(&self, mesh: &Mesh3D) -> Mesh3D {
+        // Find closest training mesh by vertex count
+        let mut min_dist = std::f64::MAX;
+        let mut best_mesh = mesh.clone();
+
+        for (input_mesh, repaired) in &self.training_pairs {
+            let dist = (input_mesh.vertices.len() as f64 - mesh.vertices.len() as f64).abs();
+            if dist < min_dist {
+                min_dist = dist;
+                best_mesh = repaired.clone();
+            }
+        }
+
+        best_mesh
+    }
 }
 
 impl AiModel for ModelRepairModel {
@@ -413,20 +673,9 @@ impl AiModel for ModelRepairModel {
         // Implement model repair logic
         match input {
             AiDataType::Mesh(mesh) => {
-                // Return closest training mesh by vertex count
-                if self.training_pairs.is_empty() {
-                    return Ok(AiDataType::Mesh(mesh.clone()));
-                }
-                let mut min_dist = std::f64::MAX;
-                let mut best_mesh = mesh.clone();
-                for (input_mesh, repaired) in &self.training_pairs {
-                    let dist = input_mesh.vertices.len() as f64 - mesh.vertices.len() as f64;
-                    if dist.abs() < min_dist {
-                        min_dist = dist.abs();
-                        best_mesh = repaired.clone();
-                    }
-                }
-                Ok(AiDataType::Mesh(best_mesh))
+                // Repair the mesh
+                let repaired_mesh = self.repair_mesh(mesh);
+                Ok(AiDataType::Mesh(repaired_mesh))
             }
             _ => Err(crate::ai_ml::protocol::AiProtocolError::InvalidData(
                 "Expected mesh input".to_string(),
