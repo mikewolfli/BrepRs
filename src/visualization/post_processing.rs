@@ -321,13 +321,14 @@ impl BloomEffect {
 }
 
 impl PostProcessingEffectImpl for BloomEffect {
-    fn apply(&self, input: &[u8], _width: usize, height: usize) -> Result<Vec<u8>, String> {
+    fn apply(&self, input: &[u8], _width: usize, _height: usize) -> Result<Vec<u8>, String> {
         // Implementation of bloom effect
         Ok(input.to_vec())
     }
     fn effect_type(&self) -> PostProcessingEffect {
         PostProcessingEffect::Bloom
     }
+    #[allow(dead_code)]
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
@@ -358,29 +359,19 @@ impl DepthOfFieldEffect {
 
     /// Set depth buffer
     pub fn set_depth_buffer(&mut self, depth_buffer: Vec<f32>) {
-        for effect in &mut self.effects {
-            if let Some(dof) = (**effect).as_any_mut().downcast_mut::<DepthOfFieldEffect>() {
-                dof.set_depth_buffer(depth_buffer.clone());
-            }
-            if let Some(ao) = (**effect)
-                .as_any_mut()
-                .downcast_mut::<AmbientOcclusionEffect>()
-            {
-                ao.set_depth_buffer(depth_buffer.clone());
-            }
-        }
         self.depth_buffer = Some(depth_buffer);
     }
 }
 
 impl PostProcessingEffectImpl for DepthOfFieldEffect {
-    fn apply(&self, input: &[u8], _width: usize, height: usize) -> Result<Vec<u8>, String> {
+    fn apply(&self, input: &[u8], _width: usize, _height: usize) -> Result<Vec<u8>, String> {
         // Implementation of depth of field effect
         Ok(input.to_vec())
     }
     fn effect_type(&self) -> PostProcessingEffect {
         PostProcessingEffect::DepthOfField
     }
+    #[allow(dead_code)]
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
@@ -411,23 +402,19 @@ impl MotionBlurEffect {
 
     /// Set velocity buffer
     pub fn set_velocity_buffer(&mut self, velocity_buffer: Vec<(f32, f32)>) {
-        for effect in &mut self.effects {
-            if let Some(mb) = (**effect).as_any_mut().downcast_mut::<MotionBlurEffect>() {
-                mb.set_velocity_buffer(velocity_buffer.clone());
-            }
-        }
         self.velocity_buffer = Some(velocity_buffer);
     }
 }
 
 impl PostProcessingEffectImpl for MotionBlurEffect {
-    fn apply(&self, input: &[u8], _width: usize, height: usize) -> Result<Vec<u8>, String> {
+    fn apply(&self, input: &[u8], _width: usize, _height: usize) -> Result<Vec<u8>, String> {
         // Implementation of motion blur effect
         Ok(input.to_vec())
     }
     fn effect_type(&self) -> PostProcessingEffect {
         PostProcessingEffect::MotionBlur
     }
+    #[allow(dead_code)]
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
@@ -461,39 +448,24 @@ impl AmbientOcclusionEffect {
 
     /// Set depth buffer
     pub fn set_depth_buffer(&mut self, depth_buffer: Vec<f32>) {
-        for effect in &mut self.effects {
-            if let Some(ao) = (**effect)
-                .as_any_mut()
-                .downcast_mut::<AmbientOcclusionEffect>()
-            {
-                ao.set_depth_buffer(depth_buffer.clone());
-            }
-        }
-        self.depth_buffer = Some(depth_buffer.clone());
+        self.depth_buffer = Some(depth_buffer);
     }
 
     /// Set normal buffer
     pub fn set_normal_buffer(&mut self, normal_buffer: Vec<(f32, f32, f32)>) {
-        for effect in &mut self.effects {
-            if let Some(ao) = (**effect)
-                .as_any_mut()
-                .downcast_mut::<AmbientOcclusionEffect>()
-            {
-                ao.set_normal_buffer(normal_buffer.clone());
-            }
-        }
-        self.normal_buffer = Some(normal_buffer.clone());
+        self.normal_buffer = Some(normal_buffer);
     }
 }
 
 impl PostProcessingEffectImpl for AmbientOcclusionEffect {
-    fn apply(&self, input: &[u8], _width: usize, height: usize) -> Result<Vec<u8>, String> {
+    fn apply(&self, input: &[u8], _width: usize, _height: usize) -> Result<Vec<u8>, String> {
         // Implementation of ambient occlusion effect
         Ok(input.to_vec())
     }
     fn effect_type(&self) -> PostProcessingEffect {
         PostProcessingEffect::AmbientOcclusion
     }
+    #[allow(dead_code)]
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
@@ -519,13 +491,14 @@ impl ToneMappingEffect {
 }
 
 impl PostProcessingEffectImpl for ToneMappingEffect {
-    fn apply(&self, input: &[u8], _width: usize, height: usize) -> Result<Vec<u8>, String> {
+    fn apply(&self, input: &[u8], _width: usize, _height: usize) -> Result<Vec<u8>, String> {
         // Implementation of tone mapping effect
         Ok(input.to_vec())
     }
     fn effect_type(&self) -> PostProcessingEffect {
         PostProcessingEffect::ToneMapping
     }
+    #[allow(dead_code)]
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
@@ -555,17 +528,19 @@ impl ColorGradingEffect {
     }
 
     /// Load LUT from file
-    pub fn load_lut(&mut self, path: &str) -> Result<(), String> {
+    pub fn load_lut(&mut self, _path: &str) -> Result<(), String> {
         // Implementation of LUT loading
         Ok(())
     }
     // ...existing code...
+    #[allow(dead_code)]
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
 }
 
 impl PostProcessingEffectImpl for ColorGradingEffect {
+    #[allow(dead_code)]
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
@@ -599,10 +574,11 @@ impl VignetteEffect {
 }
 
 impl PostProcessingEffectImpl for VignetteEffect {
+    #[allow(dead_code)]
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
-    fn apply(&self, input: &[u8], _width: usize, height: usize) -> Result<Vec<u8>, String> {
+    fn apply(&self, input: &[u8], _width: usize, _height: usize) -> Result<Vec<u8>, String> {
         // Implementation of vignette effect
         Ok(input.to_vec())
     }
@@ -631,10 +607,11 @@ impl ChromaticAberrationEffect {
 }
 
 impl PostProcessingEffectImpl for ChromaticAberrationEffect {
+    #[allow(dead_code)]
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
-    fn apply(&self, input: &[u8], _width: usize, height: usize) -> Result<Vec<u8>, String> {
+    fn apply(&self, input: &[u8], _width: usize, _height: usize) -> Result<Vec<u8>, String> {
         // Implementation of chromatic aberration effect
         Ok(input.to_vec())
     }
@@ -668,10 +645,11 @@ impl FilmGrainEffect {
 }
 
 impl PostProcessingEffectImpl for FilmGrainEffect {
+    #[allow(dead_code)]
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
-    fn apply(&self, input: &[u8], _width: usize, height: usize) -> Result<Vec<u8>, String> {
+    fn apply(&self, input: &[u8], _width: usize, _height: usize) -> Result<Vec<u8>, String> {
         // Implementation of film grain effect
         Ok(input.to_vec())
     }
@@ -710,10 +688,11 @@ impl LensFlareEffect {
 }
 
 impl PostProcessingEffectImpl for LensFlareEffect {
+    #[allow(dead_code)]
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
-    fn apply(&self, input: &[u8], _width: usize, height: usize) -> Result<Vec<u8>, String> {
+    fn apply(&self, input: &[u8], _width: usize, _height: usize) -> Result<Vec<u8>, String> {
         // Implementation of lens flare effect
         Ok(input.to_vec())
     }

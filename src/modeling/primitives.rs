@@ -3,7 +3,6 @@
 //! This module provides implementations for various geometric primitives,
 //! including prism, pyramid, and polyhedron.
 
-use crate::foundation::handle::Handle;
 use crate::geometry::{Point, Vector};
 use crate::topology::{topods_solid::TopoDsSolid, TopoDsShape};
 use std::sync::Arc;
@@ -142,8 +141,6 @@ impl Prism {
         side_faces: Vec<TopoDsShape>,
     ) -> Arc<TopoDsSolid> {
         // Create solid by converting to mesh first
-        use crate::topology::topods_face::TopoDsFace;
-
         let mut vertices = Vec::new();
         let mut faces = Vec::new();
 
@@ -325,8 +322,6 @@ impl Pyramid {
         side_faces: Vec<TopoDsShape>,
     ) -> Arc<TopoDsSolid> {
         // Create solid by converting to mesh first
-        use crate::topology::topods_face::TopoDsFace;
-
         let mut vertices = Vec::new();
         let mut faces = Vec::new();
 
@@ -524,8 +519,6 @@ impl Polyhedron {
     /// Create a solid from faces
     fn create_solid(&self, faces: Vec<TopoDsShape>) -> Arc<TopoDsSolid> {
         // Create solid by converting to mesh first
-        use crate::topology::topods_face::TopoDsFace;
-
         let mut vertices = Vec::new();
         let mut face_indices = Vec::new();
 

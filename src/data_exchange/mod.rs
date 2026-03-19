@@ -20,7 +20,7 @@ pub mod utils;
 pub mod vtk;
 
 pub use fbx::*;
-pub use gltf::*;
+pub use gltf::{GltfExporter, GltfImportOptions, GltfImporter, GltfReader as GltfFileReader, GltfVersion, GltfWriter as GltfFileWriter};
 pub use iges::*;
 pub use modern_formats::*;
 pub use obj::*;
@@ -29,7 +29,7 @@ pub use ply::*;
 pub use step::*;
 pub use stl::*;
 pub use threemf::*;
-pub use usd::*;
+pub use usd::{UsdDataType, UsdError, UsdLayer, UsdPrim, UsdProperty as UsdPropertyType, UsdReader as UsdFileReader, UsdStage, UsdValue, UsdWriter};
 pub use usdz::*;
 pub use utils::*;
 pub use vtk::*;

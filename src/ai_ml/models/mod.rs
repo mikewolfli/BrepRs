@@ -10,7 +10,7 @@ use std::path::Path;
 use chrono;
 
 use crate::ai_ml::protocol::{AiDataType, AiProtocol, AiResult};
-use crate::geometry::{Plane, Point, Vector};
+use crate::geometry::Point;
 use crate::mesh::mesh_data::{Mesh3D, MeshFace, MeshVertex};
 
 /// AI Model Trait
@@ -200,7 +200,7 @@ impl AiModelManager {
     }
 
     /// Deserialize model from JSON
-    pub fn deserialize_model(&mut self, json: &str, name: &str) -> AiResult<()> {
+    pub fn deserialize_model(&mut self, _json: &str, name: &str) -> AiResult<()> {
         // Simple JSON deserialization (in a real implementation, use serde)
         // For now, we'll just create a new FeatureRecognitionModel
         let model = Box::new(FeatureRecognitionModel::new());
@@ -531,7 +531,7 @@ impl ModelRepairModel {
         let mut new_vertices = Vec::new();
         let mut vertex_mapping = Vec::new();
 
-        for (i, vertex) in mesh.vertices.iter().enumerate() {
+        for (_i, vertex) in mesh.vertices.iter().enumerate() {
             // Convert f64 to i64 by scaling and rounding to avoid floating point issues
             let key = (
                 (vertex.point.x * tolerance).round() as i64,
@@ -700,11 +700,9 @@ impl AiModel for ModelRepairModel {
         use std::io::{BufRead, BufReader};
         let file = fs::File::open(path)
             .map_err(|e| crate::ai_ml::protocol::AiProtocolError::ModelError(e.to_string()))?;
-        let mut _count = 0;
         for line in BufReader::new(file).lines() {
-            let line = line
+            let _ = line
                 .map_err(|e| crate::ai_ml::protocol::AiProtocolError::ModelError(e.to_string()))?;
-            _count = line.parse().unwrap_or(0);
         }
         let model = Self {
             name: "model_repair".to_string(),

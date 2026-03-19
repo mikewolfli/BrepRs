@@ -5,7 +5,7 @@
 use crate::geometry::Point;
 use crate::mesh::mesh_data::Mesh3D;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, Read, Write};
 
 /// VTK file format writer
 pub struct VtkWriter {

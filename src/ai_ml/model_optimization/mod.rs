@@ -152,7 +152,7 @@ impl ModelOptimizer {
         let mut simplified = mesh.clone();
 
         // Calculate edge collapse costs using quadric error metric
-        let mut edge_costs = self.calculate_edge_costs(&simplified);
+        let mut _edge_costs = self.calculate_edge_costs(&simplified);
 
         // Collapse edges until we reach target count
         let mut current_count = simplified.faces.len();
@@ -160,7 +160,7 @@ impl ModelOptimizer {
 
         while current_count > target_count {
             // Recalculate edge costs and sort
-            let mut edge_costs = self.calculate_edge_costs(&simplified);
+            let edge_costs = self.calculate_edge_costs(&simplified);
             let mut edges: Vec<_> = edge_costs.iter().collect();
             edges.sort_by(|a, b| a.1.partial_cmp(b.1).unwrap());
 
@@ -175,7 +175,7 @@ impl ModelOptimizer {
                 }
 
                 // Try to collapse the edge
-                if let Some(new_vertex_id) = self.collapse_edge(&mut simplified, v1, v2) {
+                if self.collapse_edge(&mut simplified, v1, v2).is_some() {
                     current_count = simplified.faces.len();
                     collapsed_vertices.insert(v1);
                     collapsed_vertices.insert(v2);
@@ -245,11 +245,12 @@ impl ModelOptimizer {
     }
 
     /// Update edge costs after vertex collapse
+    #[allow(dead_code)]
     fn update_edge_costs(
         &self,
-        mesh: &Mesh3D,
-        new_vertex_id: usize,
-        edge_costs: &mut HashMap<(usize, usize), f64>,
+        _mesh: &Mesh3D,
+        _new_vertex_id: usize,
+        _edge_costs: &mut HashMap<(usize, usize), f64>,
     ) {
         // In a real implementation, this would update edge costs involving the new vertex
     }
@@ -345,7 +346,7 @@ impl ModelOptimizer {
         let mut vertex_mapping = Vec::new();
         let tolerance = 1e-6;
 
-        for (i, vertex) in mesh.vertices.iter().enumerate() {
+        for (_i, vertex) in mesh.vertices.iter().enumerate() {
             // Round to tolerance
             let rounded_point = Point::new(
                 (vertex.point.x / tolerance).round() * tolerance,
@@ -441,7 +442,6 @@ impl ModelOptimizer {
                             if !visited[vid] {
                                 visited[vid] = true;
                                 vertex_order.push(vid);
-                                current_vertex = vid;
                             }
                         }
                     }

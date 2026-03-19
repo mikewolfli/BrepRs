@@ -199,7 +199,7 @@ impl ChipStructure {
         let length = (bond_wire.end - bond_wire.start).magnitude();
         let direction_vec = (bond_wire.end - bond_wire.start).normalized();
         let direction = crate::geometry::Direction::from_vector(&direction_vec);
-        let axis = crate::geometry::Axis::new(bond_wire.start, direction);
+        let _axis = crate::geometry::Axis::new(bond_wire.start, direction);
         // Use primitives::make_cylinder
         let solid = crate::modeling::primitives::make_cylinder(
             bond_wire.diameter / 2.0,

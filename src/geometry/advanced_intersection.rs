@@ -555,19 +555,19 @@ impl AdvancedIntersectionSolver {
     }
 
     /// Calculate distance from point to surface
-    fn distance_to_surface(&self, point: &Point, surface: &SurfaceEnum) -> f64 {
+    fn distance_to_surface(&self, _point: &Point, _surface: &SurfaceEnum) -> f64 {
         // Implementation of distance calculation
         0.0 // Placeholder
     }
 
     /// Project point to surface
-    fn project_to_surface(&self, point: &Point, surface: &SurfaceEnum) -> (f64, f64) {
+    fn project_to_surface(&self, _point: &Point, _surface: &SurfaceEnum) -> (f64, f64) {
         // Implementation of projection
         (0.0, 0.0) // Placeholder
     }
 
     /// Check if surface intervals overlap
-    fn check_surface_overlap(&self, points1: &[Point], points2: &[Point]) -> bool {
+    fn check_surface_overlap(&self, _points1: &[Point], _points2: &[Point]) -> bool {
         // Implementation of overlap check
         true // Placeholder
     }
@@ -575,10 +575,10 @@ impl AdvancedIntersectionSolver {
     /// Solve linear system for curve-surface intersection
     fn solve_linear_system(
         &self,
-        d_curve: &Vector,
-        d_surface_du: &Vector,
-        d_surface_dv: &Vector,
-        residual: &Vector,
+        _d_curve: &Vector,
+        _d_surface_du: &Vector,
+        _d_surface_dv: &Vector,
+        _residual: &Vector,
     ) -> (f64, f64, f64) {
         // Implementation of linear system solver
         (0.0, 0.0, 0.0) // Placeholder
@@ -587,25 +587,25 @@ impl AdvancedIntersectionSolver {
     /// Solve linear system for surface-surface intersection
     fn solve_surface_surface_system(
         &self,
-        d1_du: &Vector,
-        d1_dv: &Vector,
-        d2_du: &Vector,
-        d2_dv: &Vector,
-        residual: &Vector,
+        _d1_du: &Vector,
+        _d1_dv: &Vector,
+        _d2_du: &Vector,
+        _d2_dv: &Vector,
+        _residual: &Vector,
     ) -> (f64, f64, f64, f64) {
         // Implementation of linear system solver
         (0.0, 0.0, 0.0, 0.0) // Placeholder
     }
 
     /// Remove duplicate curve-surface intersections
-    fn remove_duplicate_intersections(&self, intersections: &mut Vec<CurveSurfaceIntersection>) {
+    fn remove_duplicate_intersections(&self, _intersections: &mut Vec<CurveSurfaceIntersection>) {
         // Implementation of duplicate removal
     }
 
     /// Remove duplicate surface-surface intersections
     fn remove_duplicate_surface_intersections(
         &self,
-        intersections: &mut Vec<SurfaceSurfaceIntersection>,
+        _intersections: &mut Vec<SurfaceSurfaceIntersection>,
     ) {
         // Implementation of duplicate removal
     }

@@ -1,9 +1,9 @@
-use crate::geometry::Point;
+
 use crate::topology::TopoDsShape;
 use std::collections::HashMap;
 
 /// Custom trait for cloneable any values
-trait CloneableAny: std::any::Any {
+pub trait CloneableAny: std::any::Any {
     fn clone_box(&self) -> Box<dyn CloneableAny>;
     fn as_any(&self) -> &dyn std::any::Any;
     fn into_any(self: Box<Self>) -> Box<dyn std::any::Any>;
@@ -897,8 +897,8 @@ impl SimulationDataExporter {
     /// Export simulation results
     pub fn export(
         &self,
-        results: &HashMap<String, SimulationResult>,
-        path: &str,
+        _results: &HashMap<String, SimulationResult>,
+        _path: &str,
     ) -> Result<(), String> {
         // Implementation of data export
         Ok(())
@@ -907,8 +907,8 @@ impl SimulationDataExporter {
     /// Export simulation data
     pub fn export_simulation(
         &self,
-        simulation: &dyn SimulationInterface,
-        path: &str,
+        _simulation: &dyn SimulationInterface,
+        _path: &str,
     ) -> Result<(), String> {
         // Implementation of simulation data export
         Ok(())
@@ -939,7 +939,7 @@ impl SimulationDataImporter {
     }
 
     /// Import simulation results
-    pub fn import(&self, path: &str) -> Result<HashMap<String, SimulationResult>, String> {
+    pub fn import(&self, _path: &str) -> Result<HashMap<String, SimulationResult>, String> {
         // Implementation of data import
         Ok(HashMap::new())
     }
@@ -947,8 +947,8 @@ impl SimulationDataImporter {
     /// Import simulation data
     pub fn import_into_simulation(
         &self,
-        path: &str,
-        simulation: &mut dyn SimulationInterface,
+        _path: &str,
+        _simulation: &mut dyn SimulationInterface,
     ) -> Result<(), String> {
         // Implementation of simulation data import
         Ok(())

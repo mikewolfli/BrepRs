@@ -152,7 +152,7 @@ impl VirtualTextureStorage for FileSystemStorage {
                 if let Ok(entry) = entry {
                     if entry.file_type().is_ok_and(|ft| ft.is_dir()) {
                         // Check if directory name is a valid level number
-                        if let Ok(level) = entry.file_name().to_string_lossy().parse::<u32>() {
+                        if let Ok(_level) = entry.file_name().to_string_lossy().parse::<u32>() {
                             // Count files in level directory
                             if let Ok(tile_entries) = std::fs::read_dir(entry.path()) {
                                 for tile_entry in tile_entries {
@@ -273,7 +273,7 @@ impl VirtualTextureManager {
     }
 
     /// Update tile priorities
-    fn update_tile_priorities(&mut self, camera_position: &Point) {
+    fn update_tile_priorities(&mut self, _camera_position: &Point) {
         // Update tile priorities based on camera position
         for tile in self.tiles.values_mut() {
             // Calculate distance from camera to tile (simplified)
@@ -446,7 +446,7 @@ impl TextureArray {
     }
 
     /// Update tile
-    pub fn update_tile(&mut self, tile_id: u64, tile: &VirtualTextureTile) -> Result<(), String> {
+    pub fn update_tile(&mut self, tile_id: u64, _tile: &VirtualTextureTile) -> Result<(), String> {
         // Check if tile is already in the array
         if self.tile_map.contains_key(&tile_id) {
             // Tile already exists, just update it
@@ -719,7 +719,7 @@ impl VirtualTextureGenerator {
 
         for level in 1..=self.settings.max_level {
             let prev_level = level - 1;
-            let prev_tiles_per_side = 1 << prev_level;
+            let _prev_tiles_per_side = 1 << prev_level;
             let current_tiles_per_side = 1 << level;
 
             for x in 0..current_tiles_per_side {

@@ -1,6 +1,3 @@
-use crate::geometry::Point;
-use crate::mesh::TriangleMesh;
-use crate::topology::TopoDsShape;
 use std::collections::HashMap;
 
 /// Neural rendering model type
@@ -422,7 +419,7 @@ impl NeRFNetwork {
     }
 
     /// Initialize network
-    pub fn initialize(&mut self, settings: &NeuralRenderingSettings) -> Result<(), String> {
+    pub fn initialize(&mut self, _settings: &NeuralRenderingSettings) -> Result<(), String> {
         // Initialize network layers
         Ok(())
     }
@@ -484,7 +481,7 @@ impl PositionalEncoding {
     }
 
     /// Initialize positional encoding
-    pub fn initialize(&mut self, settings: &NeuralRenderingSettings) -> Result<(), String> {
+    pub fn initialize(&mut self, _settings: &NeuralRenderingSettings) -> Result<(), String> {
         // Initialize positional encoding
         Ok(())
     }
@@ -655,7 +652,7 @@ impl HashGrid {
     }
 
     /// Initialize hash grid
-    pub fn initialize(&mut self, settings: &NeuralRenderingSettings) -> Result<(), String> {
+    pub fn initialize(&mut self, _settings: &NeuralRenderingSettings) -> Result<(), String> {
         // Initialize hash grid
         Ok(())
     }
@@ -679,7 +676,7 @@ impl SmallMLP {
     }
 
     /// Initialize MLP
-    pub fn initialize(&mut self, settings: &NeuralRenderingSettings) -> Result<(), String> {
+    pub fn initialize(&mut self, _settings: &NeuralRenderingSettings) -> Result<(), String> {
         // Initialize MLP
         Ok(())
     }
@@ -716,7 +713,7 @@ impl GaussianSplattingModel {
 }
 
 impl NeuralRenderingModelImpl for GaussianSplattingModel {
-    fn initialize(&mut self, settings: &NeuralRenderingSettings) -> Result<(), String> {
+    fn initialize(&mut self, _settings: &NeuralRenderingSettings) -> Result<(), String> {
         // Initialize Gaussian Splatting model
         Ok(())
     }
@@ -961,7 +958,7 @@ impl DeepSDFNetwork {
     }
 
     /// Initialize network
-    pub fn initialize(&mut self, settings: &NeuralRenderingSettings) -> Result<(), String> {
+    pub fn initialize(&mut self, _settings: &NeuralRenderingSettings) -> Result<(), String> {
         // Initialize network
         Ok(())
     }
@@ -1122,7 +1119,7 @@ impl PointNeRFNetwork {
     }
 
     /// Initialize network
-    pub fn initialize(&mut self, settings: &NeuralRenderingSettings) -> Result<(), String> {
+    pub fn initialize(&mut self, _settings: &NeuralRenderingSettings) -> Result<(), String> {
         // Initialize network
         Ok(())
     }
@@ -1162,7 +1159,7 @@ impl CustomModel {
 }
 
 impl NeuralRenderingModelImpl for CustomModel {
-    fn initialize(&mut self, settings: &NeuralRenderingSettings) -> Result<(), String> {
+    fn initialize(&mut self, _settings: &NeuralRenderingSettings) -> Result<(), String> {
         // Initialize custom model
         println!("Initializing custom model: {}", self.name);
         Ok(())

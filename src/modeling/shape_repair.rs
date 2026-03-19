@@ -1,6 +1,6 @@
 use crate::geometry::Point;
 use crate::topology::TopoDsShape;
-use std::collections::{HashMap, HashSet};
+
 
 /// Shape repair status
 pub enum RepairStatus {
@@ -209,31 +209,31 @@ impl ShapeRepairTools {
     }
 
     /// Detect non-manifold edges
-    fn detect_non_manifold_edges(&self, shape: &TopoDsShape) -> Vec<usize> {
+    fn detect_non_manifold_edges(&self, _shape: &TopoDsShape) -> Vec<usize> {
         // Implementation of non-manifold edge detection
         Vec::new() // Placeholder
     }
 
     /// Detect degenerate faces
-    fn detect_degenerate_faces(&self, shape: &TopoDsShape) -> Vec<usize> {
+    fn detect_degenerate_faces(&self, _shape: &TopoDsShape) -> Vec<usize> {
         // Implementation of degenerate face detection
         Vec::new() // Placeholder
     }
 
     /// Detect self-intersections
-    fn detect_self_intersections(&self, shape: &TopoDsShape) -> Vec<(Point, Point)> {
+    fn detect_self_intersections(&self, _shape: &TopoDsShape) -> Vec<(Point, Point)> {
         // Implementation of self-intersection detection
         Vec::new() // Placeholder
     }
 
     /// Detect duplicate vertices
-    fn detect_duplicate_vertices(&self, shape: &TopoDsShape) -> Vec<(usize, usize)> {
+    fn detect_duplicate_vertices(&self, _shape: &TopoDsShape) -> Vec<(usize, usize)> {
         // Implementation of duplicate vertex detection
         Vec::new() // Placeholder
     }
 
     /// Detect duplicate faces
-    fn detect_duplicate_faces(&self, shape: &TopoDsShape) -> Vec<(usize, usize)> {
+    fn detect_duplicate_faces(&self, _shape: &TopoDsShape) -> Vec<(usize, usize)> {
         // Implementation of duplicate face detection
         Vec::new() // Placeholder
     }
@@ -282,6 +282,7 @@ impl ShapeRepairTools {
 
 /// Topology validator
 pub struct TopoDsValidator {
+    #[allow(dead_code)]
     tolerance: f64,
 }
 

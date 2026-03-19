@@ -296,13 +296,13 @@ impl ReinforcementLearningAgent {
     /// Select action based on current state
     pub fn select_action(&self, state: &Mesh3D) -> String {
         use rand::Rng;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         // Exploration vs exploitation
-        if rng.gen::<f32>() < self.exploration_rate {
+        if rng.random::<f32>() < self.exploration_rate {
             // Explore: random action
             let actions = vec!["optimize", "simplify", "refine", "layout", "material"];
-            actions[rng.gen_range(0..actions.len())].to_string()
+            actions[rng.random_range(0..actions.len())].to_string()
         } else {
             // Exploit: use model to select action
             // In a real implementation, this would use the model to predict the best action
@@ -327,6 +327,7 @@ impl ReinforcementLearningAgent {
     }
 
     /// Extract features from mesh
+    #[allow(dead_code)]
     fn extract_features(&self, mesh: &Mesh3D) -> Vec<f32> {
         let mut features = Vec::new();
         features.push(mesh.vertices.len() as f32);
@@ -403,10 +404,6 @@ impl ReinforcementLearningAgent {
 
     /// Learn from a batch of experiences
     fn learn_from_batch(&mut self) {
-        use rand::seq::IteratorRandom;
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
-
         // Sample batch from replay buffer
         // let batch: Vec<&Experience> = self
         //     .replay_buffer

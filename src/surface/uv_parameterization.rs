@@ -5,7 +5,7 @@
 
 use crate::foundation::types::StandardReal;
 use crate::geometry::{Point, Vector};
-use crate::mesh::mesh_data::{Mesh3D, MeshVertex};
+use crate::mesh::mesh_data::Mesh3D;
 
 /// UV parameterization method
 #[derive(Debug, Clone, PartialEq)]
@@ -200,7 +200,7 @@ impl UVParameterizer {
     fn cylindrical_projection(&self, mesh: &Mesh3D) -> UVResult {
         let mut uv_coords = Vec::new();
         let center = &self.params.center;
-        let radius = self.params.radius;
+        let _radius = self.params.radius;
         let axis = &self.params.cylinder_axis;
 
         // Calculate bounds along cylinder axis
@@ -353,7 +353,7 @@ impl UVParameterizer {
         // Build system matrix for LSCM
         let n = mesh.vertices.len();
         let mut matrix = vec![vec![0.0; 2 * n]; 2 * n];
-        let mut rhs = vec![0.0; 2 * n];
+        let rhs = vec![0.0; 2 * n];
 
         // Add equations for each edge
         for tetra in &mesh.tetrahedrons {
@@ -363,7 +363,7 @@ impl UVParameterizer {
                     let v2 = tetra.vertices[j];
 
                     // Calculate edge length in 3D
-                    let len_3d = mesh.vertices[v1].point.distance(&mesh.vertices[v2].point);
+                    let _len_3d = mesh.vertices[v1].point.distance(&mesh.vertices[v2].point);
 
                     // Add equations for conformal mapping
                     matrix[2 * v1][2 * v1] += 1.0;
@@ -664,7 +664,7 @@ impl UVParameterizer {
     /// Calculate UV parameterization quality
     fn calculate_quality(&self, mesh: &Mesh3D, uv_coords: &[UVCoord]) -> UVQuality {
         let mut total_area_distortion = 0.0;
-        let mut total_angle_distortion = 0.0;
+        let _total_angle_distortion = 0.0;
         let mut total_stretch = 0.0;
         let mut flipped_triangles = 0;
         let mut triangle_count = 0;

@@ -733,7 +733,7 @@ impl TextTo3DGenerator {
     }
 
     /// Add details to the mesh based on features
-    fn add_details(&self, mesh: &mut Mesh3D, features: &HashMap<String, String>) -> AiResult<()> {
+    fn add_details(&self, _mesh: &mut Mesh3D, _features: &HashMap<String, String>) -> AiResult<()> {
         // In a real implementation, this would add more complex details
         // For now, we'll just return the mesh as is
         Ok(())
@@ -747,7 +747,7 @@ impl TextTo3DGenerator {
     }
 
     /// Calculate quality score for the generated mesh
-    fn calculate_quality_score(&self, mesh: &Mesh3D, description: &str) -> f64 {
+    fn calculate_quality_score(&self, mesh: &Mesh3D, _description: &str) -> f64 {
         // In a real implementation, this would include more sophisticated metrics
         // For now, we'll just return a score based on mesh complexity
         let vertex_count = mesh.vertices.len() as f64;
@@ -771,7 +771,7 @@ impl TextTo3DGenerator {
     }
 
     /// Extract features from sketch
-    fn extract_features_from_sketch(&self, sketch: &str) -> AiResult<HashMap<String, String>> {
+    fn extract_features_from_sketch(&self, _sketch: &str) -> AiResult<HashMap<String, String>> {
         let mut features = HashMap::new();
 
         // In a real implementation, this would include sketch feature extraction
@@ -795,7 +795,7 @@ impl TextTo3DGenerator {
     }
 
     /// Extract features from image
-    fn extract_features_from_image(&self, image: &str) -> AiResult<HashMap<String, String>> {
+    fn extract_features_from_image(&self, _image: &str) -> AiResult<HashMap<String, String>> {
         let mut features = HashMap::new();
 
         // In a real implementation, this would include image feature extraction

@@ -1,5 +1,4 @@
 use crate::geometry::Point;
-use crate::mesh::TriangleMesh;
 use crate::topology::TopoDsShape;
 use std::collections::HashMap;
 
@@ -315,7 +314,7 @@ impl Camera {
     }
 
     /// Update camera
-    pub fn update(&mut self, delta_time: f64) {
+    pub fn update(&mut self, _delta_time: f64) {
         // Implementation of camera update
     }
 }
@@ -357,7 +356,7 @@ pub enum Light {
 
 impl Light {
     /// Update light
-    pub fn update(&mut self, delta_time: f64) {
+    pub fn update(&mut self, _delta_time: f64) {
         // Implementation of light update
     }
 }
@@ -459,7 +458,7 @@ impl GpuResources {
     }
 
     /// Initialize GPU resources
-    pub fn initialize(&mut self, settings: &AdvancedRenderingSettings) -> Result<(), String> {
+    pub fn initialize(&mut self, _settings: &AdvancedRenderingSettings) -> Result<(), String> {
         // Implementation of GPU resources initialization
         Ok(())
     }

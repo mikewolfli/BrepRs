@@ -5,18 +5,18 @@
 //! and style transfer.
 
 use crate::ai_ml::material_texture::{
-    MaterialGenerationSettings, MaterialTextureExt, MaterialTextureGenerator,
+    MaterialGenerationSettings, MaterialTextureExt,
 };
 use crate::ai_ml::model_optimization::{
-    LodSettings, MeshOptimizationExt, ModelOptimizer, OptimizationSettings,
+    LodSettings, MeshOptimizationExt, OptimizationSettings,
 };
-use crate::ai_ml::model_quality::{MeshQualityExt, ModelQualityEvaluator, ModelRepairTool};
+use crate::ai_ml::model_quality::MeshQualityExt;
 use crate::ai_ml::style_transfer::{
-    StyleReference, StyleTransferExt, StyleTransferSettings, StyleTransferTool,
+    StyleReference, StyleTransferExt, StyleTransferSettings,
 };
-use crate::ai_ml::text_to_3d::{TextTo3DExt, TextTo3DGenerator, TextTo3DSettings};
-use crate::geometry::{Point, Vector};
-use crate::mesh::mesh_data::{Mesh3D, MeshFace, MeshVertex};
+use crate::ai_ml::text_to_3d::{TextTo3DExt, TextTo3DSettings};
+use crate::geometry::Point;
+use crate::mesh::mesh_data::Mesh3D;
 
 /// Create a simple cube mesh for testing
 fn create_test_cube() -> Mesh3D {

@@ -108,8 +108,8 @@ impl StepReader {
         // Read the header
         let header = self.read_header(reader)?;
 
-        // Determine the schema
-        self.determine_schema(&header)?;
+        // Determine the schema (note: schema is stored but not used in current implementation)
+        let _schema = self.determine_schema(&header)?;
 
         // Read the data section
         let shape = self.read_data_section(reader)?;
@@ -144,10 +144,19 @@ impl StepReader {
     }
 
     /// Determine the STEP schema from the header
-    fn determine_schema(&self, _header: &str) -> Result<(), StepError> {
-        // This is a placeholder implementation
-        // In a real implementation, we would parse the header to determine the schema
-        Ok(())
+    fn determine_schema(&self, header: &str) -> Result<StepSchema, StepError> {
+        // Parse the header to determine the STEP schema
+        let header_upper = header.to_uppercase();
+        
+        if header_upper.contains("CONFIG_CONTROL_DESIGN") || header_upper.contains("AP203") {
+            Ok(StepSchema::AP203)
+        } else if header_upper.contains("AUTOMOTIVE_DESIGN") || header_upper.contains("AP214") {
+            Ok(StepSchema::AP214)
+        } else if header_upper.contains("MANAGED_MODEL_BASED_3D_ENGINEERING") || header_upper.contains("AP242") {
+            Ok(StepSchema::AP242)
+        } else {
+            Ok(StepSchema::Unknown)
+        }
     }
 
     /// Read the data section of the STEP file

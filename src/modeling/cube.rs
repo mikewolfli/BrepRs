@@ -1,8 +1,6 @@
-use crate::foundation::handle::Handle;
 use crate::geometry::Point;
 use crate::modeling::primitives::make_box;
 use crate::topology::TopoDsSolid;
-use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Cube {

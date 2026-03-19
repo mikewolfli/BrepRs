@@ -330,7 +330,7 @@ impl NurbsCurve3D {
         }
     }
 
-    pub fn length(&self, tolerance: StandardReal) -> StandardReal {
+    pub fn length(&self, _tolerance: StandardReal) -> StandardReal {
         let mut length = 0.0;
         let mut t = self.knots[0];
         let step = 0.01;

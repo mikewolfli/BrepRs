@@ -347,7 +347,7 @@ impl AiMlUtils {
     }
 
     /// Save model to file
-    pub fn save_model(&self, model_name: &str, path: &Path, format: MlModelFormat) -> AiResult<()> {
+    pub fn save_model(&self, model_name: &str, path: &Path, _format: MlModelFormat) -> AiResult<()> {
         let model = self.model_manager.get_model(model_name).ok_or(
             crate::ai_ml::protocol::AiProtocolError::ModelError(format!(
                 "Model not found: {}",
@@ -362,10 +362,10 @@ impl AiMlUtils {
         &mut self,
         model_name: &str,
         path: &Path,
-        format: MlModelFormat,
+        _format: MlModelFormat,
     ) -> AiResult<()> {
         // Load model based on format
-        let model = match format {
+        let model = match _format {
             MlModelFormat::PyTorch => {
                 // Load PyTorch model
                 FeatureRecognitionModel::load(path)

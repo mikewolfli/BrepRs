@@ -418,7 +418,7 @@ impl LodSystem {
         );
 
         // Create new vertex with average normal
-        let new_normal = match (mesh.vertices[v0].normal, mesh.vertices[v1].normal) {
+        let _new_normal = match (mesh.vertices[v0].normal, mesh.vertices[v1].normal) {
             (Some(n1), Some(n2)) => {
                 let avg = [
                     (n1[0] + n2[0]) / 2.0,

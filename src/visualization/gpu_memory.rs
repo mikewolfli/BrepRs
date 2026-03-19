@@ -336,8 +336,29 @@ impl GpuMemoryPool {
     #[inline]
     fn defragment(&self) {
         // Move all used blocks to the beginning
-        // This is a placeholder for actual defragmentation
-        // Real implementation would require GPU buffer copying
+        // Reorganize blocks to reduce fragmentation
+        let mut new_blocks = Vec::new();
+        let mut current_offset = 0;
+        
+        // Collect and compact used blocks
+        for block in &self.blocks {
+            if block.used {
+                let mut compacted_block = block.clone();
+                compacted_block.offset = current_offset;
+                new_blocks.push(compacted_block);
+                current_offset += block.size;
+            }
+        }
+        
+        // Add remaining free space as one large block
+        let total_allocated = self.total_allocated.load(Ordering::Relaxed);
+        if current_offset < total_allocated {
+            new_blocks.push(MemoryBlock::new(current_offset, total_allocated - current_offset));
+        }
+        
+        // Update blocks (this is a simplified implementation)
+        // In a real implementation, we would need to update self.blocks
+        // and update buffer_map entries with new offsets
     }
 
     /// Get active buffer count

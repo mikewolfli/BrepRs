@@ -763,7 +763,7 @@ impl FeatureVisualization {
         }
 
         // Write feature markers
-        for (i, position) in self.feature_positions.iter().enumerate() {
+        for (_i, position) in self.feature_positions.iter().enumerate() {
             writeln!(file, "v {} {} {}", position.x, position.y, position.z)
                 .map_err(|e| e.to_string())?;
         }

@@ -1,7 +1,6 @@
 use crate::geometry::{Point, Vector};
 use crate::mesh::TriangleMesh;
-use crate::topology::TopoDsShape;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 /// Mesh quality issue type
 #[derive(Clone)]
@@ -373,7 +372,7 @@ impl MeshQualityAnalyzer {
     }
 
     /// Check self-intersections
-    fn check_self_intersections(&mut self, mesh: &TriangleMesh) {
+    fn check_self_intersections(&mut self, _mesh: &TriangleMesh) {
         // Implementation of self-intersection check
         // This is a simplified version
     }
@@ -535,7 +534,7 @@ impl MeshRepairTool {
     }
 
     /// Weld vertices
-    fn weld_vertices(&mut self, mesh: &mut TriangleMesh) -> Result<(), String> {
+    fn weld_vertices(&mut self, _mesh: &mut TriangleMesh) -> Result<(), String> {
         // Implementation of vertex welding
         Ok(())
     }
@@ -567,43 +566,43 @@ impl MeshRepairTool {
     }
 
     /// Fix non-manifold edges
-    fn fix_non_manifold_edges(&mut self, mesh: &mut TriangleMesh) -> Result<(), String> {
+    fn fix_non_manifold_edges(&mut self, _mesh: &mut TriangleMesh) -> Result<(), String> {
         // Implementation of non-manifold edge fixing
         Ok(())
     }
 
     /// Fix non-manifold vertices
-    fn fix_non_manifold_vertices(&mut self, mesh: &mut TriangleMesh) -> Result<(), String> {
+    fn fix_non_manifold_vertices(&mut self, _mesh: &mut TriangleMesh) -> Result<(), String> {
         // Implementation of non-manifold vertex fixing
         Ok(())
     }
 
     /// Fix invalid normals
-    fn fix_invalid_normals(&mut self, mesh: &mut TriangleMesh) -> Result<(), String> {
+    fn fix_invalid_normals(&mut self, _mesh: &mut TriangleMesh) -> Result<(), String> {
         // Implementation of invalid normal fixing
         Ok(())
     }
 
     /// Fix high aspect ratio triangles
-    fn fix_high_aspect_ratio(&mut self, mesh: &mut TriangleMesh) -> Result<(), String> {
+    fn fix_high_aspect_ratio(&mut self, _mesh: &mut TriangleMesh) -> Result<(), String> {
         // Implementation of high aspect ratio fixing
         Ok(())
     }
 
     /// Fix small angles
-    fn fix_small_angles(&mut self, mesh: &mut TriangleMesh) -> Result<(), String> {
+    fn fix_small_angles(&mut self, _mesh: &mut TriangleMesh) -> Result<(), String> {
         // Implementation of small angle fixing
         Ok(())
     }
 
     /// Fix large angles
-    fn fix_large_angles(&mut self, mesh: &mut TriangleMesh) -> Result<(), String> {
+    fn fix_large_angles(&mut self, _mesh: &mut TriangleMesh) -> Result<(), String> {
         // Implementation of large angle fixing
         Ok(())
     }
 
     /// Fix high valence vertices
-    fn fix_high_valence_vertices(&mut self, mesh: &mut TriangleMesh) -> Result<(), String> {
+    fn fix_high_valence_vertices(&mut self, _mesh: &mut TriangleMesh) -> Result<(), String> {
         // Implementation of high valence vertex fixing
         Ok(())
     }
@@ -651,13 +650,13 @@ impl MeshQualityMetrics {
     /// Calculate metrics from mesh
     pub fn from_mesh(mesh: &TriangleMesh) -> Self {
         let mut analyzer = MeshQualityAnalyzer::new();
-        let problems = analyzer.analyze(mesh);
+        let _problems = analyzer.analyze(mesh);
 
         // Calculate metrics
         let mut total_area = 0.0;
         let mut total_aspect_ratio = 0.0;
         let mut total_angle = 0.0;
-        let mut total_valence = 0;
+        let total_valence = 0;
         let total_vertices = mesh.vertices.len();
 
         let mut min_area = f64::MAX;

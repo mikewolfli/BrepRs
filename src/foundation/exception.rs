@@ -259,6 +259,15 @@ impl Failure {
             source,
         }
     }
+
+    #[inline]
+    pub fn runtime_error_with_none(msg: impl Into<String>) -> Self {
+        Failure::RuntimeError {
+            msg: msg.into(),
+            context: None,
+            source: None,
+        }
+    }
 }
 
 // Implement From conversions for common error types
@@ -518,7 +527,7 @@ mod tests {
         let err = Failure::domain_error("test error", None, None);
         assert!(matches!(err, Failure::DomainError { .. }));
 
-        let err = Failure::range_error("test", None, None);
+        let err = Failure::range_error_with_none("test");
         assert!(matches!(err, Failure::RangeError { .. }));
 
         let err = Failure::numeric_error("test", None, None);
@@ -536,7 +545,7 @@ mod tests {
         let err = Failure::construction_error("test", None, None);
         assert!(matches!(err, Failure::ConstructionError { .. }));
 
-        let err = Failure::runtime_error("test", None, None);
+        let err = Failure::runtime_error_with_none("test");
         assert!(matches!(err, Failure::RuntimeError { .. }));
 
         let err = Failure::unknown_error("test", None, None);
@@ -548,13 +557,13 @@ mod tests {
         let err = Failure::domain_error("test error", None, None);
         assert_eq!(err.to_string(), "Domain error: test error");
 
-        let err = Failure::range_error("range test", None, None);
+        let err = Failure::range_error_with_none("range test");
         assert_eq!(err.to_string(), "Range error: range test");
 
         let err = Failure::numeric_error("numeric test", None, None);
         assert_eq!(err.to_string(), "Numeric error: numeric test");
 
-        let err = Failure::runtime_error("feature", None, None);
+        let err = Failure::runtime_error_with_none("feature");
         assert_eq!(err.to_string(), "Runtime error: feature");
     }
 

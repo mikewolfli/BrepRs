@@ -4,7 +4,7 @@
 //! including plane clipping, box clipping, and custom clipping.
 
 use crate::geometry::{Point, Vector};
-use crate::mesh::mesh_data::{Mesh3D, MeshVertex};
+use crate::mesh::mesh_data::Mesh3D;
 
 /// Clipping operation type
 #[derive(Debug, Clone, PartialEq)]

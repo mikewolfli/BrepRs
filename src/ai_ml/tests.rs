@@ -3,7 +3,7 @@
 //! This module contains tests for the AI/ML integration module.
 
 use crate::ai_ml::*;
-use crate::geometry::{Plane, Point, Vector};
+use crate::geometry::Point;
 use crate::mesh::mesh_data::{Mesh3D, MeshFace, MeshVertex};
 
 #[test]
@@ -62,7 +62,7 @@ fn test_ai_ml_utils() {
     // Test feature recognition
     let features = utils.recognize_features(&mesh).unwrap();
     // Just ensure it returns something
-    assert!(features.len() >= 0);
+    assert!(!features.is_empty());
 
     // Test mesh repair
     let repaired_mesh = utils.repair_mesh(&mesh).unwrap();
@@ -81,7 +81,7 @@ fn test_ai_ml_utils() {
 
 #[test]
 fn test_model_manager() {
-    let mut utils = AiMlUtils::new();
+    let utils = AiMlUtils::new();
     let model_manager = utils.model_manager();
 
     // Test model registration and retrieval
@@ -92,7 +92,7 @@ fn test_model_manager() {
 
 #[test]
 fn test_ml_workflow() {
-    let mut workflow = MlWorkflow::new("feature_recognition");
+    let workflow = MlWorkflow::new("feature_recognition");
     // Just ensure workflow creation works
     assert!(!workflow.model_name().is_empty());
 }

@@ -100,6 +100,7 @@ impl PluginManager {
             unsafe { Library::new(path).map_err(|e| PluginError::LoadingError(e.to_string()))? };
 
         // Get the plugin creation function
+        #[allow(improper_ctypes_definitions)]
         type CreatePlugin = unsafe extern "C" fn() -> *mut dyn Plugin;
         let create_plugin: Symbol<CreatePlugin> = unsafe {
             library

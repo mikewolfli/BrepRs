@@ -1,4 +1,6 @@
-use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
+use crate::foundation::types::StandardReal;
+#[cfg(test)]
+use crate::foundation::types::STANDARD_REAL_EPSILON;
 use crate::geometry::{Point, Vector};
 use crate::mesh::mesh_data::{MeshFace, MeshVertex};
 use std::collections::HashMap;

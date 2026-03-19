@@ -16,6 +16,7 @@ pub mod parametric;
 pub mod post_processing;
 pub mod primitives;
 pub mod shape_repair;
+pub mod solid_decomposition;
 pub mod tissue;
 pub use bioreactor::*;
 pub use boolean_operations::BooleanOperations;
@@ -27,6 +28,7 @@ pub use fillet_chamfer::FilletChamfer;
 pub use multi_resolution::*;
 pub use offset_operations::OffsetOperations;
 pub use offset_operations::{IntersectionType, JoinType};
+pub use solid_decomposition::*;
 pub use parametric::{
     Parameter, ParameterManager, ParametricCube, ParametricCylinder, ParametricShape,
 };

@@ -25,8 +25,8 @@ pub use mesher2d::*;
 pub use mesher3d::*;
 pub use polygon_face::PolygonFace;
 pub use quad_mesher::*;
-pub use quality::*;
-pub use quality_repair::*;
+pub use quality::{MeshQuality, MeshQualityAnalyzer, QualityThresholds};
+pub use quality_repair::{MeshQualityIssue, MeshQualityProblem, MeshQualitySettings, MeshRepairSettings, MeshRepairTool, MeshQualityMetrics};
 pub use triangle_mesh::TriangleMesh;
 
 use crate::foundation::handle::Handle;

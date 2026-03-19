@@ -236,7 +236,7 @@ impl AdaptiveLodShape {
     }
 
     /// Calculate distance to camera
-    fn calculate_distance_to_camera(&self, camera_position: &Point) -> f64 {
+    fn calculate_distance_to_camera(&self, _camera_position: &Point) -> f64 {
         // Implementation to calculate distance from shape to camera
         10.0 // Placeholder
     }

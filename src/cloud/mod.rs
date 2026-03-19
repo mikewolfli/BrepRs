@@ -1,6 +1,6 @@
-use crate::topology::TopoDsShape;
 use std::collections::HashMap;
 use std::sync::Arc;
+use crate::topology::TopoDsShape;
 
 pub mod collaborative_editing;
 pub use collaborative_editing::*;
@@ -111,10 +111,10 @@ impl CrdtDocument {
     }
 
     /// Get operations since version
-    pub fn get_operations_since(&self, version: u64) -> Vec<CrdtOperation> {
+    pub fn get_operations_since(&self, _version: u64) -> Vec<CrdtOperation> {
         self.operations
             .iter()
-            .skip_while(|op| {
+            .skip_while(|_op| {
                 // Simplified: assume operations are ordered by version
                 true
             })
@@ -177,13 +177,13 @@ impl CrdtManager {
     }
 
     /// Sync document with remote
-    pub fn sync_document(&mut self, document_id: &str) -> Result<(), String> {
+    pub fn sync_document(&mut self, _document_id: &str) -> Result<(), String> {
         // Implementation of document sync
         Ok(())
     }
 
     /// Resolve conflicts
-    pub fn resolve_conflicts(&mut self, document_id: &str) -> Result<(), String> {
+    pub fn resolve_conflicts(&mut self, _document_id: &str) -> Result<(), String> {
         // Implementation of conflict resolution
         Ok(())
     }
@@ -205,22 +205,22 @@ pub trait CloudStorageInterface {
     fn initialize(&mut self, settings: &CloudStorageSettings) -> Result<(), String>;
 
     /// Upload file
-    fn upload_file(&self, path: &str, data: &[u8]) -> Result<(), String>;
+    fn upload_file(&self, _path: &str, _data: &[u8]) -> Result<(), String>;
 
     /// Download file
-    fn download_file(&self, path: &str) -> Result<Vec<u8>, String>;
+    fn download_file(&self, _path: &str) -> Result<Vec<u8>, String>;
 
     /// Delete file
-    fn delete_file(&self, path: &str) -> Result<(), String>;
+    fn delete_file(&self, _path: &str) -> Result<(), String>;
 
     /// List files
-    fn list_files(&self, prefix: &str) -> Result<Vec<String>, String>;
+    fn list_files(&self, _prefix: &str) -> Result<Vec<String>, String>;
 
     /// Check if file exists
-    fn file_exists(&self, path: &str) -> Result<bool, String>;
+    fn file_exists(&self, _path: &str) -> Result<bool, String>;
 
     /// Get file size
-    fn get_file_size(&self, path: &str) -> Result<u64, String>;
+    fn get_file_size(&self, _path: &str) -> Result<u64, String>;
 }
 
 /// AWS S3 storage
@@ -258,7 +258,7 @@ impl CloudStorageInterface for AwsS3Storage {
         Ok(())
     }
 
-    fn upload_file(&self, path: &str, data: &[u8]) -> Result<(), String> {
+    fn upload_file(&self, _path: &str, _data: &[u8]) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -266,7 +266,7 @@ impl CloudStorageInterface for AwsS3Storage {
         Ok(())
     }
 
-    fn download_file(&self, path: &str) -> Result<Vec<u8>, String> {
+    fn download_file(&self, _path: &str) -> Result<Vec<u8>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -274,7 +274,7 @@ impl CloudStorageInterface for AwsS3Storage {
         Ok(Vec::new())
     }
 
-    fn delete_file(&self, path: &str) -> Result<(), String> {
+    fn delete_file(&self, _path: &str) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -282,7 +282,7 @@ impl CloudStorageInterface for AwsS3Storage {
         Ok(())
     }
 
-    fn list_files(&self, prefix: &str) -> Result<Vec<String>, String> {
+    fn list_files(&self, _prefix: &str) -> Result<Vec<String>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -290,7 +290,7 @@ impl CloudStorageInterface for AwsS3Storage {
         Ok(Vec::new())
     }
 
-    fn file_exists(&self, path: &str) -> Result<bool, String> {
+    fn file_exists(&self, _path: &str) -> Result<bool, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -298,7 +298,7 @@ impl CloudStorageInterface for AwsS3Storage {
         Ok(false)
     }
 
-    fn get_file_size(&self, path: &str) -> Result<u64, String> {
+    fn get_file_size(&self, _path: &str) -> Result<u64, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -342,7 +342,7 @@ impl CloudStorageInterface for GoogleCloudStorage {
         Ok(())
     }
 
-    fn upload_file(&self, path: &str, data: &[u8]) -> Result<(), String> {
+    fn upload_file(&self, _path: &str, _data: &[u8]) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -350,7 +350,7 @@ impl CloudStorageInterface for GoogleCloudStorage {
         Ok(())
     }
 
-    fn download_file(&self, path: &str) -> Result<Vec<u8>, String> {
+    fn download_file(&self, _path: &str) -> Result<Vec<u8>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -358,7 +358,7 @@ impl CloudStorageInterface for GoogleCloudStorage {
         Ok(Vec::new())
     }
 
-    fn delete_file(&self, path: &str) -> Result<(), String> {
+    fn delete_file(&self, _path: &str) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -366,7 +366,7 @@ impl CloudStorageInterface for GoogleCloudStorage {
         Ok(())
     }
 
-    fn list_files(&self, prefix: &str) -> Result<Vec<String>, String> {
+    fn list_files(&self, _prefix: &str) -> Result<Vec<String>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -374,7 +374,7 @@ impl CloudStorageInterface for GoogleCloudStorage {
         Ok(Vec::new())
     }
 
-    fn file_exists(&self, path: &str) -> Result<bool, String> {
+    fn file_exists(&self, _path: &str) -> Result<bool, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -382,7 +382,7 @@ impl CloudStorageInterface for GoogleCloudStorage {
         Ok(false)
     }
 
-    fn get_file_size(&self, path: &str) -> Result<u64, String> {
+    fn get_file_size(&self, _path: &str) -> Result<u64, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -426,7 +426,7 @@ impl CloudStorageInterface for AzureBlobStorage {
         Ok(())
     }
 
-    fn upload_file(&self, path: &str, data: &[u8]) -> Result<(), String> {
+    fn upload_file(&self, _path: &str, _data: &[u8]) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -434,7 +434,7 @@ impl CloudStorageInterface for AzureBlobStorage {
         Ok(())
     }
 
-    fn download_file(&self, path: &str) -> Result<Vec<u8>, String> {
+    fn download_file(&self, _path: &str) -> Result<Vec<u8>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -442,7 +442,7 @@ impl CloudStorageInterface for AzureBlobStorage {
         Ok(Vec::new())
     }
 
-    fn delete_file(&self, path: &str) -> Result<(), String> {
+    fn delete_file(&self, _path: &str) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -450,7 +450,7 @@ impl CloudStorageInterface for AzureBlobStorage {
         Ok(())
     }
 
-    fn list_files(&self, prefix: &str) -> Result<Vec<String>, String> {
+    fn list_files(&self, _prefix: &str) -> Result<Vec<String>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -458,7 +458,7 @@ impl CloudStorageInterface for AzureBlobStorage {
         Ok(Vec::new())
     }
 
-    fn file_exists(&self, path: &str) -> Result<bool, String> {
+    fn file_exists(&self, _path: &str) -> Result<bool, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -466,7 +466,7 @@ impl CloudStorageInterface for AzureBlobStorage {
         Ok(false)
     }
 
-    fn get_file_size(&self, path: &str) -> Result<u64, String> {
+    fn get_file_size(&self, _path: &str) -> Result<u64, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -512,7 +512,7 @@ impl CloudStorageInterface for TencentCloudCosStorage {
         Ok(())
     }
 
-    fn upload_file(&self, path: &str, data: &[u8]) -> Result<(), String> {
+    fn upload_file(&self, _path: &str, _data: &[u8]) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -520,35 +520,35 @@ impl CloudStorageInterface for TencentCloudCosStorage {
         Ok(())
     }
 
-    fn download_file(&self, path: &str) -> Result<Vec<u8>, String> {
+    fn download_file(&self, _path: &str) -> Result<Vec<u8>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         Ok(Vec::new())
     }
 
-    fn delete_file(&self, path: &str) -> Result<(), String> {
+    fn delete_file(&self, _path: &str) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         Ok(())
     }
 
-    fn list_files(&self, prefix: &str) -> Result<Vec<String>, String> {
+    fn list_files(&self, _prefix: &str) -> Result<Vec<String>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         Ok(Vec::new())
     }
 
-    fn file_exists(&self, path: &str) -> Result<bool, String> {
+    fn file_exists(&self, _path: &str) -> Result<bool, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         Ok(false)
     }
 
-    fn get_file_size(&self, path: &str) -> Result<u64, String> {
+    fn get_file_size(&self, _path: &str) -> Result<u64, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -590,42 +590,42 @@ impl CloudStorageInterface for HuaweiCloudObsStorage {
         Ok(())
     }
 
-    fn upload_file(&self, path: &str, data: &[u8]) -> Result<(), String> {
+    fn upload_file(&self, _path: &str, _data: &[u8]) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         Ok(())
     }
 
-    fn download_file(&self, path: &str) -> Result<Vec<u8>, String> {
+    fn download_file(&self, _path: &str) -> Result<Vec<u8>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         Ok(Vec::new())
     }
 
-    fn delete_file(&self, path: &str) -> Result<(), String> {
+    fn delete_file(&self, _path: &str) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         Ok(())
     }
 
-    fn list_files(&self, prefix: &str) -> Result<Vec<String>, String> {
+    fn list_files(&self, _prefix: &str) -> Result<Vec<String>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         Ok(Vec::new())
     }
 
-    fn file_exists(&self, path: &str) -> Result<bool, String> {
+    fn file_exists(&self, _path: &str) -> Result<bool, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         Ok(false)
     }
 
-    fn get_file_size(&self, path: &str) -> Result<u64, String> {
+    fn get_file_size(&self, _path: &str) -> Result<u64, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -667,42 +667,42 @@ impl CloudStorageInterface for AlibabaCloudOssStorage {
         Ok(())
     }
 
-    fn upload_file(&self, path: &str, data: &[u8]) -> Result<(), String> {
+    fn upload_file(&self, _path: &str, _data: &[u8]) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         Ok(())
     }
 
-    fn download_file(&self, path: &str) -> Result<Vec<u8>, String> {
+    fn download_file(&self, _path: &str) -> Result<Vec<u8>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         Ok(Vec::new())
     }
 
-    fn delete_file(&self, path: &str) -> Result<(), String> {
+    fn delete_file(&self, _path: &str) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         Ok(())
     }
 
-    fn list_files(&self, prefix: &str) -> Result<Vec<String>, String> {
+    fn list_files(&self, _prefix: &str) -> Result<Vec<String>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         Ok(Vec::new())
     }
 
-    fn file_exists(&self, path: &str) -> Result<bool, String> {
+    fn file_exists(&self, _path: &str) -> Result<bool, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         Ok(false)
     }
 
-    fn get_file_size(&self, path: &str) -> Result<u64, String> {
+    fn get_file_size(&self, _path: &str) -> Result<u64, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -747,42 +747,42 @@ impl CloudStorageInterface for QiniuCloudKodoStorage {
         Ok(())
     }
 
-    fn upload_file(&self, path: &str, data: &[u8]) -> Result<(), String> {
+    fn upload_file(&self, _path: &str, _data: &[u8]) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         Ok(())
     }
 
-    fn download_file(&self, path: &str) -> Result<Vec<u8>, String> {
+    fn download_file(&self, _path: &str) -> Result<Vec<u8>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         Ok(Vec::new())
     }
 
-    fn delete_file(&self, path: &str) -> Result<(), String> {
+    fn delete_file(&self, _path: &str) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         Ok(())
     }
 
-    fn list_files(&self, prefix: &str) -> Result<Vec<String>, String> {
+    fn list_files(&self, _prefix: &str) -> Result<Vec<String>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         Ok(Vec::new())
     }
 
-    fn file_exists(&self, path: &str) -> Result<bool, String> {
+    fn file_exists(&self, _path: &str) -> Result<bool, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         Ok(false)
     }
 
-    fn get_file_size(&self, path: &str) -> Result<u64, String> {
+    fn get_file_size(&self, _path: &str) -> Result<u64, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
@@ -1059,7 +1059,7 @@ impl CloudSyncManager {
     }
 
     /// Sync specific document
-    pub fn sync_document(&mut self, document_id: &str) -> Result<(), String> {
+    pub fn sync_document(&mut self, _document_id: &str) -> Result<(), String> {
         if self.is_syncing {
             return Err("Sync already in progress".to_string());
         }

@@ -4,9 +4,10 @@
 //! or other data sources.
 
 use crate::geometry::{Point, Vector};
-use crate::mesh::mesh_data::{Mesh3D, MeshVertex};
+use crate::mesh::mesh_data::Mesh3D;
 
 /// Octree structure for adaptive sampling
+#[allow(dead_code)]
 struct Octree {
     min: Point,
     max: Point,
@@ -25,7 +26,7 @@ struct SDF {
 }
 
 impl SDF {
-    fn new(points: &[Point], normals: Option<&[Vector]>, octree: &Octree) -> Self {
+    fn new(_points: &[Point], _normals: Option<&[Vector]>, _octree: &Octree) -> Self {
         // SDF initialization
         Self {}
     }
@@ -160,7 +161,7 @@ impl SurfaceReconstructor {
 
         if points.len() >= 3 {
             // Create vertices
-            let vertex_indices: Vec<usize> = points.iter().map(|p| mesh.add_vertex(*p)).collect();
+            let _vertex_indices: Vec<usize> = points.iter().map(|p| mesh.add_vertex(*p)).collect();
 
             // Build octree for adaptive sampling
             let octree = self.build_octree(points, self.params.depth);
@@ -200,7 +201,7 @@ impl SurfaceReconstructor {
     }
 
     /// Marching cubes algorithm to generate mesh from SDF
-    fn marching_cubes(&self, sdf: &SDF, octree: &Octree, mesh: &mut Mesh3D) {
+    fn marching_cubes(&self, _sdf: &SDF, _octree: &Octree, mesh: &mut Mesh3D) {
         // Simple marching cubes implementation
         // This would be a more complex implementation in a real system
         if mesh.vertices.len() >= 4 {
@@ -309,7 +310,7 @@ impl SurfaceReconstructor {
         &self,
         point: Point,
         points: &[Point],
-        normals: Option<&[Vector]>,
+        _normals: Option<&[Vector]>,
     ) -> Option<Point> {
         // Find k nearest neighbors
         let k = 15.min(points.len());
@@ -420,7 +421,7 @@ impl SurfaceReconstructor {
         );
         let size = (max.x - min.x).max(max.y - min.y).max(max.z - min.z) * 2.0;
 
-        let super_tetra = [
+        let _super_tetra = [
             Point::new(center.x - size, center.y - size, center.z - size),
             Point::new(center.x + size, center.y + size, center.z - size),
             Point::new(center.x + size, center.y - size, center.z + size),
@@ -489,9 +490,9 @@ impl SurfaceReconstructor {
     fn circumsphere_center(&self, p0: &Point, p1: &Point, p2: &Point, p3: &Point) -> Point {
         // Calculate circumsphere center using linear algebra
         // This is a simplified implementation
-        let v1 = Vector::from_point(p1, p0);
-        let v2 = Vector::from_point(p2, p0);
-        let v3 = Vector::from_point(p3, p0);
+        let _v1 = Vector::from_point(p1, p0);
+        let _v2 = Vector::from_point(p2, p0);
+        let _v3 = Vector::from_point(p3, p0);
 
         // For simplicity, return the centroid
         Point::new(
@@ -502,6 +503,7 @@ impl SurfaceReconstructor {
     }
 
     /// Check if triangle satisfies alpha condition
+    #[allow(dead_code)]
     fn satisfies_alpha_condition(&self, p0: &Point, p1: &Point, p2: &Point) -> bool {
         // Calculate circumradius
         let a = p1.distance(p2);
@@ -558,7 +560,7 @@ impl SurfaceReconstructor {
         volume: f64,
     ) -> f64 {
         // Calculate circumradius using Cayley-Menger determinant
-        let cayley_menger = self.cayley_menger_determinant(a, b, c, d, e, f);
+        let _cayley_menger = self.cayley_menger_determinant(a, b, c, d, e, f);
         let circumradius = (a * b * c * d * e * f).sqrt() / (8.0 * volume + 1e-10);
         circumradius
     }
@@ -566,12 +568,12 @@ impl SurfaceReconstructor {
     /// Calculate Cayley-Menger determinant
     fn cayley_menger_determinant(&self, a: f64, b: f64, c: f64, d: f64, e: f64, f: f64) -> f64 {
         // Simplified Cayley-Menger determinant calculation
-        let a2 = a * a;
-        let b2 = b * b;
-        let c2 = c * c;
-        let d2 = d * d;
-        let e2 = e * e;
-        let f2 = f * f;
+        let _a2 = a * a;
+        let _b2 = b * b;
+        let _c2 = c * c;
+        let _d2 = d * d;
+        let _e2 = e * e;
+        let _f2 = f * f;
 
         // This is a simplified version
         1.0
@@ -730,10 +732,10 @@ impl SurfaceReconstructor {
         );
 
         let mut edge_vector = Vector::from_point(pb, pa);
-        let edge_normal = edge_vector.normalize();
+        let _edge_normal = edge_vector.normalize();
 
         // Calculate the distance from midpoint to ball center
-        let h = (self.params.ball_radius * self.params.ball_radius
+        let _h = (self.params.ball_radius * self.params.ball_radius
             - (edge_length / 2.0) * (edge_length / 2.0))
             .sqrt();
 

@@ -103,6 +103,7 @@ pub trait AiProtocol {
 /// Default AI Protocol Implementation
 #[derive(Clone)]
 pub struct DefaultAiProtocol {
+    #[allow(dead_code)]
     base_url: String,
     api_key: Option<String>,
     timeout: u64,

@@ -1,4 +1,6 @@
-use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
+use crate::foundation::types::StandardReal;
+#[cfg(test)]
+use crate::foundation::types::STANDARD_REAL_EPSILON;
 use crate::geometry::{Point, Vector};
 use serde::{Deserialize, Serialize};
 
@@ -136,7 +138,7 @@ impl BezierCurve3D {
         temp_poles[0]
     }
 
-    pub fn evaluate_derivative(&self, parameter: StandardReal, order: i32) -> Vector {
+    pub fn evaluate_derivative(&self, _parameter: StandardReal, order: i32) -> Vector {
         if order <= 0 || order > self.degree() {
             return Vector::new(0.0, 0.0, 0.0);
         }
@@ -184,7 +186,7 @@ impl BezierCurve3D {
         )
     }
 
-    pub fn length(&self, tolerance: StandardReal) -> StandardReal {
+    pub fn length(&self, _tolerance: StandardReal) -> StandardReal {
         let mut length = 0.0;
         let mut t = 0.0;
         let step = 0.01;

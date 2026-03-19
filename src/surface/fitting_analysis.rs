@@ -167,7 +167,7 @@ impl SurfaceAnalyzer {
     /// Least squares fitting
     fn least_squares_fitting(
         &self,
-        points: &[Point],
+        _points: &[Point],
     ) -> (
         Option<Box<dyn Surface>>,
         Option<TriangleMesh>,
@@ -182,7 +182,7 @@ impl SurfaceAnalyzer {
     /// RANSAC fitting
     fn ransac_fitting(
         &self,
-        points: &[Point],
+        _points: &[Point],
     ) -> (
         Option<Box<dyn Surface>>,
         Option<TriangleMesh>,
@@ -197,7 +197,7 @@ impl SurfaceAnalyzer {
     /// Moving least squares fitting
     fn moving_least_squares_fitting(
         &self,
-        points: &[Point],
+        _points: &[Point],
     ) -> (
         Option<Box<dyn Surface>>,
         Option<TriangleMesh>,
@@ -212,7 +212,7 @@ impl SurfaceAnalyzer {
     /// Poisson surface reconstruction
     fn poisson_reconstruction(
         &self,
-        points: &[Point],
+        _points: &[Point],
     ) -> (
         Option<Box<dyn Surface>>,
         Option<TriangleMesh>,
@@ -227,7 +227,7 @@ impl SurfaceAnalyzer {
     /// Alpha shapes reconstruction
     fn alpha_shapes_reconstruction(
         &self,
-        points: &[Point],
+        _points: &[Point],
     ) -> (
         Option<Box<dyn Surface>>,
         Option<TriangleMesh>,
@@ -242,7 +242,7 @@ impl SurfaceAnalyzer {
     /// Ball pivoting reconstruction
     fn ball_pivoting_reconstruction(
         &self,
-        points: &[Point],
+        _points: &[Point],
     ) -> (
         Option<Box<dyn Surface>>,
         Option<TriangleMesh>,
@@ -269,7 +269,7 @@ impl SurfaceAnalyzer {
 
         // Calculate fitting error
         for point in points {
-            let (closest_point, u, v) = self.find_closest_point(surface, point);
+            let (closest_point, _u, _v) = self.find_closest_point(surface, point);
             let error = point.distance(&closest_point);
             total_error += error;
             max_error = f64::max(max_error, error);
@@ -309,13 +309,13 @@ impl SurfaceAnalyzer {
     }
 
     /// Find closest point on surface
-    fn find_closest_point(&self, surface: &dyn Surface, point: &Point) -> (Point, f64, f64) {
+    fn find_closest_point(&self, _surface: &dyn Surface, _point: &Point) -> (Point, f64, f64) {
         // Implementation of closest point finding
         (Point::new(0.0, 0.0, 0.0), 0.0, 0.0) // Placeholder
     }
 
     /// Calculate curvature statistics
-    fn calculate_curvature_stats(&self, surface: &dyn Surface) -> CurvatureStats {
+    fn calculate_curvature_stats(&self, _surface: &dyn Surface) -> CurvatureStats {
         // Implementation of curvature statistics calculation
         CurvatureStats {
             mean_gaussian: 0.0,
@@ -328,7 +328,7 @@ impl SurfaceAnalyzer {
     }
 
     /// Calculate normal consistency
-    fn calculate_normal_consistency(&self, surface: &dyn Surface) -> f64 {
+    fn calculate_normal_consistency(&self, _surface: &dyn Surface) -> f64 {
         // Implementation of normal consistency calculation
         1.0 // Placeholder
     }
@@ -393,7 +393,7 @@ impl Surface for PlaneSurface {
         params
     }
 
-    fn to_mesh(&self, resolution: usize) -> TriangleMesh {
+    fn to_mesh(&self, _resolution: usize) -> TriangleMesh {
         // Implementation to convert plane to mesh
         TriangleMesh::new() // Placeholder
     }
@@ -406,12 +406,12 @@ pub struct SphereSurface {
 }
 
 impl Surface for SphereSurface {
-    fn evaluate(&self, u: f64, v: f64) -> Point {
+    fn evaluate(&self, _u: f64, _v: f64) -> Point {
         // Implementation of sphere evaluation
         Point::new(0.0, 0.0, 0.0) // Placeholder
     }
 
-    fn normal(&self, u: f64, v: f64) -> crate::geometry::Vector {
+    fn normal(&self, _u: f64, _v: f64) -> crate::geometry::Vector {
         // Implementation of sphere normal calculation
         crate::geometry::Vector::new(0.0, 0.0, 1.0) // Placeholder
     }
@@ -434,7 +434,7 @@ impl Surface for SphereSurface {
         params
     }
 
-    fn to_mesh(&self, resolution: usize) -> TriangleMesh {
+    fn to_mesh(&self, _resolution: usize) -> TriangleMesh {
         // Implementation to convert sphere to mesh
         TriangleMesh::new() // Placeholder
     }

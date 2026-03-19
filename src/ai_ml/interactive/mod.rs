@@ -66,10 +66,10 @@ pub enum Interaction {
 impl InteractiveSession {
     pub fn new() -> Self {
         use rand::Rng;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         
         Self {
-            id: format!("session_{}", rng.gen::<u64>()),
+            id: format!("session_{}", rng.random::<u64>()),
             current_mesh: Mesh3D::new(),
             history: Vec::new(),
             settings: TextTo3DSettings::default(),

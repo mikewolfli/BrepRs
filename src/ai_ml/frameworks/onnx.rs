@@ -211,6 +211,7 @@ impl OnnxModelCache {
 pub struct OnnxRuntime {
     // Runtime configuration
     runtime_path: Option<String>,
+    #[allow(dead_code)]
     model_cache: OnnxModelCache,
 }
 
@@ -230,7 +231,7 @@ impl OnnxRuntime {
     /// Load and run ONNX model (optimized with caching)
     pub fn run_model(
         &mut self,
-        model_path: &Path,
+        _model_path: &Path,
         input: &[f32],
     ) -> Result<Vec<f32>, AiProtocolError> {
         // Check input size
@@ -277,7 +278,7 @@ impl OnnxRuntime {
     /// Initialize weights for a neural network layer
     fn initialize_weights(&self, input_size: usize, output_size: usize) -> Vec<Vec<f32>> {
         use rand::Rng;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         
         // Simple Xavier initialization
         let std_dev = (2.0 / (input_size + output_size) as f32).sqrt();
@@ -287,7 +288,7 @@ impl OnnxRuntime {
             let mut layer_weights = Vec::with_capacity(input_size);
             for _ in 0..input_size {
                 // Generate random weights with Gaussian distribution
-                let weight = rng.gen::<f32>() * std_dev * 2.0 - std_dev;
+                let weight = rng.random::<f32>() * std_dev * 2.0 - std_dev;
                 layer_weights.push(weight);
             }
             weights.push(layer_weights);

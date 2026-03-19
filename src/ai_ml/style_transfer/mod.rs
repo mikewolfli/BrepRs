@@ -5,9 +5,9 @@
 
 use std::collections::HashMap;
 
-use crate::ai_ml::protocol::{AiProtocolError, AiResult};
-use crate::geometry::{Point, Vector};
-use crate::mesh::mesh_data::{Mesh3D, MeshFace, MeshVertex};
+use crate::ai_ml::protocol::AiResult;
+use crate::geometry::Point;
+use crate::mesh::mesh_data::{Mesh3D, MeshFace};
 use rand;
 
 /// Style Transfer Settings
@@ -160,7 +160,7 @@ impl StyleTransferTool {
     }
 
     /// Extract features from image
-    fn extract_features_from_image(&self, path: &str) -> AiResult<StyleFeatures> {
+    fn extract_features_from_image(&self, _path: &str) -> AiResult<StyleFeatures> {
         let mut features = StyleFeatures::default();
 
         // Simulate image feature extraction
@@ -269,23 +269,23 @@ impl StyleTransferTool {
         &self,
         source_mesh: &Mesh3D,
         style_features: &StyleFeatures,
-        content_features: &StyleFeatures,
+        _content_features: &StyleFeatures,
     ) -> AiResult<Mesh3D> {
         // Create a copy of the source mesh
         let mut stylized_mesh = source_mesh.clone();
 
         use rand::Rng;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         // Apply style transfer to existing geometry
         // Transfer color and texture style while preserving geometry
 
         // Apply color transfer based on style features
-        if let Some(average_color) = style_features.color_features.get("average_color") {
+        if let Some(_average_color) = style_features.color_features.get("average_color") {
             // Adjust vertex colors towards the style's average color
-            for vertex in &mut stylized_mesh.vertices {
+            for _vertex in &mut stylized_mesh.vertices {
                 // Simple color transfer based on style strength
-                let factor = self.settings.style_strength;
+                let _factor = self.settings.style_strength;
                 // Assuming vertex has color information (simplified)
                 // In a real implementation, this would work with actual vertex colors
             }
@@ -299,9 +299,9 @@ impl StyleTransferTool {
             for vertex in &mut stylized_mesh.vertices {
                 // Add perturbations based on texture complexity and style strength
                 let perturbation = self.settings.style_strength * 0.05 * complexity_factor;
-                vertex.point.x += (rng.gen::<f64>() - 0.5) * perturbation;
-                vertex.point.y += (rng.gen::<f64>() - 0.5) * perturbation;
-                vertex.point.z += (rng.gen::<f64>() - 0.5) * perturbation;
+                vertex.point.x += (rng.random::<f64>() - 0.5) * perturbation;
+                vertex.point.y += (rng.random::<f64>() - 0.5) * perturbation;
+                vertex.point.z += (rng.random::<f64>() - 0.5) * perturbation;
             }
         }
 
@@ -313,10 +313,10 @@ impl StyleTransferTool {
         &self,
         source_mesh: &Mesh3D,
         style_features: &StyleFeatures,
-        content_features: &StyleFeatures,
+        _content_features: &StyleFeatures,
     ) -> AiResult<Mesh3D> {
         // Create a new mesh with style-transferred geometry
-        let mut stylized_mesh = Mesh3D::new();
+        let mut stylized_mesh;
 
         // Get detail level from style features
         let detail_level = style_features
@@ -371,7 +371,7 @@ impl StyleTransferTool {
     }
 
     /// Subdivide a triangle into smaller triangles
-    fn subdivide_triangle(&self, mesh: &mut Mesh3D, face: &MeshFace, subdivisions: usize) {
+    fn subdivide_triangle(&self, mesh: &mut Mesh3D, face: &MeshFace, _subdivisions: usize) {
         // Simplified subdivision implementation
         // In a real implementation, this would use proper subdivision algorithms
         // like Catmull-Clark or Loop subdivision
@@ -379,20 +379,20 @@ impl StyleTransferTool {
     }
 
     /// Apply geometric style transformations
-    fn apply_geometric_style(&self, mesh: &mut Mesh3D, style_features: &StyleFeatures) {
+    fn apply_geometric_style(&self, _mesh: &mut Mesh3D, style_features: &StyleFeatures) {
         // Apply style-specific geometric transformations
         // Based on style features like symmetry, balance, etc.
 
         // Example: Apply symmetry transformation if style has high symmetry
         if let Some(symmetry) = style_features.structural_features.get("symmetry") {
             if *symmetry > 0.7 {
-                self.apply_symmetry(mesh);
+                self.apply_symmetry(_mesh);
             }
         }
     }
 
     /// Apply symmetry transformation to mesh
-    fn apply_symmetry(&self, mesh: &mut Mesh3D) {
+    fn apply_symmetry(&self, _mesh: &mut Mesh3D) {
         // Simplified symmetry application
         // In a real implementation, this would find the symmetry plane
         // and mirror vertices across it
@@ -419,25 +419,25 @@ impl StyleTransferTool {
     }
 
     /// Remove duplicate vertices
-    fn remove_duplicate_vertices(&self, mesh: &mut Mesh3D) {
+    fn remove_duplicate_vertices(&self, _mesh: &mut Mesh3D) {
         // Simplified implementation
         // In a real implementation, this would find and merge duplicate vertices
     }
 
     /// Remove degenerate faces
-    fn remove_degenerate_faces(&self, mesh: &mut Mesh3D) {
+    fn remove_degenerate_faces(&self, _mesh: &mut Mesh3D) {
         // Simplified implementation
         // In a real implementation, this would remove faces with zero area
     }
 
     /// Smooth the mesh
-    fn smooth_mesh(&self, mesh: &mut Mesh3D) {
+    fn smooth_mesh(&self, _mesh: &mut Mesh3D) {
         // Simplified implementation
         // In a real implementation, this would use Laplacian smoothing or similar techniques
     }
 
     /// Ensure mesh integrity
-    fn ensure_mesh_integrity(&self, mesh: &mut Mesh3D) {
+    fn ensure_mesh_integrity(&self, _mesh: &mut Mesh3D) {
         // Simplified implementation
         // In a real implementation, this would check for and fix mesh issues
     }
@@ -474,8 +474,8 @@ impl StyleTransferTool {
     fn calculate_quality_score(
         &self,
         stylized_mesh: &Mesh3D,
-        source_mesh: &Mesh3D,
-        style_reference: &StyleReference,
+        _source_mesh: &Mesh3D,
+        _style_reference: &StyleReference,
     ) -> f64 {
         // In a real implementation, this would include more sophisticated metrics
         // For now, we'll just return a score based on mesh complexity

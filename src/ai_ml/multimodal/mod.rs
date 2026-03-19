@@ -3,8 +3,8 @@
 //! This module provides functionality for converting various input modalities (images, sketches, point clouds)
 //! to 3D models, serving as the underlying capability for semantic generation.
 
-use crate::ai_ml::protocol::{AiDataType, AiProtocol, AiResult};
-use crate::geometry::{Point, Vector};
+use crate::ai_ml::protocol::AiResult;
+use crate::geometry::Point;
 use crate::mesh::mesh_data::{Mesh3D, MeshFace, MeshVertex};
 use std::path::Path;
 

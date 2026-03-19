@@ -73,13 +73,13 @@ impl ProgressiveMesh {
     }
 
     /// Build progressive mesh from base mesh
-    pub fn build(&mut self, target_levels: u32) {
+    pub fn build(&mut self, _target_levels: u32) {
         // Implementation of progressive mesh construction
         // This would involve computing vertex collapse costs and building the simplification hierarchy
     }
 
     /// Get mesh at specific LOD level
-    pub fn get_mesh_at_level(&self, level: u32) -> TriangleMesh {
+    pub fn get_mesh_at_level(&self, _level: u32) -> TriangleMesh {
         // Implementation to generate mesh at specific LOD level
         self.base_mesh.clone() // Placeholder
     }
@@ -172,11 +172,11 @@ impl MultiResolutionShape {
     /// Generate LOD shape with target triangle count
     fn generate_lod(
         &self,
-        shape: &TopoDsShape,
-        target_triangles: usize,
+        _shape: &TopoDsShape,
+        _target_triangles: usize,
     ) -> Result<TopoDsShape, String> {
         // Implementation of LOD generation
-        Ok(shape.clone()) // Placeholder
+        Ok(_shape.clone()) // Placeholder
     }
 
     /// Get current LOD shape
@@ -286,8 +286,8 @@ impl MultiResolutionManager {
     /// Compute distance from camera to shape
     fn compute_distance_to_shape(
         &self,
-        shape: &MultiResolutionShape,
-        camera_position: &Point,
+        _shape: &MultiResolutionShape,
+        _camera_position: &Point,
     ) -> f64 {
         // Implementation to compute distance from camera to shape
         0.0 // Placeholder

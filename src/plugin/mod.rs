@@ -225,9 +225,9 @@ impl PluginManager {
 fn is_dynamic_library(path: &Path) -> bool {
     #[cfg(windows)]
     let extensions = ["dll"];
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "macos")))]
     let extensions = ["so"];
-    #[cfg(macos)]
+    #[cfg(target_os = "macos")]
     let extensions = ["dylib"];
 
     if let Some(ext) = path.extension() {

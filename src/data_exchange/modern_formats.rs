@@ -1,5 +1,3 @@
-use crate::geometry::Point;
-use crate::mesh::TriangleMesh;
 use crate::topology::TopoDsShape;
 use std::collections::HashMap;
 
@@ -506,17 +504,17 @@ impl GltfReader {
     /// Process a glTF mesh
     fn process_mesh(&self, mesh: &GltfMesh, shape: &mut TopoDsShape) -> Result<(), String> {
         for primitive in &mesh.primitives {
-            self.process_primitive(primitive, shape)?;
+            self.convert_primitive(primitive, shape)?;
         }
 
         Ok(())
     }
 
     /// Process a glTF primitive
-    fn process_primitive(
+    fn convert_primitive(
         &self,
-        primitive: &GltfPrimitive,
-        shape: &mut TopoDsShape,
+        _primitive: &GltfPrimitive,
+        _shape: &mut TopoDsShape,
     ) -> Result<(), String> {
         // For now, we'll just create a simple shape
         // In a real implementation, we would process the primitive's attributes
@@ -645,7 +643,7 @@ impl ModernFormatWriter for GltfWriter {
 
 impl GltfWriter {
     /// Convert TopoDsShape to glTF document
-    fn convert_from_shape(&mut self, shape: &TopoDsShape) -> Result<(), String> {
+    fn convert_from_shape(&mut self, _shape: &TopoDsShape) -> Result<(), String> {
         // Implementation for converting TopoDsShape to glTF document
         // For now, we'll just return Ok
         Ok(())
@@ -779,10 +777,10 @@ impl ModernFormatReader for UsdReader {
 
 impl UsdReader {
     /// Read USDC (binary USD) file
-    fn read_usdc(&mut self, buffer: &[u8]) -> Result<TopoDsShape, String> {
+    fn read_usdc(&mut self, _buffer: &[u8]) -> Result<TopoDsShape, String> {
         // Implementation for reading binary USD files
         // For now, we'll create a simple shape
-        let mut shape = TopoDsShape::new(crate::topology::ShapeType::Compound);
+        let shape = TopoDsShape::new(crate::topology::ShapeType::Compound);
 
         // Create a box shape as a placeholder
         // Note: TopoDsShape doesn't have add_shape method
@@ -807,21 +805,135 @@ impl UsdReader {
 
     /// Parse USDA content
     fn parse_usda(&self, content: &str) -> Result<UsdDocument, String> {
-        // Implementation for parsing USDA content
-        // For now, we'll return a placeholder
+        let asset = UsdAsset {
+            name: "BrepRs Import".to_string(),
+            identifier: "BrepRs".to_string(),
+            version: "0.8.0".to_string(),
+            metadata: HashMap::new(),
+        };
+        
+        let mut root_prim = UsdPrim {
+            name: "Root".to_string(),
+            type_: "Xform".to_string(),
+            properties: HashMap::new(),
+            children: Vec::new(),
+        };
+        
+        let mut prim_stack: Vec<UsdPrim> = Vec::new();
+        
+        for line in content.lines() {
+            let trimmed = line.trim();
+            
+            // Skip empty lines and comments
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                continue;
+            }
+            
+            // Parse asset information
+            if trimmed.starts_with("customData") || trimmed.starts_with("doc") {
+                continue;
+            }
+            
+            // Parse metadata
+            if trimmed.contains("assetInfo") || trimmed.contains("defaultPrim") {
+                continue;
+            }
+            
+            // Parse prim definitions
+            if trimmed.starts_with("def ") {
+                let parts: Vec<&str> = trimmed.split_whitespace().collect();
+                if parts.len() >= 3 {
+                    root_prim.type_ = parts[1].to_string();
+                    root_prim.name = parts[2].trim_matches('"').to_string();
+                }
+            }
+            
+            // Parse nested prims
+            if trimmed.starts_with('{') {
+                prim_stack.push(std::mem::replace(
+                    &mut root_prim,
+                    UsdPrim {
+                        name: "Child".to_string(),
+                        type_: "Xform".to_string(),
+                        properties: HashMap::new(),
+                        children: Vec::new(),
+                    }
+                ));
+            }
+            
+            if trimmed.starts_with('}') {
+                if let Some(parent) = prim_stack.pop() {
+                    let child = std::mem::replace(&mut root_prim, parent);
+                    root_prim.children.push(child);
+                }
+            }
+            
+            // Parse properties
+            if trimmed.contains('=') {
+                let parts: Vec<&str> = trimmed.splitn(2, '=').collect();
+                if parts.len() == 2 {
+                    let prop_name = parts[0].trim();
+                    let prop_value = parts[1].trim();
+                    
+                    // Try to parse different property types
+                    if let Ok(value) = prop_value.parse::<f32>() {
+                        root_prim.properties.insert(
+                            prop_name.to_string(),
+                            UsdProperty::Float(value)
+                        );
+                    } else if let Ok(value) = prop_value.parse::<f64>() {
+                        root_prim.properties.insert(
+                            prop_name.to_string(),
+                            UsdProperty::Double(value)
+                        );
+                    } else if let Ok(value) = prop_value.parse::<i32>() {
+                        root_prim.properties.insert(
+                            prop_name.to_string(),
+                            UsdProperty::Integer(value)
+                        );
+                    } else if let Ok(value) = prop_value.parse::<bool>() {
+                        root_prim.properties.insert(
+                            prop_name.to_string(),
+                            UsdProperty::Boolean(value)
+                        );
+                    } else if prop_value.starts_with('"') {
+                        let value = prop_value.trim_matches('"').to_string();
+                        root_prim.properties.insert(
+                            prop_name.to_string(),
+                            UsdProperty::String(value)
+                        );
+                    } else if prop_value.starts_with('(') && prop_value.ends_with(')') {
+                        // Parse vector
+                        let inner = prop_value.trim_matches('(').trim_matches(')');
+                        let coords: Vec<f32> = inner
+                            .split(',')
+                            .filter_map(|s| s.trim().parse().ok())
+                            .collect();
+                        
+                        if coords.len() == 2 {
+                            root_prim.properties.insert(
+                                prop_name.to_string(),
+                                UsdProperty::Vector2f([coords[0], coords[1]])
+                            );
+                        } else if coords.len() == 3 {
+                            root_prim.properties.insert(
+                                prop_name.to_string(),
+                                UsdProperty::Vector3f([coords[0], coords[1], coords[2]])
+                            );
+                        } else if coords.len() == 4 {
+                            root_prim.properties.insert(
+                                prop_name.to_string(),
+                                UsdProperty::Vector4f([coords[0], coords[1], coords[2], coords[3]])
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        
         Ok(UsdDocument {
-            asset: UsdAsset {
-                name: "BrepRs Import".to_string(),
-                identifier: "BrepRs".to_string(),
-                version: "0.8.0".to_string(),
-                metadata: HashMap::new(),
-            },
-            root_prim: UsdPrim {
-                name: "Root".to_string(),
-                type_: "Xform".to_string(),
-                properties: HashMap::new(),
-                children: Vec::new(),
-            },
+            asset,
+            root_prim,
         })
     }
 
@@ -971,7 +1083,7 @@ impl ModernFormatWriter for UsdWriter {
 
 impl UsdWriter {
     /// Convert TopoDsShape to USD document
-    fn convert_from_shape(&mut self, shape: &TopoDsShape) -> Result<(), String> {
+    fn convert_from_shape(&mut self, _shape: &TopoDsShape) -> Result<(), String> {
         // Implementation for converting TopoDsShape to USD document
         // For now, we'll just return Ok
         Ok(())
@@ -1065,7 +1177,7 @@ impl ModernFormatReader for ThreeMFReader {
 
 impl ThreeMFReader {
     /// Parse 3MF ZIP archive
-    fn parse_3mf(&self, buffer: &[u8]) -> Result<ThreeMFModel, String> {
+    fn parse_3mf(&self, _buffer: &[u8]) -> Result<ThreeMFModel, String> {
         // Implementation for parsing 3MF ZIP archive
         // For now, we'll return a placeholder
         Ok(ThreeMFModel {
@@ -1109,8 +1221,8 @@ impl ThreeMFReader {
     /// Process 3MF object
     fn process_3mf_object(
         &self,
-        object: &ThreeMFObject,
-        shape: &mut TopoDsShape,
+        _object: &ThreeMFObject,
+        _shape: &mut TopoDsShape,
     ) -> Result<(), String> {
         // For now, we'll just create a simple shape
         // In a real implementation, we would process the object's mesh
@@ -1204,7 +1316,7 @@ impl ModernFormatWriter for ThreeMFWriter {
 
 impl ThreeMFWriter {
     /// Convert TopoDsShape to 3MF model
-    fn convert_from_shape(&mut self, shape: &TopoDsShape) -> Result<(), String> {
+    fn convert_from_shape(&mut self, _shape: &TopoDsShape) -> Result<(), String> {
         // Implementation for converting TopoDsShape to 3MF model
         // For now, we'll just return Ok
         Ok(())
@@ -1217,14 +1329,15 @@ impl ThreeMFWriter {
         use zip::ZipWriter;
 
         let mut cursor = Cursor::new(Vec::new());
-        let mut zip = ZipWriter::new(&mut cursor);
+        {
+            let mut zip = ZipWriter::new(&mut cursor);
 
-        // Write model.xml
-        zip.start_file("3D/3dmodel.model", zip::write::FileOptions::default())
-            .map_err(|e| e.to_string())?;
+            // Write model.xml
+            zip.start_file("3D/3dmodel.model", zip::write::FileOptions::default())
+                .map_err(|e| e.to_string())?;
 
-        // Write XML content
-        let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
+            // Write XML content
+            let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
 <model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">
     <metadata name="Application">BrepRs</metadata>
     <metadata name="Author">BrepRs</metadata>
@@ -1264,9 +1377,10 @@ impl ThreeMFWriter {
     </build>
 </model>"#;
 
-        zip.write_all(xml_content.as_bytes())
-            .map_err(|e| e.to_string())?;
-        let mut cursor = zip.finish().map_err(|e| e.to_string())?;
+            zip.write_all(xml_content.as_bytes())
+                .map_err(|e| e.to_string())?;
+            zip.finish().map_err(|e| e.to_string())?;
+        }
 
         Ok(cursor.into_inner())
     }

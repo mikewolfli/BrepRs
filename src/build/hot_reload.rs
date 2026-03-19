@@ -377,7 +377,7 @@ impl IncrementalCompiler {
     }
 
     /// Extract dependencies from source
-    fn extract_dependencies(&self, path: &Path, source: &str) -> HashSet<PathBuf> {
+    fn extract_dependencies(&self, _path: &Path, source: &str) -> HashSet<PathBuf> {
         let mut dependencies = HashSet::new();
 
         // Simplified dependency extraction

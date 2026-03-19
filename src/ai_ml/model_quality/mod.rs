@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::ai_ml::protocol::{AiProtocolError, AiResult};
 use crate::geometry::Point;
-use crate::mesh::mesh_data::{Mesh3D, MeshFace, MeshVertex};
+use crate::mesh::mesh_data::Mesh3D;
 
 /// Model Quality Assessment Results
 pub struct ModelQualityReport {
@@ -265,7 +265,7 @@ impl ModelQualityEvaluator {
     }
 
     /// Check for self-intersections
-    fn check_self_intersections(&self, mesh: &Mesh3D, _errors: &mut Vec<ModelError>) {
+    fn check_self_intersections(&self, _mesh: &Mesh3D, _errors: &mut Vec<ModelError>) {
         // Simplified check: this is a computationally expensive operation
         // For simplicity, we'll skip detailed intersection checking
         // In a real implementation, you would use more sophisticated algorithms
@@ -395,7 +395,7 @@ impl ModelRepairTool {
         let mut vertex_mapping = Vec::new();
 
         // Round vertices to tolerance and build mapping
-        for (i, vertex) in mesh.vertices.iter().enumerate() {
+        for (_i, vertex) in mesh.vertices.iter().enumerate() {
             let rounded_point = Point::new(
                 (vertex.point.x / self.evaluator.tolerance).round() * self.evaluator.tolerance,
                 (vertex.point.y / self.evaluator.tolerance).round() * self.evaluator.tolerance,

@@ -3,12 +3,6 @@
 //! This module provides utilities for integrating with TensorFlow, including tensor conversion
 //! between geometric data and TensorFlow tensors, with optimized performance and GPU acceleration.
 
-use std::collections::HashMap;
-use std::sync::Arc;
-
-use crate::geometry::{Point, Vector};
-use crate::mesh::mesh_data::{Mesh3D, MeshFace, MeshVertex};
-
 #[cfg(feature = "tensorflow")]
 use tensorflow;
 

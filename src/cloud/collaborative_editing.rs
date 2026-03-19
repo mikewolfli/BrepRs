@@ -256,21 +256,21 @@ impl RealTimeCollaborativeEditor {
                 let mut shape_map = self.shape_map.write().unwrap();
                 shape_map.remove(id);
             }
-            RealTimeOperation::MoveShape { id, position, .. } => {
+            RealTimeOperation::MoveShape { id, position: _, .. } => {
                 let mut shape_map = self.shape_map.write().unwrap();
-                if let Some(shape) = shape_map.get_mut(id) {
+                if let Some(_shape) = shape_map.get_mut(id) {
                     // Implementation of shape movement
                 }
             }
-            RealTimeOperation::RotateShape { id, rotation, .. } => {
+            RealTimeOperation::RotateShape { id, rotation: _, .. } => {
                 let mut shape_map = self.shape_map.write().unwrap();
-                if let Some(shape) = shape_map.get_mut(id) {
+                if let Some(_shape) = shape_map.get_mut(id) {
                     // Implementation of shape rotation
                 }
             }
-            RealTimeOperation::ScaleShape { id, scale, .. } => {
+            RealTimeOperation::ScaleShape { id, scale: _, .. } => {
                 let mut shape_map = self.shape_map.write().unwrap();
-                if let Some(shape) = shape_map.get_mut(id) {
+                if let Some(_shape) = shape_map.get_mut(id) {
                     // Implementation of shape scaling
                 }
             }
@@ -410,7 +410,7 @@ impl RealTimeCollaborativeEditor {
     }
 
     /// Broadcast operation to all participants
-    pub fn broadcast_operation(&self, operation: &RealTimeOperation) {
+    pub fn broadcast_operation(&self, _operation: &RealTimeOperation) {
         // Implementation of operation broadcasting
         // This would typically use a network protocol like WebSocket
     }
@@ -418,9 +418,9 @@ impl RealTimeCollaborativeEditor {
     /// Handle incoming operation from network
     pub fn handle_incoming_operation(
         &self,
-        operation: RealTimeOperation,
+        _operation: RealTimeOperation,
     ) -> Result<ConflictResolutionResult, String> {
-        self.add_operation(operation)
+        self.add_operation(_operation)
     }
 
     /// Update user typing status
