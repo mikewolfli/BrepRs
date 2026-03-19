@@ -3,6 +3,7 @@ use crate::topology::shape_enum::ShapeType;
 use crate::topology::topods_location::TopoDsLocation;
 use crate::Handle;
 use bincode;
+use serde_json;
 use std::sync::atomic::{AtomicI32, Ordering};
 
 /// Global counter for generating unique shape IDs

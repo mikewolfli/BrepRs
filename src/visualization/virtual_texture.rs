@@ -570,7 +570,7 @@ impl VirtualTextureSampler {
     pub fn get_tile_for_uv(&self, uv: (f32, f32), lod: f32) -> Result<u64, String> {
         // Calculate tile coordinates
         let level = lod.floor() as u32;
-        let max_level = self.manager.settings.max_level;
+        let max_level = self.manager.lock().unwrap().settings.max_level;
         let clamped_level = level.min(max_level);
 
         let tiles_per_side = 1 << clamped_level;
@@ -613,12 +613,12 @@ pub enum TextureWrapMode {
 /// Virtual texture generator
 pub struct VirtualTextureGenerator {
     pub settings: VirtualTextureSettings,
-    pub storage: Arc<dyn VirtualTextureStorage + Send + Sync>,
+    pub storage: Arc<Mutex<dyn VirtualTextureStorage + Send + Sync>>,
 }
 
 impl VirtualTextureGenerator {
     /// Create a new virtual texture generator
-    pub fn new(storage: Arc<dyn VirtualTextureStorage + Send + Sync>) -> Self {
+    pub fn new(storage: Arc<Mutex<dyn VirtualTextureStorage + Send + Sync>>) -> Self {
         Self {
             settings: VirtualTextureSettings::default(),
             storage,
@@ -627,7 +627,7 @@ impl VirtualTextureGenerator {
 
     /// Create a new virtual texture generator with custom settings
     pub fn with_settings(
-        storage: Arc<dyn VirtualTextureStorage + Send + Sync>,
+        storage: Arc<Mutex<dyn VirtualTextureStorage + Send + Sync>>,
         settings: VirtualTextureSettings,
     ) -> Self {
         Self { settings, storage }
@@ -731,9 +731,9 @@ impl VirtualTextureGenerator {
                     // Fill with test pattern
                     for row in 0..tile_size {
                         for col in 0..tile_size {
-                            let r = ((level * 50 + x + col) % 256) as u8;
-                            let g = ((level * 100 + y + row) % 256) as u8;
-                            let b = ((level * 150 + x + y) % 256) as u8;
+                            let r = ((level * 50 + x as u32 + col as u32) % 256) as u8;
+                            let g = ((level * 100 + y as u32 + row as u32) % 256) as u8;
+                            let b = ((level * 150 + x as u32 + y as u32) % 256) as u8;
                             let a = 255;
                             tile_data.extend_from_slice(&[r, g, b, a]);
                         }
@@ -765,7 +765,7 @@ impl VirtualTextureGenerator {
 
 /// Virtual texture system
 pub struct VirtualTextureSystem {
-    pub managers: HashMap<String, Arc<VirtualTextureManager>>,
+    pub managers: HashMap<String, Arc<Mutex<VirtualTextureManager>>>,
     pub generators: HashMap<String, VirtualTextureGenerator>,
     pub default_sampler: VirtualTextureSampler,
 }
@@ -773,8 +773,8 @@ pub struct VirtualTextureSystem {
 impl VirtualTextureSystem {
     /// Create a new virtual texture system
     pub fn new() -> Self {
-        let memory_storage = Arc::new(MemoryStorage::new());
-        let default_manager = Arc::new(VirtualTextureManager::new(memory_storage));
+        let memory_storage = Arc::new(Mutex::new(MemoryStorage::new()));
+        let default_manager = Arc::new(Mutex::new(VirtualTextureManager::new(memory_storage)));
 
         Self {
             managers: HashMap::new(),
@@ -784,12 +784,12 @@ impl VirtualTextureSystem {
     }
 
     /// Add virtual texture manager
-    pub fn add_manager(&mut self, name: &str, manager: Arc<VirtualTextureManager>) {
+    pub fn add_manager(&mut self, name: &str, manager: Arc<Mutex<VirtualTextureManager>>) {
         self.managers.insert(name.to_string(), manager);
     }
 
     /// Get virtual texture manager
-    pub fn get_manager(&self, name: &str) -> Option<Arc<VirtualTextureManager>> {
+    pub fn get_manager(&self, name: &str) -> Option<Arc<Mutex<VirtualTextureManager>>> {
         self.managers.get(name).cloned()
     }
 
@@ -806,7 +806,7 @@ impl VirtualTextureSystem {
     /// Update all managers
     pub fn update(&mut self, delta_time: f64, camera_position: &Point) {
         for manager in self.managers.values() {
-            let mut manager = Arc::get_mut(manager).unwrap();
+            let mut manager = manager.lock().unwrap();
             manager.update(delta_time, camera_position);
         }
     }
@@ -815,7 +815,7 @@ impl VirtualTextureSystem {
     pub fn get_total_memory_usage(&self) -> usize {
         let mut total = 0;
         for manager in self.managers.values() {
-            total += manager.get_memory_usage();
+            total += manager.lock().unwrap().get_memory_usage();
         }
         total
     }
@@ -824,7 +824,7 @@ impl VirtualTextureSystem {
     pub fn get_total_tile_count(&self) -> usize {
         let mut total = 0;
         for manager in self.managers.values() {
-            total += manager.get_tile_count();
+            total += manager.lock().unwrap().get_tile_count();
         }
         total
     }

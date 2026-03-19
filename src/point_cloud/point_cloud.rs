@@ -37,7 +37,11 @@ impl PointCloud {
     /// Create a point cloud with normals
     pub fn from_points_with_normals(points: Vec<Point>, normals: Vec<Vector>) -> Result<Self, String> {
         if points.len() != normals.len() {
-            return Err("Number of points and normals must match".to_string());
+            return Err(crate::foundation::exception::Failure::range_error(
+                "Number of points and normals must match",
+                Some(format!("from_points_with_normals: points.len()={}, normals.len()={}", points.len(), normals.len())),
+                None,
+            ));
         }
         
         Ok(Self {
@@ -50,7 +54,11 @@ impl PointCloud {
     /// Create a point cloud with colors
     pub fn from_points_with_colors(points: Vec<Point>, colors: Vec<(u8, u8, u8)>) -> Result<Self, String> {
         if points.len() != colors.len() {
-            return Err("Number of points and colors must match".to_string());
+            return Err(crate::foundation::exception::Failure::range_error(
+                "Number of points and colors must match",
+                Some(format!("from_points_with_colors: points.len()={}, colors.len()={}", points.len(), colors.len())),
+                None,
+            ));
         }
         
         Ok(Self {
@@ -67,7 +75,11 @@ impl PointCloud {
         colors: Vec<(u8, u8, u8)>,
     ) -> Result<Self, String> {
         if points.len() != normals.len() || points.len() != colors.len() {
-            return Err("Number of points, normals, and colors must match".to_string());
+            return Err(crate::foundation::exception::Failure::range_error(
+                "Number of points, normals, and colors must match",
+                Some(format!("from_points_with_normals_and_colors: points.len()={}, normals.len()={}, colors.len()={}", points.len(), normals.len(), colors.len())),
+                None,
+            ));
         }
         
         Ok(Self {

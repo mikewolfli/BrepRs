@@ -1,28 +1,3 @@
-// Conversion from ZipError
-impl From<zip::result::ZipError> for DataExchangeError {
-    fn from(err: zip::result::ZipError) -> Self {
-        DataExchangeError::ParseError(err.to_string())
-    }
-}
-// Conversion from IgesError
-impl From<crate::data_exchange::iges::IgesError> for DataExchangeError {
-    fn from(err: crate::data_exchange::iges::IgesError) -> Self {
-        DataExchangeError::ParseError(err.to_string())
-    }
-}
-// Conversion from StlError
-impl From<crate::data_exchange::stl::StlError> for DataExchangeError {
-    fn from(err: crate::data_exchange::stl::StlError) -> Self {
-        DataExchangeError::ParseError(err.to_string())
-    }
-}
-
-// Conversion from StepError
-impl From<crate::data_exchange::step::StepError> for DataExchangeError {
-    fn from(err: crate::data_exchange::step::StepError) -> Self {
-        DataExchangeError::ParseError(err.to_string())
-    }
-}
 // Data exchange module
 //
 // This module provides functionality for reading and writing various 3D file formats.
@@ -84,3 +59,29 @@ pub enum DataExchangeError {
 }
 
 pub type DataExchangeResult<T> = Result<T, DataExchangeError>;
+
+// Conversion from ZipError
+impl From<zip::result::ZipError> for DataExchangeError {
+    fn from(err: zip::result::ZipError) -> Self {
+        DataExchangeError::ParseError(err.to_string())
+    }
+}
+// Conversion from IgesError
+impl From<crate::data_exchange::iges::IgesError> for DataExchangeError {
+    fn from(err: crate::data_exchange::iges::IgesError) -> Self {
+        DataExchangeError::ParseError(err.to_string())
+    }
+}
+// Conversion from StlError
+impl From<crate::data_exchange::stl::StlError> for DataExchangeError {
+    fn from(err: crate::data_exchange::stl::StlError) -> Self {
+        DataExchangeError::ParseError(err.to_string())
+    }
+}
+
+// Conversion from StepError
+impl From<crate::data_exchange::step::StepError> for DataExchangeError {
+    fn from(err: crate::data_exchange::step::StepError) -> Self {
+        DataExchangeError::ParseError(err.to_string())
+    }
+}

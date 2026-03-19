@@ -16,9 +16,6 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "serde")]
 use serde_json;
 
-#[cfg(not(feature = "serde"))]
-use serde_json;
-
 /// Flatten BSON document to key-value pairs
 pub fn flatten_bson_doc(doc: &bson::Document) -> Vec<(String, String)> {
     doc.iter()
@@ -740,6 +737,24 @@ mod tests {
         assert_eq!(metadata.version, 1);
         assert_eq!(metadata.document_count, 0);
         assert!(metadata.compression.is_none());
+    }
+
+    #[test]
+    fn test_bson_serialization() {
+        #[derive(Debug, Serialize, Deserialize, PartialEq)]
+        struct TestStruct {
+            name: String,
+            age: u32,
+        }
+
+        let test = TestStruct {
+            name: "Test".to_string(),
+            age: 42,
+        };
+
+        let bson_bytes = to_bson(&test).unwrap();
+        let deserialized: TestStruct = from_bson(&bson_bytes).unwrap();
+        assert_eq!(test, deserialized);
     }
 
     // BsonType tests removed: BsonType is not defined in bson crate

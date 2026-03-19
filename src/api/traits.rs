@@ -26,6 +26,8 @@ use crate::foundation::handle::Handle;
 use crate::geometry::{Axis, Direction, Point, Vector};
 use crate::topology::{topods_shape::TopoDsShape, ShapeType};
 
+use serde_json;
+
 /// Trait for types that can be transformed (moved, rotated, scaled)
 pub trait Transformable {
     /// Translate the object by a vector

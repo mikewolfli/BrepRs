@@ -14,7 +14,11 @@ pub struct PointCloudIO;
 impl PointCloudIO {
     /// Load a point cloud from a PCD file
     pub fn load_pcd(path: &str) -> Result<PointCloud, String> {
-        let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
+        let file = File::open(path).map_err(|e| crate::foundation::exception::Failure::io_error(
+            format!("Failed to open file: {}", e),
+            Some(format!("load_pcd: path={:?}", path)),
+            Some(Box::new(e)),
+        ))?;
         let reader = BufReader::new(file);
         
         let mut cloud = PointCloud::new();
@@ -23,7 +27,11 @@ impl PointCloudIO {
         let mut has_colors = false;
         
         for line in reader.lines() {
-            let line = line.map_err(|e| format!("Failed to read line: {}", e))?;
+            let line = line.map_err(|e| crate::foundation::exception::Failure::io_error(
+                format!("Failed to read line: {}", e),
+                Some(format!("load_pcd: path={:?}", path)),
+                Some(Box::new(e)),
+            ))?;
             let line = line.trim();
             
             if line.starts_with("DATA") {
@@ -80,7 +88,11 @@ impl PointCloudIO {
 
     /// Save a point cloud to a PCD file
     pub fn save_pcd(cloud: &PointCloud, path: &str) -> Result<(), String> {
-        let mut file = File::create(path).map_err(|e| format!("Failed to create file: {}", e))?;
+        let mut file = File::create(path).map_err(|e| crate::foundation::exception::Failure::io_error(
+            format!("Failed to create file: {}", e),
+            Some(format!("save_pcd: path={:?}", path)),
+            Some(Box::new(e)),
+        ))?;
         
         // Write header
         writeln!(file, "# .PCD v0.7 - Point Cloud Data file format").map_err(|e| format!("Failed to write header: {}", e))?;
@@ -105,7 +117,11 @@ impl PointCloudIO {
 
     /// Load a point cloud from a PLY file
     pub fn load_ply(path: &str) -> Result<PointCloud, String> {
-        let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
+        let file = File::open(path).map_err(|e| crate::foundation::exception::Failure::io_error(
+            format!("Failed to open file: {}", e),
+            Some(format!("load_ply: path={:?}", path)),
+            Some(Box::new(e)),
+        ))?;
         let reader = BufReader::new(file);
         
         let mut cloud = PointCloud::new();
@@ -115,7 +131,11 @@ impl PointCloudIO {
         let mut has_colors = false;
         
         for line in reader.lines() {
-            let line = line.map_err(|e| format!("Failed to read line: {}", e))?;
+            let line = line.map_err(|e| crate::foundation::exception::Failure::io_error(
+                format!("Failed to read line: {}", e),
+                Some(format!("load_ply: path={:?}", path)),
+                Some(Box::new(e)),
+            ))?;
             let line = line.trim();
             
             if line == "end_header" {

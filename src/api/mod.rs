@@ -506,6 +506,8 @@ pub mod incremental {
             if self.watch_paths.is_empty() {
                 return Err(crate::foundation::exception::Failure::range_error(
                     "No paths to watch",
+                    Some("start_watching: watch_paths.is_empty()"),
+                    None,
                 ));
             }
 
@@ -514,6 +516,8 @@ pub mod incremental {
                 if !Path::new(path).exists() {
                     return Err(crate::foundation::exception::Failure::runtime_error(
                         format!("Path does not exist: {}", path),
+                        Some(format!("start_watching: path={}", path)),
+                        None,
                     ));
                 }
             }
@@ -625,6 +629,12 @@ pub mod incremental {
             if vertex_id >= self.mesh.vertices.len() {
                 return Err(crate::foundation::exception::Failure::range_error(
                     "Vertex ID out of bounds",
+                    Some(format!(
+                        "update_vertex: vertex_id={}, len={}",
+                        vertex_id,
+                        self.mesh.vertices.len()
+                    )),
+                    None,
                 ));
             }
             self.mesh.vertices[vertex_id].point = point;
@@ -637,6 +647,12 @@ pub mod incremental {
             if face_id >= self.mesh.faces.len() {
                 return Err(crate::foundation::exception::Failure::range_error(
                     "Face ID out of bounds",
+                    Some(format!(
+                        "remove_face: face_id={}, len={}",
+                        face_id,
+                        self.mesh.faces.len()
+                    )),
+                    None,
                 ));
             }
             self.mesh.faces.remove(face_id);

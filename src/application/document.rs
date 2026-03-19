@@ -216,7 +216,10 @@ impl Document {
     }
 
     /// Load a document
-    pub fn load(path: &Path, format: DocumentFormat) -> Result<Self, String> {
+    pub fn load(
+        path: &Path,
+        format: DocumentFormat,
+    ) -> Result<Self, crate::foundation::exception::Failure> {
         match format {
             DocumentFormat::Native => Self::load_native(path),
             DocumentFormat::Step => Self::load_step(path),
@@ -227,12 +230,30 @@ impl Document {
     }
 
     /// Load from native format
-    fn load_native(path: &Path) -> Result<Self, String> {
-        let mut file = File::open(path).map_err(|e| e.to_string())?;
+    fn load_native(path: &Path) -> Result<Self, crate::foundation::exception::Failure> {
+        let mut file = File::open(path).map_err(|e| {
+            crate::foundation::exception::Failure::io_error(
+                format!("Failed to open file: {}", e),
+                Some(format!("load_native: path={:?}", path)),
+                Some(Box::new(e)),
+            )
+        })?;
         let mut json = String::new();
-        file.read_to_string(&mut json).map_err(|e| e.to_string())?;
+        file.read_to_string(&mut json).map_err(|e| {
+            crate::foundation::exception::Failure::io_error(
+                format!("Failed to read file: {}", e),
+                Some(format!("load_native: path={:?}", path)),
+                Some(Box::new(e)),
+            )
+        })?;
 
-        let document_data: DocumentData = serde_json::from_str(&json).map_err(|e| e.to_string())?;
+        let document_data: DocumentData = serde_json::from_str(&json).map_err(|e| {
+            crate::foundation::exception::Failure::parse_error(
+                format!("Failed to parse document: {}", e),
+                Some(format!("load_native: path={:?}", path)),
+                Some(Box::new(e)),
+            )
+        })?;
 
         let mut document = Self {
             metadata: document_data.metadata,
@@ -258,12 +279,18 @@ impl Document {
     }
 
     /// Load from STEP format
-    fn load_step(path: &Path) -> Result<Self, String> {
+    fn load_step(path: &Path) -> Result<Self, crate::foundation::exception::Failure> {
         // Implement STEP import
         use crate::data_exchange::step::StepReader;
 
         let reader = StepReader::new(path.to_str().unwrap());
-        let shape = reader.read().map_err(|e| e.to_string())?;
+        let shape = reader.read().map_err(|e| {
+            crate::foundation::exception::Failure::parse_error(
+                format!("Failed to read STEP: {}", e),
+                Some(format!("load_step: path={:?}", path)),
+                Some(Box::new(e)),
+            )
+        })?;
 
         let mut document = Self::new("STEP Document");
         document.add_shape("STEP Model", shape);
@@ -274,12 +301,18 @@ impl Document {
     }
 
     /// Load from IGES format
-    fn load_iges(path: &Path) -> Result<Self, String> {
+    fn load_iges(path: &Path) -> Result<Self, crate::foundation::exception::Failure> {
         // Implement IGES import
         use crate::data_exchange::iges::IgesReader;
 
         let reader = IgesReader::new(path.to_str().unwrap());
-        let shape = reader.read().map_err(|e| e.to_string())?;
+        let shape = reader.read().map_err(|e| {
+            crate::foundation::exception::Failure::parse_error(
+                format!("Failed to read IGES: {}", e),
+                Some(format!("load_iges: path={:?}", path)),
+                Some(Box::new(e)),
+            )
+        })?;
 
         let mut document = Self::new("IGES Document");
         document.add_shape("IGES Model", shape);
@@ -290,12 +323,18 @@ impl Document {
     }
 
     /// Load from STL format
-    fn load_stl(path: &Path) -> Result<Self, String> {
+    fn load_stl(path: &Path) -> Result<Self, crate::foundation::exception::Failure> {
         // Implement STL import
         use crate::data_exchange::stl::StlReader;
 
         let reader = StlReader::new(path.to_str().unwrap());
-        let _compound = reader.read().map_err(|e| e.to_string())?;
+        let _compound = reader.read().map_err(|e| {
+            crate::foundation::exception::Failure::parse_error(
+                format!("Failed to read STL: {}", e),
+                Some(format!("load_stl: path={:?}", path)),
+                Some(Box::new(e)),
+            )
+        })?;
         let shape = TopoDsShape::new(crate::topology::shape_enum::ShapeType::Compound);
 
         let mut document = Self::new("STL Document");
@@ -307,12 +346,18 @@ impl Document {
     }
 
     /// Load from GLTF format
-    fn load_gltf(path: &Path) -> Result<Self, String> {
+    fn load_gltf(path: &Path) -> Result<Self, crate::foundation::exception::Failure> {
         // Implement GLTF import
         use crate::data_exchange::gltf::GltfReader;
 
         let reader = GltfReader::new();
-        let shape = reader.read(path).map_err(|e| e.to_string())?;
+        let shape = reader.read(path).map_err(|e| {
+            crate::foundation::exception::Failure::parse_error(
+                format!("Failed to read GLTF: {}", e),
+                Some(format!("load_gltf: path={:?}", path)),
+                None,
+            )
+        })?;
 
         let mut document = Self::new("GLTF Document");
         document.add_shape("GLTF Model", shape);

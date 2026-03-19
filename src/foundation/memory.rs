@@ -271,10 +271,14 @@ impl LodMemoryManager {
     }
 
     /// Allocate memory for LOD data
-    pub fn allocate(&self, lod_level: usize, size: usize) -> Result<(), String> {
+    pub fn allocate(&self, lod_level: usize, size: usize) -> Result<(), crate::foundation::exception::Failure> {
         // Check if LOD level is valid
         if lod_level >= self.lod_usage.len() {
-            return Err(format!("Invalid LOD level: {}", lod_level));
+            return Err(crate::foundation::exception::Failure::range_error(
+                format!("Invalid LOD level: {}", lod_level),
+                Some(format!("allocate: lod_level={}, size={}", lod_level, size)),
+                None,
+            ));
         }
 
         // Check memory budget
@@ -298,7 +302,7 @@ impl LodMemoryManager {
     }
 
     /// Free memory to meet memory budget
-    fn free_memory(&self, required_size: usize) -> Result<(), String> {
+    fn free_memory(&self, required_size: usize) -> Result<(), crate::foundation::exception::Failure> {
         let current_usage = self.current_usage();
         let target_usage = current_usage.saturating_sub(required_size);
 
@@ -315,7 +319,11 @@ impl LodMemoryManager {
             }
         }
 
-        Err("Insufficient memory budget".to_string())
+        Err(crate::foundation::exception::Failure::range_error(
+            "Insufficient memory budget",
+            Some(format!("free_memory: required_size={}, current_usage={}", required_size, self.current_usage())),
+            None,
+        ))
     }
 
     /// Get current memory usage

@@ -278,7 +278,7 @@ impl UVParameterizer {
                     )
                 }
             } else {
-                if vertex.normal.z > 0.0 {
+                if vertex.normal.map_or(false, |n| n[2] > 0.0) {
                     UVCoord::new(
                         (vertex.point.x - min.x) / (max.x - min.x + 1e-10),
                         (vertex.point.y - min.y) / (max.y - min.y + 1e-10),
@@ -807,10 +807,10 @@ mod tests {
     fn test_spherical_projection() {
         let mut mesh = Mesh3D::new();
 
-        let v0 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0), Vector::new(1.0, 0.0, 0.0));
-        let v1 = mesh.add_vertex(Point::new(0.0, 1.0, 0.0), Vector::new(0.0, 1.0, 0.0));
-        let v2 = mesh.add_vertex(Point::new(-1.0, 0.0, 0.0), Vector::new(-1.0, 0.0, 0.0));
-        let v3 = mesh.add_vertex(Point::new(0.0, 0.0, 1.0), Vector::new(0.0, 0.0, 1.0));
+        let v0 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0));
+        let v1 = mesh.add_vertex(Point::new(0.0, 1.0, 0.0));
+        let v2 = mesh.add_vertex(Point::new(-1.0, 0.0, 0.0));
+        let v3 = mesh.add_vertex(Point::new(0.0, 0.0, 1.0));
 
         mesh.add_tetrahedron(v0, v1, v2, v3);
 
@@ -835,10 +835,10 @@ mod tests {
     fn test_cylindrical_projection() {
         let mut mesh = Mesh3D::new();
 
-        let v0 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0), Vector::new(1.0, 0.0, 0.0));
-        let v1 = mesh.add_vertex(Point::new(0.0, 1.0, 0.0), Vector::new(0.0, 1.0, 0.0));
-        let v2 = mesh.add_vertex(Point::new(-1.0, 0.0, 0.0), Vector::new(-1.0, 0.0, 0.0));
-        let v3 = mesh.add_vertex(Point::new(0.0, 0.0, 1.0), Vector::new(0.0, 0.0, 1.0));
+        let v0 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0));
+        let v1 = mesh.add_vertex(Point::new(0.0, 1.0, 0.0));
+        let v2 = mesh.add_vertex(Point::new(-1.0, 0.0, 0.0));
+        let v3 = mesh.add_vertex(Point::new(0.0, 0.0, 1.0));
 
         mesh.add_tetrahedron(v0, v1, v2, v3);
 

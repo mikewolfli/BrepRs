@@ -5,6 +5,9 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
+
+use chrono;
+
 use crate::topology::TopoDsShape;
 use crate::topology::ShapeType;
 
@@ -258,18 +261,28 @@ impl TopologicalNamingManager {
     }
 
     /// Rename a shape
-    pub fn rename_shape(&mut self, shape: &TopoDsShape, new_name: TopologicalName) -> Result<(), String> {
+    pub fn rename_shape(&mut self, shape: &TopoDsShape, new_name: TopologicalName) -> Result<(), crate::foundation::exception::Failure> {
         let shape_id = shape.shape_id();
         
         // Check if shape is registered
-        let old_name = match self.shape_id_to_name.get(&shape_id) {
-            Some(name) => name.clone(),
-            None => return Err("Shape not registered".to_string()),
-        };
+            let old_name = match self.shape_id_to_name.get(&shape_id) {
+                Some(name) => name.clone(),
+                None => {
+                    return Err(crate::foundation::exception::Failure::range_error(
+                        "Shape not registered",
+                        Some(format!("rename_shape: shape_id={:?}, new_name={:?}", shape_id, new_name)),
+                        None,
+                    ));
+                }
+            };
         
         // Check if new name is already used
         if self.name_to_shape_id.contains_key(&new_name) {
-            return Err("Name already in use".to_string());
+            return Err(crate::foundation::exception::Failure::range_error(
+                "Name already in use",
+                Some(format!("rename_shape: new_name={:?}", new_name)),
+                None,
+            ));
         }
         
         // Update mappings

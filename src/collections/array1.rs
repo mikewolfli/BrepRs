@@ -13,7 +13,11 @@ impl<T> Array1<T> {
     /// 创建指定下界和上界的一维数组
     pub fn new(lower: usize, upper: usize) -> Result<Self> {
         if lower > upper {
-            return Err(Failure::range_error("Lower bound must be <= upper bound"));
+            return Err(Failure::range_error(
+                "Lower bound must be <= upper bound",
+                Some(format!("new: lower={}, upper={}", lower, upper)),
+                None,
+            ));
         }
         let length = upper - lower + 1;
         Ok(Self {
@@ -26,7 +30,14 @@ impl<T> Array1<T> {
     /// 创建指定容量的一维数组
     pub fn with_capacity(lower: usize, upper: usize, capacity: usize) -> Result<Self> {
         if lower > upper {
-            return Err(Failure::range_error("Lower bound must be <= upper bound"));
+            return Err(Failure::range_error(
+                "Lower bound must be <= upper bound",
+                Some(format!(
+                    "with_capacity: lower={}, upper={}, capacity={}",
+                    lower, upper, capacity
+                )),
+                None,
+            ));
         }
         Ok(Self {
             data: Vec::with_capacity(capacity),
@@ -38,7 +49,11 @@ impl<T> Array1<T> {
     /// 从Vec创建一维数组
     pub fn from_vec(lower: usize, vec: Vec<T>) -> Result<Self> {
         if vec.is_empty() {
-            return Err(Failure::range_error("Cannot create Array1 from empty Vec"));
+            return Err(Failure::range_error(
+                "Cannot create Array1 from empty Vec",
+                Some(format!("from_vec: lower={}, vec.len()=0", lower)),
+                None,
+            ));
         }
         let upper = lower + vec.len() - 1;
         Ok(Self {
@@ -77,16 +92,27 @@ impl<T> Array1<T> {
         T: Clone,
     {
         if lower > upper {
-            return Err(Failure::range_error("Lower bound must be <= upper bound"));
+            return Err(Failure::range_error(
+                "Lower bound must be <= upper bound",
+                Some(format!("resize: lower={}, upper={}", lower, upper)),
+                None,
+            ));
         }
         self.lower = lower;
         self.upper = upper;
         let new_length = upper - lower + 1;
-        let default = self
-            .data
-            .first()
-            .cloned()
-            .ok_or_else(|| Failure::range_error("Cannot resize empty array"))?;
+        let default = self.data.first().cloned().ok_or_else(|| {
+            Failure::range_error(
+                "Cannot resize empty array",
+                Some(format!(
+                    "resize: lower={}, upper={}, data_len={}",
+                    lower,
+                    upper,
+                    self.data.len()
+                )),
+                None,
+            )
+        })?;
         self.data.resize(new_length, default);
         Ok(())
     }
@@ -121,7 +147,14 @@ impl<T> Array1<T> {
 
     pub fn set(&mut self, index: usize, value: T) -> Result<()> {
         if index < self.lower || index > self.upper {
-            Err(Failure::range_error("Index out of bounds"))
+            Err(Failure::range_error(
+                "Index out of bounds",
+                Some(format!(
+                    "set: index={}, lower={}, upper={}",
+                    index, self.lower, self.upper
+                )),
+                None,
+            ))
         } else {
             self.data[index - self.lower] = value;
             Ok(())
@@ -144,7 +177,14 @@ impl<T> Array1<T> {
 
     pub fn insert(&mut self, index: usize, value: T) -> Result<()> {
         if index < self.lower || index > self.upper + 1 {
-            Err(Failure::range_error("Index out of bounds"))
+            Err(Failure::range_error(
+                "Index out of bounds",
+                Some(format!(
+                    "insert: index={}, lower={}, upper={}",
+                    index, self.lower, self.upper
+                )),
+                None,
+            ))
         } else {
             self.data.insert(index - self.lower, value);
             self.upper += 1;
@@ -154,7 +194,14 @@ impl<T> Array1<T> {
 
     pub fn remove(&mut self, index: usize) -> Result<T> {
         if index < self.lower || index > self.upper {
-            Err(Failure::range_error("Index out of bounds"))
+            Err(Failure::range_error(
+                "Index out of bounds",
+                Some(format!(
+                    "remove: index={}, lower={}, upper={}",
+                    index, self.lower, self.upper
+                )),
+                None,
+            ))
         } else {
             self.upper -= 1;
             Ok(self.data.remove(index - self.lower))
@@ -164,7 +211,14 @@ impl<T> Array1<T> {
     pub fn swap(&mut self, index1: usize, index2: usize) -> Result<()> {
         if index1 < self.lower || index1 > self.upper || index2 < self.lower || index2 > self.upper
         {
-            Err(Failure::range_error("Index out of bounds"))
+            Err(Failure::range_error(
+                "Index out of bounds",
+                Some(format!(
+                    "swap: index1={}, index2={}, lower={}, upper={}",
+                    index1, index2, self.lower, self.upper
+                )),
+                None,
+            ))
         } else {
             self.data.swap(index1 - self.lower, index2 - self.lower);
             Ok(())
@@ -227,12 +281,30 @@ where
 
 impl<T> Array1<T> {
     pub fn get_checked(&self, index: usize) -> Result<&T> {
-        self.get(index)
-            .ok_or_else(|| Failure::range_error("Index out of bounds"))
+        self.get(index).ok_or_else(|| {
+            Failure::range_error(
+                "Index out of bounds",
+                Some(format!(
+                    "get_checked: index={}, lower={}, upper={}",
+                    index, self.lower, self.upper
+                )),
+                None,
+            )
+        })
     }
     pub fn get_checked_mut(&mut self, index: usize) -> Result<&mut T> {
-        self.get_mut(index)
-            .ok_or_else(|| Failure::range_error("Index out of bounds"))
+        let lower = self.lower;
+        let upper = self.upper;
+        self.get_mut(index).ok_or_else(|| {
+            Failure::range_error(
+                "Index out of bounds",
+                Some(format!(
+                    "get_checked_mut: index={}, lower={}, upper={}",
+                    index, lower, upper
+                )),
+                None,
+            )
+        })
     }
 }
 

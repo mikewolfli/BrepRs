@@ -23,6 +23,12 @@ impl<T: std::any::Any + Clone> CloneableAny for T {
     }
 }
 
+impl std::fmt::Debug for dyn CloneableAny {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "CloneableAny")
+    }
+}
+
 impl Clone for Box<dyn CloneableAny> {
     fn clone(&self) -> Self {
         self.clone_box()

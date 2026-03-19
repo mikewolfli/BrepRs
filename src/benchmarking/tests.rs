@@ -4,40 +4,38 @@ use crate::benchmarking::{BenchmarkCategory, BenchmarkSuite, PerformanceAnalyzer
 fn test_benchmark_suite_basic() {
     // Create a benchmark suite
     let mut suite = BenchmarkSuite::new("Test Suite");
-    
+
     // Run a simple benchmark
-    let result = suite.run_benchmark(
-        "Simple Operation",
-        BenchmarkCategory::Other,
-        100,
-        || Ok(())
-    );
-    
+    let result = suite.run_benchmark("Simple Operation", BenchmarkCategory::Other, 100, || Ok(()));
+
     // Verify benchmark result
     assert_eq!(result.name, "Simple Operation");
     assert!(result.success);
     assert!(result.execution_time_ms > 0.0);
     assert!(result.operations_per_second > 0.0);
-    
+
     // Test result retrieval
     assert!(!suite.results.is_empty());
     assert!(suite.get_best_performer(BenchmarkCategory::Other).is_some());
-    assert!(suite.get_worst_performer(BenchmarkCategory::Other).is_some());
+    assert!(suite
+        .get_worst_performer(BenchmarkCategory::Other)
+        .is_some());
 }
 
 #[test]
 fn test_benchmark_suite_with_error() {
     // Create a benchmark suite
     let mut suite = BenchmarkSuite::new("Test Suite");
-    
+
     // Run a benchmark that fails
-    let result = suite.run_benchmark(
-        "Failing Operation",
-        BenchmarkCategory::Other,
-        10,
-        || Err("Test error".to_string())
-    );
-    
+    let result = suite.run_benchmark("Failing Operation", BenchmarkCategory::Other, 10, || {
+        Err(crate::foundation::exception::Failure::runtime_error(
+            "Test error",
+            Some("test_benchmark_suite_with_error: Failing Operation"),
+            None,
+        ))
+    });
+
     // Verify benchmark result
     assert_eq!(result.name, "Failing Operation");
     assert!(!result.success);
@@ -48,33 +46,25 @@ fn test_benchmark_suite_with_error() {
 fn test_performance_analyzer() {
     // Create a benchmark suite
     let mut suite = BenchmarkSuite::new("Test Suite");
-    
+
     // Run some benchmarks
-    suite.run_benchmark(
-        "Fast Operation",
-        BenchmarkCategory::Geometry,
-        1000,
-        || Ok(())
-    );
-    
-    suite.run_benchmark(
-        "Slow Operation",
-        BenchmarkCategory::Topology,
-        10,
-        || {
-            // Simulate slow operation
-            std::thread::sleep(std::time::Duration::from_millis(10));
-            Ok(())
-        }
-    );
-    
+    suite.run_benchmark("Fast Operation", BenchmarkCategory::Geometry, 1000, || {
+        Ok(())
+    });
+
+    suite.run_benchmark("Slow Operation", BenchmarkCategory::Topology, 10, || {
+        // Simulate slow operation
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        Ok(())
+    });
+
     // Create performance analyzer
     let mut analyzer = PerformanceAnalyzer::new();
     analyzer.add_benchmark_suite(suite);
-    
+
     // Analyze performance
     analyzer.analyze();
-    
+
     // Verify analysis results
     assert!(!analyzer.benchmarks.is_empty());
     // The analyzer should generate some optimization suggestions

@@ -6,6 +6,8 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use serde_json;
+
 use crate::ai_ml::models::{
     AiModel, AiModelManager, FeatureRecognitionModel, MeshGenerationModel, ModelRepairModel,
 };
@@ -419,7 +421,9 @@ impl AiMlUtils {
         let training_data: Vec<(Mesh3D, Vec<String>)> = dataset.samples.clone();
 
         // Train the model if it's a FeatureRecognitionModel
-        if let Some(feature_model) = AiModel::as_any(model).downcast_ref::<FeatureRecognitionModel>() {
+        if let Some(feature_model) =
+            AiModel::as_any(model).downcast_ref::<FeatureRecognitionModel>()
+        {
             // Create a mutable copy for training
             let mut mutable_model = (*feature_model).clone();
             mutable_model.train(&training_data)?;

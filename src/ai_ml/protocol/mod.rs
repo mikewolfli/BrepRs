@@ -1,11 +1,14 @@
 //! AI Protocol Module
-//! 
+//!
 //! This module defines the protocol layer for AI communication, including data types,
 //! request/response structures, and protocol implementation.
 
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
+
+use chrono;
+use serde_json;
 
 use crate::geometry::{Plane, Point, Vector};
 use crate::mesh::mesh_data::{Mesh3D, MeshFace, MeshVertex};
@@ -86,13 +89,13 @@ pub struct AiResponse {
 pub trait AiProtocol {
     /// Send request to AI
     fn send_request(&self, request: &AiRequest) -> AiResult<AiResponse>;
-    
+
     /// Convert geometric data to AI-compatible format
     fn to_ai_format(&self, data: &AiDataType) -> AiResult<serde_json::Value>;
-    
+
     /// Convert AI response to geometric data
     fn from_ai_format(&self, data: &serde_json::Value) -> AiResult<AiDataType>;
-    
+
     /// Validate AI response
     fn validate_response(&self, response: &AiResponse) -> AiResult<()>;
 }

@@ -6,6 +6,7 @@
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
 use std::path::Path;
+use thiserror::Error;
 
 use crate::foundation::handle::Handle;
 use crate::geometry::Point;
@@ -37,7 +38,7 @@ pub struct StlWriter {
 }
 
 /// STL format error
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Error)]
 pub enum StlError {
     #[error("IO error: {0}")]
     Io(#[from] io::Error),

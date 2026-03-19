@@ -393,7 +393,7 @@ impl AdaptiveLodManager {
         self.global_settings = settings.clone();
 
         // Update existing shapes with new settings
-        for shape in &mut self.shapes {
+        for (_, shape) in &mut self.shapes {
             shape.settings = settings.clone();
         }
     }

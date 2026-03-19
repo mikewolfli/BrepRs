@@ -139,14 +139,28 @@ impl<K: Hash + Eq + std::fmt::Debug, V: std::fmt::Debug> std::fmt::Debug for Dat
 }
 
 impl<K: Hash + Eq, V> DataMap<K, V> {
-    pub fn get_checked(&self, key: &K) -> crate::foundation::exception::Result<&V> {
+    pub fn get_checked(&self, key: &K) -> crate::foundation::exception::Result<&V>
+    where
+        K: std::fmt::Debug,
+    {
         self.data.get(key).ok_or_else(|| {
-            crate::foundation::exception::Failure::range_error("key not found in DataMap")
+            crate::foundation::exception::Failure::range_error(
+                "key not found in DataMap",
+                Some(format!("get_checked: key={:?}", key)),
+                None,
+            )
         })
     }
-    pub fn get_checked_mut(&mut self, key: &K) -> crate::foundation::exception::Result<&mut V> {
+    pub fn get_checked_mut(&mut self, key: &K) -> crate::foundation::exception::Result<&mut V>
+    where
+        K: std::fmt::Debug,
+    {
         self.data.get_mut(key).ok_or_else(|| {
-            crate::foundation::exception::Failure::range_error("key not found in DataMap")
+            crate::foundation::exception::Failure::range_error(
+                "key not found in DataMap",
+                Some(format!("get_checked_mut: key={:?}", key)),
+                None,
+            )
         })
     }
 }

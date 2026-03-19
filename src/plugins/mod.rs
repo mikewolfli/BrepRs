@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::path::Path;
 use std::sync::Arc;
+use thiserror::Error;
 
 /// Plugin trait that all plugins must implement
 pub trait Plugin: Send + Sync {
@@ -28,7 +29,7 @@ pub trait Plugin: Send + Sync {
 }
 
 /// Plugin error type
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Error)]
 pub enum PluginError {
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
