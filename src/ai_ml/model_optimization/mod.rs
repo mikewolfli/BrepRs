@@ -154,31 +154,39 @@ impl ModelOptimizer {
         // Calculate edge collapse costs using quadric error metric
         let mut edge_costs = self.calculate_edge_costs(&simplified);
 
-        // Sort edges by cost (lowest first)
-        let mut edges: Vec<_> = edge_costs.into_iter().collect();
-        edges.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-
         // Collapse edges until we reach target count
         let mut current_count = simplified.faces.len();
         let mut collapsed_vertices = HashSet::new();
 
-        for ((v1, v2), _cost) in edges {
-            if current_count <= target_count {
+        while current_count > target_count {
+            // Recalculate edge costs and sort
+            let mut edge_costs = self.calculate_edge_costs(&simplified);
+            let mut edges: Vec<_> = edge_costs.iter().collect();
+            edges.sort_by(|a, b| a.1.partial_cmp(b.1).unwrap());
+
+            // Find the best edge to collapse
+            let mut collapsed = false;
+            for (edge, _cost) in edges {
+                let (v1, v2) = *edge;
+
+                // Skip if either vertex has been collapsed
+                if collapsed_vertices.contains(&v1) || collapsed_vertices.contains(&v2) {
+                    continue;
+                }
+
+                // Try to collapse the edge
+                if let Some(new_vertex_id) = self.collapse_edge(&mut simplified, v1, v2) {
+                    current_count = simplified.faces.len();
+                    collapsed_vertices.insert(v1);
+                    collapsed_vertices.insert(v2);
+                    collapsed = true;
+                    break;
+                }
+            }
+
+            // If no edges can be collapsed, break
+            if !collapsed {
                 break;
-            }
-
-            // Skip if either vertex has been collapsed
-            if collapsed_vertices.contains(&v1) || collapsed_vertices.contains(&v2) {
-                continue;
-            }
-
-            // Try to collapse the edge
-            if let Some(new_vertex_id) = self.collapse_edge(&mut simplified, v1, v2) {
-                current_count = simplified.faces.len();
-                collapsed_vertices.insert(v1);
-                collapsed_vertices.insert(v2);
-                // Update edge costs with new vertex
-                self.update_edge_costs(&mut simplified, new_vertex_id, &mut edge_costs);
             }
         }
 

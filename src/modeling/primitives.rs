@@ -104,7 +104,9 @@ impl Prism {
         let mut vertex_handles = Vec::new();
         for vertex in vertices {
             let topo_vertex = TopoDsVertex::new(*vertex);
-            vertex_handles.push(std::sync::Arc::new(topo_vertex));
+            vertex_handles.push(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                topo_vertex,
+            )));
         }
 
         // Create edges
@@ -114,17 +116,21 @@ impl Prism {
             let v1 = vertex_handles[i].clone();
             let v2 = vertex_handles[j].clone();
             let edge = TopoDsEdge::new(v1, v2);
-            edges.push(std::sync::Arc::new(edge));
+            edges.push(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                edge,
+            )));
         }
 
         // Create wire
         let mut wire = TopoDsWire::new();
         for edge in edges {
-            wire.add_edge(std::sync::Arc::new(edge));
+            wire.add_edge(edge);
         }
 
         // Create face
-        let face = TopoDsFace::with_wires(vec![std::sync::Arc::new(wire)]);
+        let face = TopoDsFace::with_wires(vec![crate::foundation::handle::Handle::new(
+            std::sync::Arc::new(wire),
+        )]);
         face.shape().clone()
     }
 
@@ -142,9 +148,8 @@ impl Prism {
         let mut faces = Vec::new();
 
         // Extract vertices and faces from all faces
-        let all_faces = vec![base_face, top_face];
-        let mut all_faces = all_faces.into_iter();
-        all_faces.extend(side_faces.into_iter());
+        let mut all_faces = vec![base_face, top_face];
+        all_faces.extend(side_faces);
 
         let mut vertex_map = std::collections::HashMap::new();
         let mut vertex_id = 0;
@@ -157,13 +162,18 @@ impl Prism {
 
                     for vertex in wire_vertices {
                         let point = vertex.point();
-                        let key = (point.x, point.y, point.z);
+                        // Use a tuple of rounded values as the key since f64 doesn't implement Hash
+                        let key = (
+                            (point.x * 1e6).round() as i64,
+                            (point.y * 1e6).round() as i64,
+                            (point.z * 1e6).round() as i64,
+                        );
 
                         if let Some(&id) = vertex_map.get(&key) {
                             face_indices.push(id);
                         } else {
                             vertex_map.insert(key, vertex_id);
-                            vertices.push(point);
+                            vertices.push(point.clone());
                             face_indices.push(vertex_id);
                             vertex_id += 1;
                         }
@@ -278,7 +288,9 @@ impl Pyramid {
         let mut vertex_handles = Vec::new();
         for vertex in vertices {
             let topo_vertex = TopoDsVertex::new(*vertex);
-            vertex_handles.push(std::sync::Arc::new(topo_vertex));
+            vertex_handles.push(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                topo_vertex,
+            )));
         }
 
         // Create edges
@@ -288,17 +300,21 @@ impl Pyramid {
             let v1 = vertex_handles[i].clone();
             let v2 = vertex_handles[j].clone();
             let edge = TopoDsEdge::new(v1, v2);
-            edges.push(std::sync::Arc::new(edge));
+            edges.push(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                edge,
+            )));
         }
 
         // Create wire
         let mut wire = TopoDsWire::new();
         for edge in edges {
-            wire.add_edge(std::sync::Arc::new(edge));
+            wire.add_edge(edge);
         }
 
         // Create face
-        let face = TopoDsFace::with_wires(vec![std::sync::Arc::new(wire)]);
+        let face = TopoDsFace::with_wires(vec![crate::foundation::handle::Handle::new(
+            std::sync::Arc::new(wire),
+        )]);
         face.shape().clone()
     }
 
@@ -329,13 +345,18 @@ impl Pyramid {
 
                     for vertex in wire_vertices {
                         let point = vertex.point();
-                        let key = (point.x, point.y, point.z);
+                        // Use a tuple of rounded values as the key since f64 doesn't implement Hash
+                        let key = (
+                            (point.x * 1e6).round() as i64,
+                            (point.y * 1e6).round() as i64,
+                            (point.z * 1e6).round() as i64,
+                        );
 
                         if let Some(&id) = vertex_map.get(&key) {
                             face_indices.push(id);
                         } else {
                             vertex_map.insert(key, vertex_id);
-                            vertices.push(point);
+                            vertices.push(point.clone());
                             face_indices.push(vertex_id);
                             vertex_id += 1;
                         }
@@ -470,7 +491,9 @@ impl Polyhedron {
         let mut vertex_handles = Vec::new();
         for vertex in vertices {
             let topo_vertex = TopoDsVertex::new(*vertex);
-            vertex_handles.push(std::sync::Arc::new(topo_vertex));
+            vertex_handles.push(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                topo_vertex,
+            )));
         }
 
         // Create edges
@@ -480,17 +503,21 @@ impl Polyhedron {
             let v1 = vertex_handles[i].clone();
             let v2 = vertex_handles[j].clone();
             let edge = TopoDsEdge::new(v1, v2);
-            edges.push(std::sync::Arc::new(edge));
+            edges.push(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                edge,
+            )));
         }
 
         // Create wire
         let mut wire = TopoDsWire::new();
         for edge in edges {
-            wire.add_edge(std::sync::Arc::new(edge));
+            wire.add_edge(edge);
         }
 
         // Create face
-        let face = TopoDsFace::with_wires(vec![std::sync::Arc::new(wire)]);
+        let face = TopoDsFace::with_wires(vec![crate::foundation::handle::Handle::new(
+            std::sync::Arc::new(wire),
+        )]);
         face.shape().clone()
     }
 
@@ -514,13 +541,18 @@ impl Polyhedron {
 
                     for vertex in wire_vertices {
                         let point = vertex.point();
-                        let key = (point.x, point.y, point.z);
+                        // Use a tuple of rounded values as the key since f64 doesn't implement Hash
+                        let key = (
+                            (point.x * 1e6).round() as i64,
+                            (point.y * 1e6).round() as i64,
+                            (point.z * 1e6).round() as i64,
+                        );
 
                         if let Some(&id) = vertex_map.get(&key) {
                             indices.push(id);
                         } else {
                             vertex_map.insert(key, vertex_id);
-                            vertices.push(point);
+                            vertices.push(point.clone());
                             indices.push(vertex_id);
                             vertex_id += 1;
                         }
@@ -567,8 +599,9 @@ impl Polyhedron {
             // Calculate area vector of the face
             let area_vector = self.calculate_face_area_vector(face);
 
-            // Add contribution to volume
-            volume += centroid.dot(&area_vector) / 3.0;
+            // Add contribution to volume - convert Point to Vector for dot product
+            let centroid_vec = crate::geometry::Vector::new(centroid.x, centroid.y, centroid.z);
+            volume += centroid_vec.dot(&area_vector) / 3.0;
         }
 
         f64::abs(volume)
@@ -579,10 +612,13 @@ impl Polyhedron {
         let mut area_vector = Vector::zero();
 
         for i in 0..face.len() {
-            let v0 = self.vertices[face[i]];
-            let v1 = self.vertices[face[(i + 1) % face.len()]];
+            let v0 = &self.vertices[face[i]];
+            let v1 = &self.vertices[face[(i + 1) % face.len()]];
 
-            area_vector += v0.cross(&v1);
+            // Convert Points to Vectors for cross product
+            let vec0 = crate::geometry::Vector::new(v0.x, v0.y, v0.z);
+            let vec1 = crate::geometry::Vector::new(v1.x, v1.y, v1.z);
+            area_vector += vec0.cross(&vec1);
         }
 
         area_vector * 0.5

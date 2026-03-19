@@ -25,3 +25,25 @@ Please strictly adhere to the following standards when reviewing any code in thi
 - **Error Handling**: Identify uncaught potential exceptions (e.g., file read/write failures, network timeouts) and suggest adding `try-catch` or error‑return checks.
 - **Feature Completeness**: Based on the function name and context, determine whether the implementation is complete. For example, if a function named `saveUser` updates the database but does not log the action, suggest completing it.
 - **Limitations**: If a function has obvious constraints (e.g., supports only a specific format) while the context suggests it should be more general, point out those limitations and propose enhancement options.
+
+# GitHub Copilot Component Instructions
+# STRICTLY ENFORCED FOR ALL CODE EDITS, GENERATION, AND REFACTORING
+
+## FORBIDDEN ACTIONS
+- DO NOT delete code without validating and balancing all symbols: `{}`, `()`, `[]`, `<>`
+- DO NOT leave unclosed braces, parentheses, or brackets
+- DO NOT perform bulk deletions that break syntax structure
+- DO NOT use auto-fix tools without full syntax and symbol validation
+- DO NOT generate partial, incomplete, or placeholder implementations
+- DO NOT use: `todo!()`, `unimplemented!()`, empty blocks `{}`, `simple_impl`, `stub`, `placeholder`
+- DO NOT guess crate features or functions that do not exist
+- DO NOT modify or delete unrelated code
+
+## MANDATORY BEHAVIOR
+1. Always validate symbol pairs before and after every edit.
+2. Ensure all blocks are properly closed and balanced.
+3. Only generate complete, valid, ready-to-compile Rust code.
+4. Check for syntax errors before outputting any change.
+5. Preserve existing code structure and logic unless explicitly instructed.
+6. When modifying functions or blocks, maintain full structural integrity.
+7. Fix all unbalanced symbols and syntax issues BEFORE finalizing the output.

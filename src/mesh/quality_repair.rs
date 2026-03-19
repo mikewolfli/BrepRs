@@ -552,7 +552,7 @@ impl MeshRepairTool {
             let area = self.analyzer.calculate_triangle_area(v0, v1, v2);
 
             if area >= self.analyzer.settings.min_triangle_area {
-                valid_triangles.push(*tri);
+                valid_triangles.push(tri.clone());
             }
         }
 

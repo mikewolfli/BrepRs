@@ -2,8 +2,35 @@ use crate::geometry::Point;
 use crate::topology::TopoDsShape;
 use std::collections::HashMap;
 
+/// Custom trait for cloneable any values
+trait CloneableAny: std::any::Any {
+    fn clone_box(&self) -> Box<dyn CloneableAny>;
+    fn as_any(&self) -> &dyn std::any::Any;
+    fn into_any(self: Box<Self>) -> Box<dyn std::any::Any>;
+}
+
+impl<T: std::any::Any + Clone> CloneableAny for T {
+    fn clone_box(&self) -> Box<dyn CloneableAny> {
+        Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn into_any(self: Box<Self>) -> Box<dyn std::any::Any> {
+        self
+    }
+}
+
+impl Clone for Box<dyn CloneableAny> {
+    fn clone(&self) -> Self {
+        self.clone_box()
+    }
+}
+
 /// Simulation system type
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum SimulationSystem {
     /// Physics simulation
     Physics,
@@ -20,6 +47,7 @@ pub enum SimulationSystem {
 }
 
 /// Simulation parameter type
+#[derive(Debug)]
 pub enum SimulationParameter {
     /// Float parameter
     Float(f64),
@@ -34,7 +62,22 @@ pub enum SimulationParameter {
     /// Matrix parameter
     Matrix([[f64; 4]; 4]),
     /// Custom parameter
-    Custom(String, Box<dyn std::any::Any + Clone>),
+    Custom(String, Box<dyn CloneableAny>),
+}
+
+impl PartialEq for SimulationParameter {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Float(a), Self::Float(b)) => a == b,
+            (Self::Integer(a), Self::Integer(b)) => a == b,
+            (Self::Boolean(a), Self::Boolean(b)) => a == b,
+            (Self::String(a), Self::String(b)) => a == b,
+            (Self::Vector(a), Self::Vector(b)) => a == b,
+            (Self::Matrix(a), Self::Matrix(b)) => a == b,
+            (Self::Custom(a_name, _), Self::Custom(b_name, _)) => a_name == b_name,
+            _ => false,
+        }
+    }
 }
 
 impl Clone for SimulationParameter {

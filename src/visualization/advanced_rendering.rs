@@ -587,6 +587,7 @@ pub enum PrimitiveTopology {
 }
 
 /// Render pass
+#[derive(Clone)]
 pub enum RenderPass {
     /// Shadow pass
     Shadow,

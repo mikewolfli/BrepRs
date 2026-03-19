@@ -7,7 +7,6 @@ use crate::geometry::{Point, Vector};
 use crate::mesh::mesh_data::{Mesh3D, MeshVertex};
 
 /// Implicit surface type
-#[derive(Debug, PartialEq)]
 pub enum ImplicitSurfaceType {
     /// Sphere: (x-cx)^2 + (y-cy)^2 + (z-cz)^2 = r^2
     Sphere { center: Point, radius: f64 },
@@ -44,7 +43,7 @@ pub enum ImplicitSurfaceType {
         threshold: f64,
     },
     /// Custom implicit surface
-    Custom(Box<dyn Fn(&Point) -> f64 + Send + Sync + Clone>),
+    Custom(Box<dyn Fn(&Point) -> f64 + Send + Sync>),
 }
 
 impl Clone for ImplicitSurfaceType {
@@ -100,7 +99,76 @@ impl Clone for ImplicitSurfaceType {
                 radii: radii.clone(),
                 threshold: *threshold,
             },
-            ImplicitSurfaceType::Custom(f) => ImplicitSurfaceType::Custom(f.clone()),
+            ImplicitSurfaceType::Custom(_) => {
+                panic!("Cannot clone custom implicit surface function")
+            }
+        }
+    }
+}
+
+impl std::fmt::Debug for ImplicitSurfaceType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ImplicitSurfaceType::Sphere { center, radius } => {
+                write!(f, "Sphere {{ center: {:?}, radius: {} }}", center, radius)
+            }
+            ImplicitSurfaceType::Ellipsoid { center, radii } => {
+                write!(
+                    f,
+                    "Ellipsoid {{ center: {:?}, radii: {:?} }}",
+                    center, radii
+                )
+            }
+            ImplicitSurfaceType::Cylinder {
+                center,
+                radius,
+                height,
+                axis,
+            } => {
+                write!(
+                    f,
+                    "Cylinder {{ center: {:?}, radius: {}, height: {}, axis: {:?} }}",
+                    center, radius, height, axis
+                )
+            }
+            ImplicitSurfaceType::Cone {
+                apex,
+                radius,
+                height,
+                axis,
+            } => {
+                write!(
+                    f,
+                    "Cone {{ apex: {:?}, radius: {}, height: {}, axis: {:?} }}",
+                    apex, radius, height, axis
+                )
+            }
+            ImplicitSurfaceType::Torus {
+                center,
+                major_radius,
+                minor_radius,
+                axis,
+            } => {
+                write!(
+                    f,
+                    "Torus {{ center: {:?}, major_radius: {}, minor_radius: {}, axis: {:?} }}",
+                    center, major_radius, minor_radius, axis
+                )
+            }
+            ImplicitSurfaceType::Metaballs {
+                centers,
+                radii,
+                threshold,
+            } => {
+                write!(
+                    f,
+                    "Metaballs {{ centers: {:?}, radii: {:?}, threshold: {} }}",
+                    centers, radii, threshold
+                )
+            }
+            ImplicitSurfaceType::Custom(_) => {
+                write!(f, "Custom(...)")
+            }
         }
     }
 }
@@ -190,11 +258,11 @@ impl ImplicitSurface {
                 let parallel = vec.dot(&axis_normalized);
                 let perp = vec - axis_normalized * parallel;
 
-                if parallel < 0.0 || parallel > height {
+                if parallel < 0.0 || parallel > *height {
                     if parallel < 0.0 {
                         -parallel
                     } else {
-                        parallel - height
+                        parallel - *height
                     }
                 } else {
                     let expected_radius = radius * parallel / height;
@@ -585,12 +653,12 @@ impl ImplicitSurface {
                     }
 
                     // Get triangulation for this cube
-                    let tri = tri_table[cube_index];
+                    let tri = &tri_table[cube_index];
 
                     // Interpolate vertices on edges
                     let mut vertices = Vec::new();
                     let mut idx = 0;
-                    while tri[idx] != -1 {
+                    while idx < tri.len() && tri[idx] != -1 {
                         let edge = tri[idx] as usize;
                         let v0 = edge / 2;
                         let v1 = if edge % 2 == 0 { v0 + 1 } else { v0 + 2 };
@@ -620,7 +688,7 @@ impl ImplicitSurface {
                             let v1 = mesh.add_vertex(vertices[tri_idx + 1].0);
                             let v2 = mesh.add_vertex(vertices[tri_idx + 2].0);
 
-                            mesh.add_tetrahedron(v0, v1, v2, v0);
+                            mesh.add_face(vec![v0, v1, v2]);
                         }
                     }
                 }

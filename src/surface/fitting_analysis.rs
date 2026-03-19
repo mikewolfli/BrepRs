@@ -114,36 +114,28 @@ impl SurfaceAnalyzer {
 
     /// Create a new surface analyzer with custom settings
     pub fn with_settings(settings: SurfaceFittingSettings) -> Self {
-        Self {
-            settings,
-        }
+        Self { settings }
     }
 
     /// Fit surface to point cloud
     pub fn fit_surface(&self, points: &[Point]) -> SurfaceFittingResult {
         let start_time = std::time::Instant::now();
-        
+
         // Remove outliers if enabled
         let (filtered_points, outliers_removed) = if self.settings.enable_outlier_removal {
             self.remove_outliers(points)
         } else {
             (points.to_vec(), 0)
         };
-        
+
         // Choose fitting algorithm based on settings
         let result = match self.settings.algorithm {
-            SurfaceFittingAlgorithm::LeastSquares => {
-                self.least_squares_fitting(&filtered_points)
-            }
-            SurfaceFittingAlgorithm::RANSAC => {
-                self.ransac_fitting(&filtered_points)
-            }
+            SurfaceFittingAlgorithm::LeastSquares => self.least_squares_fitting(&filtered_points),
+            SurfaceFittingAlgorithm::RANSAC => self.ransac_fitting(&filtered_points),
             SurfaceFittingAlgorithm::MovingLeastSquares => {
                 self.moving_least_squares_fitting(&filtered_points)
             }
-            SurfaceFittingAlgorithm::Poisson => {
-                self.poisson_reconstruction(&filtered_points)
-            }
+            SurfaceFittingAlgorithm::Poisson => self.poisson_reconstruction(&filtered_points),
             SurfaceFittingAlgorithm::AlphaShapes => {
                 self.alpha_shapes_reconstruction(&filtered_points)
             }
@@ -151,9 +143,9 @@ impl SurfaceAnalyzer {
                 self.ball_pivoting_reconstruction(&filtered_points)
             }
         };
-        
+
         let time_ms = start_time.elapsed().as_millis() as f64;
-        
+
         SurfaceFittingResult {
             surface: result.0,
             mesh: result.1,
@@ -173,73 +165,135 @@ impl SurfaceAnalyzer {
     }
 
     /// Least squares fitting
-    fn least_squares_fitting(&self, points: &[Point]) -> (Option<Box<dyn Surface>>, Option<TriangleMesh>, f64, f64, usize) {
+    fn least_squares_fitting(
+        &self,
+        points: &[Point],
+    ) -> (
+        Option<Box<dyn Surface>>,
+        Option<TriangleMesh>,
+        f64,
+        f64,
+        usize,
+    ) {
         // Implementation of least squares fitting
         (None, None, 0.0, 0.0, 0) // Placeholder
     }
 
     /// RANSAC fitting
-    fn ransac_fitting(&self, points: &[Point]) -> (Option<Box<dyn Surface>>, Option<TriangleMesh>, f64, f64, usize) {
+    fn ransac_fitting(
+        &self,
+        points: &[Point],
+    ) -> (
+        Option<Box<dyn Surface>>,
+        Option<TriangleMesh>,
+        f64,
+        f64,
+        usize,
+    ) {
         // Implementation of RANSAC fitting
         (None, None, 0.0, 0.0, 0) // Placeholder
     }
 
     /// Moving least squares fitting
-    fn moving_least_squares_fitting(&self, points: &[Point]) -> (Option<Box<dyn Surface>>, Option<TriangleMesh>, f64, f64, usize) {
+    fn moving_least_squares_fitting(
+        &self,
+        points: &[Point],
+    ) -> (
+        Option<Box<dyn Surface>>,
+        Option<TriangleMesh>,
+        f64,
+        f64,
+        usize,
+    ) {
         // Implementation of moving least squares fitting
         (None, None, 0.0, 0.0, 0) // Placeholder
     }
 
     /// Poisson surface reconstruction
-    fn poisson_reconstruction(&self, points: &[Point]) -> (Option<Box<dyn Surface>>, Option<TriangleMesh>, f64, f64, usize) {
+    fn poisson_reconstruction(
+        &self,
+        points: &[Point],
+    ) -> (
+        Option<Box<dyn Surface>>,
+        Option<TriangleMesh>,
+        f64,
+        f64,
+        usize,
+    ) {
         // Implementation of Poisson surface reconstruction
         (None, None, 0.0, 0.0, 0) // Placeholder
     }
 
     /// Alpha shapes reconstruction
-    fn alpha_shapes_reconstruction(&self, points: &[Point]) -> (Option<Box<dyn Surface>>, Option<TriangleMesh>, f64, f64, usize) {
+    fn alpha_shapes_reconstruction(
+        &self,
+        points: &[Point],
+    ) -> (
+        Option<Box<dyn Surface>>,
+        Option<TriangleMesh>,
+        f64,
+        f64,
+        usize,
+    ) {
         // Implementation of alpha shapes reconstruction
         (None, None, 0.0, 0.0, 0) // Placeholder
     }
 
     /// Ball pivoting reconstruction
-    fn ball_pivoting_reconstruction(&self, points: &[Point]) -> (Option<Box<dyn Surface>>, Option<TriangleMesh>, f64, f64, usize) {
+    fn ball_pivoting_reconstruction(
+        &self,
+        points: &[Point],
+    ) -> (
+        Option<Box<dyn Surface>>,
+        Option<TriangleMesh>,
+        f64,
+        f64,
+        usize,
+    ) {
         // Implementation of ball pivoting reconstruction
         (None, None, 0.0, 0.0, 0) // Placeholder
     }
 
     /// Analyze surface quality
-    pub fn analyze_surface(&self, surface: &dyn Surface, points: &[Point]) -> SurfaceAnalysisResult {
+    pub fn analyze_surface(
+        &self,
+        surface: &dyn Surface,
+        points: &[Point],
+    ) -> SurfaceAnalysisResult {
         let start_time = std::time::Instant::now();
-        
+
         let mut total_error = 0.0;
         let mut max_error = 0.0;
         let mut min_error = f64::MAX;
         let mut error_distribution = vec![0.0; 10]; // Error histogram
-        
+
         // Calculate fitting error
         for point in points {
             let (closest_point, u, v) = self.find_closest_point(surface, point);
             let error = point.distance(&closest_point);
             total_error += error;
-            max_error = max_error.max(error);
-            min_error = min_error.min(error);
-            
+            max_error = f64::max(max_error, error);
+            min_error = f64::min(min_error, error);
+
             // Update error distribution
-            let bin = (error / (max_error + 1e-6) * 10.0).floor() as usize;
+            let bin = if max_error < 1e-6 {
+                0
+            } else {
+                (error / max_error * 10.0).floor() as usize
+            };
             let bin = bin.min(9);
             error_distribution[bin] += 1.0;
         }
-        
+
         let mean_error = total_error / points.len() as f64;
         let rms_error = (total_error * total_error / points.len() as f64).sqrt();
-        
+
         // Calculate surface properties
         let curvature_stats = self.calculate_curvature_stats(surface);
         let normal_consistency = self.calculate_normal_consistency(surface);
-        
+
         let time_ms = start_time.elapsed().as_millis() as f64;
-        
+
         SurfaceAnalysisResult {
             mean_error,
             max_error,

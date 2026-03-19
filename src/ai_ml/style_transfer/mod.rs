@@ -425,7 +425,7 @@ impl StyleTransferTool {
     }
 
     /// Remove degenerate faces
-    fn remove_degenerate_faces(&mut self, mesh: &mut Mesh3D) {
+    fn remove_degenerate_faces(&self, mesh: &mut Mesh3D) {
         // Simplified implementation
         // In a real implementation, this would remove faces with zero area
     }

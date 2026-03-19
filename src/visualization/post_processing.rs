@@ -2,6 +2,7 @@ use crate::geometry::Point;
 use std::collections::HashMap;
 
 /// Post-processing effect type
+#[derive(PartialEq)]
 pub enum PostProcessingEffect {
     /// Bloom
     Bloom,
@@ -672,8 +673,8 @@ impl PostProcessingEffectImpl for LensFlareEffect {
 pub struct PostProcessingPipeline {
     pub settings: PostProcessingSettings,
     pub effects: Vec<Box<dyn PostProcessingEffectImpl>>,
-    pub _width: usize,
-    pub _height: usize,
+    pub width: usize,
+    pub height: usize,
     pub frame_buffer: Vec<u8>,
     pub depth_buffer: Option<Vec<f32>>,
     pub normal_buffer: Option<Vec<(f32, f32, f32)>>,
@@ -682,8 +683,8 @@ pub struct PostProcessingPipeline {
 
 impl PostProcessingPipeline {
     /// Create a new post-processing pipeline
-    pub fn new(_width: usize, height: usize) -> Self {
-        let mut effects = Vec::new();
+    pub fn new(width: usize, height: usize) -> Self {
+        let mut effects: Vec<Box<dyn PostProcessingEffectImpl>> = Vec::new();
         effects.push(Box::new(BloomEffect::new()));
         effects.push(Box::new(DepthOfFieldEffect::new()));
         effects.push(Box::new(MotionBlurEffect::new()));
@@ -709,7 +710,7 @@ impl PostProcessingPipeline {
 
     /// Create a new post-processing pipeline with custom settings
     pub fn with_settings(_width: usize, _height: usize, settings: PostProcessingSettings) -> Self {
-        let mut pipeline = Self::new(width, height);
+        let mut pipeline = Self::new(_width, _height);
         pipeline.settings = settings;
         pipeline
     }

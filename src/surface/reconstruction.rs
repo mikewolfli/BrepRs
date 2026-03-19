@@ -6,6 +6,57 @@
 use crate::geometry::{Point, Vector};
 use crate::mesh::mesh_data::{Mesh3D, MeshVertex};
 
+/// Octree structure for adaptive sampling
+struct Octree {
+    min: Point,
+    max: Point,
+    depth: usize,
+}
+
+impl Octree {
+    fn new(min: Point, max: Point, depth: usize) -> Self {
+        Self { min, max, depth }
+    }
+}
+
+/// Signed distance field
+struct SDF {
+    // SDF implementation
+}
+
+impl SDF {
+    fn new(points: &[Point], normals: Option<&[Vector]>, octree: &Octree) -> Self {
+        // SDF initialization
+        Self {}
+    }
+}
+
+/// Spatial index for efficient neighbor search
+struct SpatialIndex {
+    points: Vec<Point>,
+}
+
+impl SpatialIndex {
+    fn new(points: &[Point]) -> Self {
+        Self {
+            points: points.to_vec(),
+        }
+    }
+
+    /// Find neighbors within a given radius
+    fn find_neighbors(&self, point: &Point, radius: f64) -> Vec<usize> {
+        let mut neighbors = Vec::new();
+
+        for (i, p) in self.points.iter().enumerate() {
+            if point.distance(p) <= radius {
+                neighbors.push(i);
+            }
+        }
+
+        neighbors
+    }
+}
+
 /// Surface reconstruction algorithm type
 #[derive(Debug, Clone, PartialEq)]
 pub enum ReconstructionAlgorithm {
@@ -163,31 +214,6 @@ impl SurfaceReconstructor {
         }
     }
 
-    /// Octree structure for adaptive sampling
-    struct Octree {
-        min: Point,
-        max: Point,
-        depth: usize,
-    }
-
-    impl Octree {
-        fn new(min: Point, max: Point, depth: usize) -> Self {
-            Self { min, max, depth }
-        }
-    }
-
-    /// Signed distance field
-    struct SDF {
-        // SDF implementation
-    }
-
-    impl SDF {
-        fn new(points: &[Point], normals: Option<&[Vector]>, octree: &Octree) -> Self {
-            // SDF initialization
-            Self {}
-        }
-    }
-
     /// Moving least squares (MLS) reconstruction
     fn mls_reconstruction(
         &self,
@@ -310,7 +336,7 @@ impl SurfaceReconstructor {
     fn quadratic_fit(&self, point: Point, neighbors: &[Point]) -> Option<Point> {
         // Simple quadratic fit implementation
         // In a real implementation, this would solve a linear system
-        
+
         // For now, return a weighted average
         let mut sum = Point::origin();
         let mut total_weight = 0.0;
@@ -318,12 +344,18 @@ impl SurfaceReconstructor {
         for neighbor in neighbors {
             let dist = point.distance(neighbor);
             let weight = 1.0 / (dist * dist + 1e-10);
-            sum += *neighbor * weight;
+            sum.x += neighbor.x * weight;
+            sum.y += neighbor.y * weight;
+            sum.z += neighbor.z * weight;
             total_weight += weight;
         }
 
         if total_weight > 0.0 {
-            Some(sum / total_weight)
+            Some(Point::new(
+                sum.x / total_weight,
+                sum.y / total_weight,
+                sum.z / total_weight,
+            ))
         } else {
             None
         }
@@ -346,10 +378,14 @@ impl SurfaceReconstructor {
             // Filter tetrahedrons based on alpha value
             for tetra in tetrahedrons {
                 let (i, j, k, l) = tetra;
-                if self.satisfies_alpha_condition_3d(
-                    &points[i], &points[j], &points[k], &points[l],
-                ) {
-                    mesh.add_tetrahedron(vertex_indices[i], vertex_indices[j], vertex_indices[k], vertex_indices[l]);
+                if self.satisfies_alpha_condition_3d(&points[i], &points[j], &points[k], &points[l])
+                {
+                    mesh.add_tetrahedron(
+                        vertex_indices[i],
+                        vertex_indices[j],
+                        vertex_indices[k],
+                        vertex_indices[l],
+                    );
                 }
             }
         }
@@ -372,9 +408,9 @@ impl SurfaceReconstructor {
     fn delaunay_triangulation(&self, points: &[Point]) -> Vec<(usize, usize, usize, usize)> {
         // Simple Delaunay triangulation implementation
         // In a real implementation, this would use Bowyer-Watson algorithm
-        
+
         let mut tetrahedrons = Vec::new();
-        
+
         // Create initial tetrahedron that encloses all points
         let (min, max) = self.calculate_bounds(points);
         let center = Point::new(
@@ -383,20 +419,20 @@ impl SurfaceReconstructor {
             (min.z + max.z) / 2.0,
         );
         let size = (max.x - min.x).max(max.y - min.y).max(max.z - min.z) * 2.0;
-        
+
         let super_tetra = [
             Point::new(center.x - size, center.y - size, center.z - size),
             Point::new(center.x + size, center.y + size, center.z - size),
             Point::new(center.x + size, center.y - size, center.z + size),
             Point::new(center.x - size, center.y + size, center.z + size),
         ];
-        
+
         // Add points one by one and update triangulation
         for (i, point) in points.iter().enumerate() {
             // Find tetrahedrons whose circumsphere contains the point
             let mut bad_tetrahedrons = Vec::new();
             let mut good_tetrahedrons = Vec::new();
-            
+
             if i < 4 {
                 // For first 4 points, create initial tetrahedron
                 if i == 3 {
@@ -407,13 +443,15 @@ impl SurfaceReconstructor {
                 // This is a simplified version
                 for tetra in &tetrahedrons {
                     let (a, b, c, d) = *tetra;
-                    if self.point_in_circumsphere(point, &points[a], &points[b], &points[c], &points[d]) {
+                    if self.point_in_circumsphere(
+                        point, &points[a], &points[b], &points[c], &points[d],
+                    ) {
                         bad_tetrahedrons.push(*tetra);
                     } else {
                         good_tetrahedrons.push(*tetra);
                     }
                 }
-                
+
                 // Create new tetrahedrons from the point to the boundary of the bad tetrahedrons
                 // This is a simplified implementation
                 for tetra in &bad_tetrahedrons {
@@ -423,20 +461,27 @@ impl SurfaceReconstructor {
                     tetrahedrons.push((i, c, d, a));
                     tetrahedrons.push((i, d, a, b));
                 }
-                
+
                 tetrahedrons = good_tetrahedrons;
             }
         }
-        
+
         tetrahedrons
     }
 
     /// Check if point is inside circumsphere of tetrahedron
-    fn point_in_circumsphere(&self, point: &Point, p0: &Point, p1: &Point, p2: &Point, p3: &Point) -> bool {
+    fn point_in_circumsphere(
+        &self,
+        point: &Point,
+        p0: &Point,
+        p1: &Point,
+        p2: &Point,
+        p3: &Point,
+    ) -> bool {
         // Calculate circumsphere center and radius
         let center = self.circumsphere_center(p0, p1, p2, p3);
         let radius = center.distance(p0);
-        
+
         point.distance(&center) < radius
     }
 
@@ -447,7 +492,7 @@ impl SurfaceReconstructor {
         let v1 = Vector::from_point(p1, p0);
         let v2 = Vector::from_point(p2, p0);
         let v3 = Vector::from_point(p3, p0);
-        
+
         // For simplicity, return the centroid
         Point::new(
             (p0.x + p1.x + p2.x + p3.x) / 4.0,
@@ -527,7 +572,7 @@ impl SurfaceReconstructor {
         let d2 = d * d;
         let e2 = e * e;
         let f2 = f * f;
-        
+
         // This is a simplified version
         1.0
     }
@@ -551,7 +596,15 @@ impl SurfaceReconstructor {
 
             if let Some((i, j, k)) = seed_triangle {
                 // Start ball pivoting from seed triangle
-                self.ball_pivoting_from_seed(i, j, k, points, &spatial_index, &mut mesh, vertex_indices);
+                self.ball_pivoting_from_seed(
+                    i,
+                    j,
+                    k,
+                    points,
+                    &spatial_index,
+                    &mut mesh,
+                    vertex_indices,
+                );
             }
         }
 
@@ -576,28 +629,37 @@ impl SurfaceReconstructor {
     }
 
     /// Find seed triangle for ball pivoting
-    fn find_seed_triangle(&self, points: &[Point], spatial_index: &SpatialIndex) -> Option<(usize, usize, usize)> {
+    fn find_seed_triangle(
+        &self,
+        points: &[Point],
+        spatial_index: &SpatialIndex,
+    ) -> Option<(usize, usize, usize)> {
         // Find seed triangle by looking for three points that form a valid triangle
         for i in 0..points.len() {
             let neighbors = spatial_index.find_neighbors(&points[i], self.params.ball_radius * 2.0);
-            
+
             for j in &neighbors {
                 if *j <= i {
                     continue;
                 }
-                
+
                 for k in &neighbors {
-                    if *k <= j {
+                    if *k <= *j {
                         continue;
                     }
-                    
-                    if self.can_form_triangle(&points[i], &points[*j], &points[*k], self.params.ball_radius) {
-                        return Some((i, j, *k));
+
+                    if self.can_form_triangle(
+                        &points[i],
+                        &points[*j],
+                        &points[*k],
+                        self.params.ball_radius,
+                    ) {
+                        return Some((i, *j, *k));
                     }
                 }
             }
         }
-        
+
         None
     }
 
@@ -615,23 +677,28 @@ impl SurfaceReconstructor {
         // Ball pivoting implementation
         let mut edges = vec![(i, j), (j, k), (k, i)];
         let mut processed_edges = std::collections::HashSet::new();
-        
+
         while !edges.is_empty() {
             let (a, b) = edges.pop().unwrap();
-            
+
             if processed_edges.contains(&(a, b)) || processed_edges.contains(&(b, a)) {
                 continue;
             }
-            
+
             processed_edges.insert((a, b));
-            
+
             // Find third point c such that triangle abc is valid
             let c = self.find_third_point(a, b, points, spatial_index);
-            
+
             if let Some(c) = c {
                 // Add triangle
-                mesh.add_tetrahedron(vertex_indices[a], vertex_indices[b], vertex_indices[c], vertex_indices[b]);
-                
+                mesh.add_tetrahedron(
+                    vertex_indices[a],
+                    vertex_indices[b],
+                    vertex_indices[c],
+                    vertex_indices[b],
+                );
+
                 // Add new edges
                 edges.push((b, c));
                 edges.push((c, a));
@@ -640,42 +707,50 @@ impl SurfaceReconstructor {
     }
 
     /// Find third point for ball pivoting
-    fn find_third_point(&self, a: usize, b: usize, points: &[Point], spatial_index: &SpatialIndex) -> Option<usize> {
+    fn find_third_point(
+        &self,
+        a: usize,
+        b: usize,
+        points: &[Point],
+        spatial_index: &SpatialIndex,
+    ) -> Option<usize> {
         let pa = &points[a];
         let pb = &points[b];
         let edge_length = pa.distance(pb);
-        
+
         if edge_length > 2.0 * self.params.ball_radius {
             return None;
         }
-        
+
         // Calculate the two possible centers for the ball
         let midpoint = Point::new(
             (pa.x + pb.x) / 2.0,
             (pa.y + pb.y) / 2.0,
             (pa.z + pb.z) / 2.0,
         );
-        
-        let edge_vector = Vector::from_point(pb, pa);
+
+        let mut edge_vector = Vector::from_point(pb, pa);
         let edge_normal = edge_vector.normalize();
-        
+
         // Calculate the distance from midpoint to ball center
-        let h = (self.params.ball_radius * self.params.ball_radius - (edge_length / 2.0) * (edge_length / 2.0)).sqrt();
-        
+        let h = (self.params.ball_radius * self.params.ball_radius
+            - (edge_length / 2.0) * (edge_length / 2.0))
+            .sqrt();
+
         // Find points in the vicinity of the ball
         let neighbors = spatial_index.find_neighbors(&midpoint, self.params.ball_radius * 1.5);
-        
+
         for c in neighbors {
             if c == a || c == b {
                 continue;
             }
-            
+
             let pc = &points[c];
             if self.can_form_triangle(pa, pb, pc, self.params.ball_radius) {
                 return Some(c);
             }
         }
-        
+
         None
     }
 
@@ -690,30 +765,6 @@ impl SurfaceReconstructor {
         let circumradius = (a * b * c) / (4.0 * area + 1e-10);
 
         circumradius <= radius
-    }
-
-    /// Spatial index for efficient neighbor search
-    struct SpatialIndex {
-        points: Vec<Point>,
-    }
-
-    impl SpatialIndex {
-        fn new(points: &[Point]) -> Self {
-            Self { points: points.to_vec() }
-        }
-        
-        /// Find neighbors within a given radius
-        fn find_neighbors(&self, point: &Point, radius: f64) -> Vec<usize> {
-            let mut neighbors = Vec::new();
-            
-            for (i, p) in self.points.iter().enumerate() {
-                if point.distance(p) <= radius {
-                    neighbors.push(i);
-                }
-            }
-            
-            neighbors
-        }
     }
 
     /// Calculate bounds of points

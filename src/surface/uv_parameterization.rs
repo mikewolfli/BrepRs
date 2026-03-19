@@ -3,6 +3,7 @@
 //! This module provides UV coordinate mapping for surfaces,
 //! including planar, spherical, cylindrical, and advanced parameterization methods.
 
+use crate::foundation::types::StandardReal;
 use crate::geometry::{Point, Vector};
 use crate::mesh::mesh_data::{Mesh3D, MeshVertex};
 
@@ -176,7 +177,7 @@ impl UVParameterizer {
 
         for vertex in &mesh.vertices {
             // Calculate vector from center to vertex
-            let vec = vertex.point - center;
+            let vec = vertex.point - *center;
 
             // Calculate spherical coordinates
             let theta = vec.y.atan2(vec.x); // Azimuthal angle
@@ -207,13 +208,13 @@ impl UVParameterizer {
 
         for vertex in &mesh.vertices {
             // Calculate vector from center to vertex
-            let vec = vertex.point - center;
+            let vec = vertex.point - *center;
 
             // Project onto cylinder axis
             let axis_component = vec.dot(axis);
 
             // Calculate perpendicular component
-            let perp = vec - axis * axis_component;
+            let perp = vec - *axis * axis_component;
 
             // Calculate angle around cylinder
             let theta = perp.y.atan2(perp.x);
@@ -241,7 +242,16 @@ impl UVParameterizer {
         // Project vertices onto most suitable face of box
         for vertex in &mesh.vertices {
             // Determine which face is vertex closest to
-            let normal = self.dominant_normal(&vertex.normal);
+            let normal = if let Some(normal_arr) = &vertex.normal {
+                Vector::new(
+                    normal_arr[0] as StandardReal,
+                    normal_arr[1] as StandardReal,
+                    normal_arr[2] as StandardReal,
+                )
+            } else {
+                Vector::new(0.0, 0.0, 1.0) // Default normal if none provided
+            };
+            let normal = self.dominant_normal(&normal);
 
             let uv = if normal.x.abs() > normal.y.abs() && normal.x.abs() > normal.z.abs() {
                 if normal.x > 0.0 {
@@ -322,7 +332,7 @@ impl UVParameterizer {
                 let (new_u, new_v) = self.optimize_vertex_lscm(mesh, i, &uv_coords);
 
                 let change = (new_u - uv_coords[i].u).abs() + (new_v - uv_coords[i].v).abs();
-                max_change = max_change.max(change);
+                max_change = f64::max(max_change, change);
 
                 uv_coords[i] = UVCoord::new(new_u, new_v);
             }
@@ -396,7 +406,7 @@ impl UVParameterizer {
                 let new_v = sum_v / matrix[2 * i + 1][2 * i + 1];
 
                 let change = (new_u - uv_coords[i].u).abs() + (new_v - uv_coords[i].v).abs();
-                max_change = max_change.max(change);
+                max_change = f64::max(max_change, change);
 
                 uv_coords[i] = UVCoord::new(new_u, new_v);
             }
@@ -482,7 +492,7 @@ impl UVParameterizer {
                 let (new_u, new_v) = self.optimize_vertex_abf(mesh, i, &uv_coords, &target_angles);
 
                 let change = (new_u - uv_coords[i].u).abs() + (new_v - uv_coords[i].v).abs();
-                max_change = max_change.max(change);
+                max_change = f64::max(max_change, change);
 
                 uv_coords[i] = UVCoord::new(new_u, new_v);
             }
@@ -619,11 +629,16 @@ impl UVParameterizer {
             return (0.0, 0.0);
         }
 
-        let mut min = mesh.vertices[0].point.dot(axis);
+        let mut min = Vector::new(
+            mesh.vertices[0].point.x,
+            mesh.vertices[0].point.y,
+            mesh.vertices[0].point.z,
+        )
+        .dot(axis);
         let mut max = min;
 
         for vertex in &mesh.vertices[1..] {
-            let projection = vertex.point.dot(axis);
+            let projection = Vector::new(vertex.point.x, vertex.point.y, vertex.point.z).dot(axis);
             min = min.min(projection);
             max = max.max(projection);
         }
@@ -738,7 +753,7 @@ impl UVParameterizer {
     fn triangle_area_3d(&self, p0: &Point, p1: &Point, p2: &Point) -> f64 {
         let v1 = p1 - p0;
         let v2 = p2 - p0;
-        v1.cross(&v2).length() / 2.0
+        v1.cross(&v2).magnitude() / 2.0
     }
 
     /// Calculate triangle area in 2D (UV space)
@@ -764,10 +779,10 @@ mod tests {
     fn test_planar_projection() {
         let mut mesh = Mesh3D::new();
 
-        let v0 = mesh.add_vertex(Point::new(0.0, 0.0, 0.0), Vector::new(0.0, 0.0, 1.0));
-        let v1 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0), Vector::new(0.0, 0.0, 1.0));
-        let v2 = mesh.add_vertex(Point::new(1.0, 1.0, 0.0), Vector::new(0.0, 0.0, 1.0));
-        let v3 = mesh.add_vertex(Point::new(0.0, 1.0, 0.0), Vector::new(0.0, 0.0, 1.0));
+        let v0 = mesh.add_vertex(Point::new(0.0, 0.0, 0.0));
+        let v1 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0));
+        let v2 = mesh.add_vertex(Point::new(1.0, 1.0, 0.0));
+        let v3 = mesh.add_vertex(Point::new(0.0, 1.0, 0.0));
 
         mesh.add_tetrahedron(v0, v1, v2, v3);
 
@@ -848,10 +863,10 @@ mod tests {
     fn test_box_projection() {
         let mut mesh = Mesh3D::new();
 
-        let v0 = mesh.add_vertex(Point::new(0.0, 0.0, 0.0), Vector::new(0.0, 0.0, 1.0));
-        let v1 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0), Vector::new(0.0, 0.0, 1.0));
-        let v2 = mesh.add_vertex(Point::new(1.0, 1.0, 0.0), Vector::new(0.0, 0.0, 1.0));
-        let v3 = mesh.add_vertex(Point::new(0.0, 1.0, 0.0), Vector::new(0.0, 0.0, 1.0));
+        let v0 = mesh.add_vertex(Point::new(0.0, 0.0, 0.0));
+        let v1 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0));
+        let v2 = mesh.add_vertex(Point::new(1.0, 1.0, 0.0));
+        let v3 = mesh.add_vertex(Point::new(0.0, 1.0, 0.0));
 
         mesh.add_tetrahedron(v0, v1, v2, v3);
 

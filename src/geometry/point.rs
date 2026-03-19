@@ -315,6 +315,14 @@ impl std::ops::Sub<Point> for Point {
     }
 }
 
+impl std::ops::Sub<&Point> for &Point {
+    type Output = crate::geometry::Vector;
+
+    fn sub(self, other: &Point) -> Self::Output {
+        crate::geometry::Vector::new(self.x - other.x, self.y - other.y, self.z - other.z)
+    }
+}
+
 impl std::ops::AddAssign<crate::geometry::Vector> for Point {
     fn add_assign(&mut self, other: crate::geometry::Vector) {
         self.x += other.x;

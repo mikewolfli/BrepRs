@@ -269,7 +269,7 @@ pub trait NeuralRenderingModelImpl {
     fn train(
         &mut self,
         _dataset: &NeuralRenderingDataset,
-        _settings: &NeuralRenderingSettings,
+        settings: &NeuralRenderingSettings,
         loss: &mut Vec<f64>,
     ) -> Result<(), String>;
 
@@ -277,7 +277,7 @@ pub trait NeuralRenderingModelImpl {
     fn render(
         &mut self,
         _pose: &[f32; 16],
-        _settings: &NeuralRenderingSettings,
+        settings: &NeuralRenderingSettings,
     ) -> Result<Vec<u8>, String>;
 
     /// Save model
@@ -316,7 +316,7 @@ impl NeuralRenderingModelImpl for NeRFModel {
     fn train(
         &mut self,
         _dataset: &NeuralRenderingDataset,
-        _settings: &NeuralRenderingSettings,
+        settings: &NeuralRenderingSettings,
         loss: &mut Vec<f64>,
     ) -> Result<(), String> {
         // Train NeRF model
@@ -341,7 +341,7 @@ impl NeuralRenderingModelImpl for NeRFModel {
     fn render(
         &mut self,
         _pose: &[f32; 16],
-        _settings: &NeuralRenderingSettings,
+        settings: &NeuralRenderingSettings,
     ) -> Result<Vec<u8>, String> {
         // Render with NeRF model
         println!("Rendering with NeRF model...");
@@ -549,7 +549,7 @@ impl NeuralRenderingModelImpl for InstantNGPModel {
     fn train(
         &mut self,
         _dataset: &NeuralRenderingDataset,
-        _settings: &NeuralRenderingSettings,
+        settings: &NeuralRenderingSettings,
         loss: &mut Vec<f64>,
     ) -> Result<(), String> {
         // Train Instant NGP model
@@ -574,7 +574,7 @@ impl NeuralRenderingModelImpl for InstantNGPModel {
     fn render(
         &mut self,
         _pose: &[f32; 16],
-        _settings: &NeuralRenderingSettings,
+        settings: &NeuralRenderingSettings,
     ) -> Result<Vec<u8>, String> {
         // Render with Instant NGP model
         println!("Rendering with Instant NGP model...");
@@ -724,7 +724,7 @@ impl NeuralRenderingModelImpl for GaussianSplattingModel {
     fn train(
         &mut self,
         _dataset: &NeuralRenderingDataset,
-        _settings: &NeuralRenderingSettings,
+        settings: &NeuralRenderingSettings,
         loss: &mut Vec<f64>,
     ) -> Result<(), String> {
         // Train Gaussian Splatting model
@@ -749,7 +749,7 @@ impl NeuralRenderingModelImpl for GaussianSplattingModel {
     fn render(
         &mut self,
         _pose: &[f32; 16],
-        _settings: &NeuralRenderingSettings,
+        settings: &NeuralRenderingSettings,
     ) -> Result<Vec<u8>, String> {
         // Render with Gaussian Splatting model
         println!("Rendering with Gaussian Splatting model...");
@@ -856,7 +856,7 @@ impl NeuralRenderingModelImpl for DeepSDFModel {
     fn train(
         &mut self,
         _dataset: &NeuralRenderingDataset,
-        _settings: &NeuralRenderingSettings,
+        settings: &NeuralRenderingSettings,
         loss: &mut Vec<f64>,
     ) -> Result<(), String> {
         // Train DeepSDF model
@@ -881,7 +881,7 @@ impl NeuralRenderingModelImpl for DeepSDFModel {
     fn render(
         &mut self,
         _pose: &[f32; 16],
-        _settings: &NeuralRenderingSettings,
+        settings: &NeuralRenderingSettings,
     ) -> Result<Vec<u8>, String> {
         // Render with DeepSDF model
         println!("Rendering with DeepSDF model...");
@@ -1010,7 +1010,7 @@ impl NeuralRenderingModelImpl for PointNeRFModel {
     fn train(
         &mut self,
         _dataset: &NeuralRenderingDataset,
-        _settings: &NeuralRenderingSettings,
+        settings: &NeuralRenderingSettings,
         loss: &mut Vec<f64>,
     ) -> Result<(), String> {
         // Train PointNeRF model
@@ -1035,7 +1035,7 @@ impl NeuralRenderingModelImpl for PointNeRFModel {
     fn render(
         &mut self,
         _pose: &[f32; 16],
-        _settings: &NeuralRenderingSettings,
+        settings: &NeuralRenderingSettings,
     ) -> Result<Vec<u8>, String> {
         // Render with PointNeRF model
         println!("Rendering with PointNeRF model...");
@@ -1171,7 +1171,7 @@ impl NeuralRenderingModelImpl for CustomModel {
     fn train(
         &mut self,
         _dataset: &NeuralRenderingDataset,
-        _settings: &NeuralRenderingSettings,
+        settings: &NeuralRenderingSettings,
         loss: &mut Vec<f64>,
     ) -> Result<(), String> {
         // Train custom model
@@ -1196,7 +1196,7 @@ impl NeuralRenderingModelImpl for CustomModel {
     fn render(
         &mut self,
         _pose: &[f32; 16],
-        _settings: &NeuralRenderingSettings,
+        settings: &NeuralRenderingSettings,
     ) -> Result<Vec<u8>, String> {
         // Render with custom model
         println!("Rendering with custom model: {}", self.name);

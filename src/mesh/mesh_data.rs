@@ -151,6 +151,8 @@ pub struct MeshFace {
     pub brep_face_id: Option<i32>,
 }
 
+
+
 impl MeshFace {
     /// Create a new mesh face
     pub fn new(id: usize, vertices: Vec<usize>) -> Self {
@@ -436,7 +438,7 @@ impl Mesh2D {
         for face in faces {
             if let Some(face_ref) = face.get() {
                 // Triangulate the face
-                let triangles = self.triangulate_brep_face(face_ref);
+                let triangles = Self::triangulate_brep_face(face_ref);
 
                 // Add triangles to mesh
                 for triangle in triangles {
@@ -462,7 +464,6 @@ impl Mesh2D {
 
     /// Triangulate a BRep face
     fn triangulate_brep_face(
-        &self,
         face: &crate::topology::topods_face::TopoDsFace,
     ) -> Vec<(Point, Point, Point)> {
         // Triangulate BRep face
@@ -476,16 +477,16 @@ impl Mesh2D {
         if vertices.len() >= 3 {
             // Create triangles from face vertices
             for i in 2..vertices.len() {
-                let p0 = vertices[0].point();
-                let p1 = vertices[i - 1].point();
-                let p2 = vertices[i].point();
+                let p0 = vertices[0].point().clone();
+                let p1 = vertices[i - 1].point().clone();
+                let p2 = vertices[i].point().clone();
                 triangles.push((p0, p1, p2));
             }
         } else if vertices.len() == 3 {
             // Single triangle
-            let p0 = vertices[0].point();
-            let p1 = vertices[1].point();
-            let p2 = vertices[2].point();
+            let p0 = vertices[0].point().clone();
+            let p1 = vertices[1].point().clone();
+            let p2 = vertices[2].point().clone();
             triangles.push((p0, p1, p2));
         }
 
@@ -500,7 +501,7 @@ impl Mesh2D {
             topods_vertex::TopoDsVertex, topods_wire::TopoDsWire,
         };
 
-        let compound = TopoDsCompound::new();
+        let mut compound = TopoDsCompound::new();
 
         // Create faces from mesh triangles
         for face in &self.faces {
@@ -515,24 +516,41 @@ impl Mesh2D {
                 let brep_v2 = TopoDsVertex::new(v2.point);
 
                 // Create BRep edges
-                let edge1 =
-                    TopoDsEdge::new(std::sync::Arc::new(brep_v0), std::sync::Arc::new(brep_v1));
-                let edge2 =
-                    TopoDsEdge::new(std::sync::Arc::new(brep_v1), std::sync::Arc::new(brep_v2));
-                let edge3 =
-                    TopoDsEdge::new(std::sync::Arc::new(brep_v2), std::sync::Arc::new(brep_v0));
+                let edge1 = TopoDsEdge::new(
+                    crate::foundation::handle::Handle::new(std::sync::Arc::new(brep_v0.clone())),
+                    crate::foundation::handle::Handle::new(std::sync::Arc::new(brep_v1.clone())),
+                );
+                let edge2 = TopoDsEdge::new(
+                    crate::foundation::handle::Handle::new(std::sync::Arc::new(brep_v1)),
+                    crate::foundation::handle::Handle::new(std::sync::Arc::new(brep_v2.clone())),
+                );
+                let edge3 = TopoDsEdge::new(
+                    crate::foundation::handle::Handle::new(std::sync::Arc::new(brep_v2)),
+                    crate::foundation::handle::Handle::new(std::sync::Arc::new(brep_v0)),
+                );
 
                 // Create BRep wire
                 let mut wire = TopoDsWire::new();
-                wire.add_edge(std::sync::Arc::new(edge1));
-                wire.add_edge(std::sync::Arc::new(edge2));
-                wire.add_edge(std::sync::Arc::new(edge3));
+                wire.add_edge(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                    edge1,
+                )));
+                wire.add_edge(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                    edge2,
+                )));
+                wire.add_edge(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                    edge3,
+                )));
 
                 // Create BRep face
-                let brep_face = TopoDsFace::with_wires(vec![std::sync::Arc::new(wire)]);
+                let brep_face =
+                    TopoDsFace::with_wires(vec![crate::foundation::handle::Handle::new(
+                        std::sync::Arc::new(wire),
+                    )]);
 
                 // Add face to compound
-                compound.add_shape(brep_face.shape());
+                compound.add_component(crate::foundation::handle::Handle::new(
+                    std::sync::Arc::new(brep_face.shape().clone()),
+                ));
             }
         }
 
@@ -970,7 +988,7 @@ impl Mesh3D {
         for face in faces {
             if let Some(face_ref) = face.get() {
                 // Triangulate the face
-                let triangles = self.triangulate_brep_face(face_ref);
+                let triangles = Self::triangulate_brep_face(face_ref);
 
                 // Add triangles to mesh
                 for triangle in triangles {
@@ -983,11 +1001,51 @@ impl Mesh3D {
         }
 
         // Get solids from the shape for 3D elements
-        let solids = shape.solids();
-        for solid in solids {
-            if let Some(solid_ref) = solid.get() {
+        if shape.is_compound() {
+            if let Some(compound) = shape.as_compound() {
+                let solid_components: Vec<
+                    crate::foundation::handle::Handle<crate::topology::topods_solid::TopoDsSolid>,
+                > = compound
+                    .components()
+                    .iter()
+                    .filter_map(|c| {
+                        if c.shape_type() == crate::topology::shape_enum::ShapeType::Solid {
+                            unsafe {
+                                Some(std::mem::transmute_copy::<
+                                    crate::foundation::handle::Handle<
+                                        crate::topology::topods_shape::TopoDsShape,
+                                    >,
+                                    crate::foundation::handle::Handle<
+                                        crate::topology::topods_solid::TopoDsSolid,
+                                    >,
+                                >(c))
+                            }
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                for solid in solid_components {
+                    if let Some(solid_ref) = solid.get() {
+                        // Extract tetrahedrons from solid
+                        let tetrahedrons = Self::extract_tetrahedrons_from_solid(solid_ref);
+
+                        // Add tetrahedrons to mesh
+                        for tetra in tetrahedrons {
+                            let v0 = mesh.add_vertex(tetra.0);
+                            let v1 = mesh.add_vertex(tetra.1);
+                            let v2 = mesh.add_vertex(tetra.2);
+                            let v3 = mesh.add_vertex(tetra.3);
+                            mesh.add_tetrahedron(v0, v1, v2, v3);
+                        }
+                    }
+                }
+            }
+        } else if shape.is_solid() {
+            if let Some(solid_ref) = shape.as_solid() {
                 // Extract tetrahedrons from solid
-                let tetrahedrons = self.extract_tetrahedrons_from_solid(solid_ref);
+                let tetrahedrons = Self::extract_tetrahedrons_from_solid(solid_ref);
 
                 // Add tetrahedrons to mesh
                 for tetra in tetrahedrons {
@@ -1017,7 +1075,6 @@ impl Mesh3D {
 
     /// Triangulate a BRep face
     fn triangulate_brep_face(
-        &self,
         face: &crate::topology::topods_face::TopoDsFace,
     ) -> Vec<(Point, Point, Point)> {
         // Triangulate BRep face
@@ -1031,16 +1088,16 @@ impl Mesh3D {
         if vertices.len() >= 3 {
             // Create triangles from face vertices
             for i in 2..vertices.len() {
-                let p0 = vertices[0].point();
-                let p1 = vertices[i - 1].point();
-                let p2 = vertices[i].point();
+                let p0 = vertices[0].point().clone();
+                let p1 = vertices[i - 1].point().clone();
+                let p2 = vertices[i].point().clone();
                 triangles.push((p0, p1, p2));
             }
         } else if vertices.len() == 3 {
             // Single triangle
-            let p0 = vertices[0].point();
-            let p1 = vertices[1].point();
-            let p2 = vertices[2].point();
+            let p0 = vertices[0].point().clone();
+            let p1 = vertices[1].point().clone();
+            let p2 = vertices[2].point().clone();
             triangles.push((p0, p1, p2));
         }
 
@@ -1049,7 +1106,6 @@ impl Mesh3D {
 
     /// Extract tetrahedrons from a BRep solid
     fn extract_tetrahedrons_from_solid(
-        &self,
         solid: &crate::topology::topods_solid::TopoDsSolid,
     ) -> Vec<(Point, Point, Point, Point)> {
         // Extract tetrahedrons from BRep solid
@@ -1065,7 +1121,7 @@ impl Mesh3D {
             if let Some(face_ref) = face.get() {
                 let face_vertices = face_ref.vertices();
                 for vertex in face_vertices {
-                    vertices.push(vertex.point());
+                    vertices.push(vertex.point().clone());
                 }
             }
         }
@@ -1093,7 +1149,7 @@ impl Mesh3D {
             topods_wire::TopoDsWire,
         };
 
-        let compound = TopoDsCompound::new();
+        let mut compound = TopoDsCompound::new();
 
         // Create faces from mesh faces
         for face in &self.faces {
@@ -1103,7 +1159,9 @@ impl Mesh3D {
                 for &v_idx in &face.vertices {
                     let vertex = &self.vertices[v_idx];
                     let brep_vertex = TopoDsVertex::new(vertex.point);
-                    brep_vertices.push(std::sync::Arc::new(brep_vertex));
+                    brep_vertices.push(crate::foundation::handle::Handle::new(
+                        std::sync::Arc::new(brep_vertex),
+                    ));
                 }
 
                 // Create BRep edges
@@ -1111,7 +1169,9 @@ impl Mesh3D {
                 for i in 0..brep_vertices.len() {
                     let j = (i + 1) % brep_vertices.len();
                     let edge = TopoDsEdge::new(brep_vertices[i].clone(), brep_vertices[j].clone());
-                    brep_edges.push(std::sync::Arc::new(edge));
+                    brep_edges.push(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                        edge,
+                    )));
                 }
 
                 // Create BRep wire
@@ -1121,10 +1181,15 @@ impl Mesh3D {
                 }
 
                 // Create BRep face
-                let brep_face = TopoDsFace::with_wires(vec![std::sync::Arc::new(wire)]);
+                let brep_face =
+                    TopoDsFace::with_wires(vec![crate::foundation::handle::Handle::new(
+                        std::sync::Arc::new(wire),
+                    )]);
 
                 // Add face to compound
-                compound.add_shape(brep_face.shape());
+                compound.add_component(crate::foundation::handle::Handle::new(
+                    std::sync::Arc::new(brep_face.shape().clone()),
+                ));
             }
         }
 
@@ -1142,52 +1207,114 @@ impl Mesh3D {
             let brep_v3 = TopoDsVertex::new(v3.point);
 
             // Create BRep edges
-            let e01 = TopoDsEdge::new(std::sync::Arc::new(brep_v0), std::sync::Arc::new(brep_v1));
-            let e12 = TopoDsEdge::new(std::sync::Arc::new(brep_v1), std::sync::Arc::new(brep_v2));
-            let e20 = TopoDsEdge::new(std::sync::Arc::new(brep_v2), std::sync::Arc::new(brep_v0));
-            let e03 = TopoDsEdge::new(std::sync::Arc::new(brep_v0), std::sync::Arc::new(brep_v3));
-            let e13 = TopoDsEdge::new(std::sync::Arc::new(brep_v1), std::sync::Arc::new(brep_v3));
-            let e23 = TopoDsEdge::new(std::sync::Arc::new(brep_v2), std::sync::Arc::new(brep_v3));
+            let e01 = TopoDsEdge::new(
+                crate::foundation::handle::Handle::new(std::sync::Arc::new(brep_v0.clone())),
+                crate::foundation::handle::Handle::new(std::sync::Arc::new(brep_v1.clone())),
+            );
+            let e12 = TopoDsEdge::new(
+                crate::foundation::handle::Handle::new(std::sync::Arc::new(brep_v1.clone())),
+                crate::foundation::handle::Handle::new(std::sync::Arc::new(brep_v2.clone())),
+            );
+            let e20 = TopoDsEdge::new(
+                crate::foundation::handle::Handle::new(std::sync::Arc::new(brep_v2.clone())),
+                crate::foundation::handle::Handle::new(std::sync::Arc::new(brep_v0.clone())),
+            );
+            let e03 = TopoDsEdge::new(
+                crate::foundation::handle::Handle::new(std::sync::Arc::new(brep_v0)),
+                crate::foundation::handle::Handle::new(std::sync::Arc::new(brep_v3.clone())),
+            );
+            let e13 = TopoDsEdge::new(
+                crate::foundation::handle::Handle::new(std::sync::Arc::new(brep_v1)),
+                crate::foundation::handle::Handle::new(std::sync::Arc::new(brep_v3.clone())),
+            );
+            let e23 = TopoDsEdge::new(
+                crate::foundation::handle::Handle::new(std::sync::Arc::new(brep_v2)),
+                crate::foundation::handle::Handle::new(std::sync::Arc::new(brep_v3)),
+            );
 
             // Create BRep wires for each face of the tetrahedron
             let mut wire0 = TopoDsWire::new();
-            wire0.add_edge(std::sync::Arc::new(e01));
-            wire0.add_edge(std::sync::Arc::new(e12));
-            wire0.add_edge(std::sync::Arc::new(e20));
+            wire0.add_edge(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                e01.clone(),
+            )));
+            wire0.add_edge(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                e12.clone(),
+            )));
+            wire0.add_edge(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                e20.clone(),
+            )));
 
             let mut wire1 = TopoDsWire::new();
-            wire1.add_edge(std::sync::Arc::new(e01));
-            wire1.add_edge(std::sync::Arc::new(e13));
-            wire1.add_edge(std::sync::Arc::new(e03));
+            wire1.add_edge(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                e01.clone(),
+            )));
+            wire1.add_edge(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                e13.clone(),
+            )));
+            wire1.add_edge(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                e03.clone(),
+            )));
 
             let mut wire2 = TopoDsWire::new();
-            wire2.add_edge(std::sync::Arc::new(e12));
-            wire2.add_edge(std::sync::Arc::new(e23));
-            wire2.add_edge(std::sync::Arc::new(e13));
+            wire2.add_edge(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                e12.clone(),
+            )));
+            wire2.add_edge(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                e23.clone(),
+            )));
+            wire2.add_edge(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                e13.clone(),
+            )));
 
             let mut wire3 = TopoDsWire::new();
-            wire3.add_edge(std::sync::Arc::new(e20));
-            wire3.add_edge(std::sync::Arc::new(e03));
-            wire3.add_edge(std::sync::Arc::new(e23));
+            wire3.add_edge(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                e20.clone(),
+            )));
+            wire3.add_edge(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                e03.clone(),
+            )));
+            wire3.add_edge(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                e23,
+            )));
 
             // Create BRep faces
-            let face0 = TopoDsFace::with_wires(vec![std::sync::Arc::new(wire0)]);
-            let face1 = TopoDsFace::with_wires(vec![std::sync::Arc::new(wire1)]);
-            let face2 = TopoDsFace::with_wires(vec![std::sync::Arc::new(wire2)]);
-            let face3 = TopoDsFace::with_wires(vec![std::sync::Arc::new(wire3)]);
+            let face0 = TopoDsFace::with_wires(vec![crate::foundation::handle::Handle::new(
+                std::sync::Arc::new(wire0),
+            )]);
+            let face1 = TopoDsFace::with_wires(vec![crate::foundation::handle::Handle::new(
+                std::sync::Arc::new(wire1),
+            )]);
+            let face2 = TopoDsFace::with_wires(vec![crate::foundation::handle::Handle::new(
+                std::sync::Arc::new(wire2),
+            )]);
+            let face3 = TopoDsFace::with_wires(vec![crate::foundation::handle::Handle::new(
+                std::sync::Arc::new(wire3),
+            )]);
 
             // Create BRep shell
             let mut shell = TopoDsShell::new();
-            shell.add_face(std::sync::Arc::new(face0));
-            shell.add_face(std::sync::Arc::new(face1));
-            shell.add_face(std::sync::Arc::new(face2));
-            shell.add_face(std::sync::Arc::new(face3));
+            shell.add_face(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                face0,
+            )));
+            shell.add_face(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                face1,
+            )));
+            shell.add_face(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                face2,
+            )));
+            shell.add_face(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                face3,
+            )));
 
             // Create BRep solid
-            let solid = TopoDsSolid::with_shells(vec![std::sync::Arc::new(shell)]);
+            let solid = TopoDsSolid::with_shells(vec![crate::foundation::handle::Handle::new(
+                std::sync::Arc::new(shell),
+            )]);
 
             // Add solid to compound
-            compound.add_shape(solid.shape());
+            compound.add_component(crate::foundation::handle::Handle::new(std::sync::Arc::new(
+                solid.shape().clone(),
+            )));
         }
 
         Ok(compound.shape().clone())

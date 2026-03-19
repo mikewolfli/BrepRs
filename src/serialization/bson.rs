@@ -9,9 +9,15 @@
 use bson::{de, doc, ser, Bson, Document};
 
 #[cfg(not(feature = "serde"))]
-use bson::{doc, Bson};
+use bson::{doc, Bson, Document};
 
 use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "serde")]
+use serde_json;
+
+#[cfg(not(feature = "serde"))]
+use serde_json;
 
 /// Flatten BSON document to key-value pairs
 pub fn flatten_bson_doc(doc: &bson::Document) -> Vec<(String, String)> {
@@ -193,6 +199,9 @@ pub enum BsonError {
 
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
+
+    #[error("Not implemented: {0}")]
+    NotImplemented(String),
 }
 
 /// BSON document wrapper
@@ -238,21 +247,25 @@ impl Default for BsonOptions {
 
 /// Serialize to BSON bytes
 pub fn to_bson<T: Serialize>(_value: &T) -> Result<Vec<u8>, BsonError> {
-    let doc = to_bson_document(_value)?;
-    let mut buf = Vec::new();
-    doc.to_writer(&mut buf)
-        .map_err(|e| BsonError::SerializationError(e.to_string()))?;
-    Ok(buf)
+    #[cfg(feature = "serde")]
+    {
+        ser::serialize_to_vec(_value).map_err(|e| BsonError::SerializationError(e.to_string()))
+    }
+
+    #[cfg(not(feature = "serde"))]
+    {
+        Err(BsonError::NotImplemented(
+            "BSON serialization requires serde feature".to_string(),
+        ))
+    }
 }
 
 /// Deserialize from BSON bytes
 pub fn from_bson<T: for<'de> Deserialize<'de>>(_bytes: &[u8]) -> Result<T, BsonError> {
     #[cfg(feature = "serde")]
     {
-        // Real implementation using bson crate
-        let value =
-            de::from_slice(_bytes).map_err(|e| BsonError::DeserializationError(e.to_string()))?;
-        Ok(value)
+        de::deserialize_from_slice(_bytes)
+            .map_err(|e| BsonError::DeserializationError(e.to_string()))
     }
 
     #[cfg(not(feature = "serde"))]
@@ -298,7 +311,7 @@ impl<R: std::io::Read> BsonReader<R> {
 
                 // Deserialize document
                 #[cfg(feature = "serde")]
-                let value = de::from_slice(&doc_buf)
+                let value = de::deserialize_from_slice(&doc_buf)
                     .map_err(|e| BsonError::DeserializationError(e.to_string()))?;
 
                 #[cfg(not(feature = "serde"))]
@@ -322,8 +335,9 @@ impl<R: std::io::Read> BsonReader<R> {
 /// Convert any serializable value to BSON Document
 #[cfg(feature = "serde")]
 pub fn to_bson_document<T: Serialize>(value: &T) -> Result<Document, BsonError> {
-    // Use ser::to_bson and convert to Document
-    match ser::to_bson(value).map_err(|e| BsonError::SerializationError(e.to_string()))? {
+    let bson_value =
+        ser::serialize_to_bson(value).map_err(|e| BsonError::SerializationError(e.to_string()))?;
+    match bson_value {
         Bson::Document(doc) => Ok(doc),
         _ => Err(BsonError::SerializationError(
             "Value is not a document".to_string(),

@@ -4,6 +4,7 @@ use crate::topology::TopoDsShape;
 use std::collections::HashMap;
 
 /// LOD quality metric
+#[derive(Clone)]
 pub enum LodQualityMetric {
     /// Triangle count
     TriangleCount,
@@ -18,6 +19,7 @@ pub enum LodQualityMetric {
 }
 
 /// LOD adaptation strategy
+#[derive(Clone)]
 pub enum LodAdaptationStrategy {
     /// Distance-based adaptation
     DistanceBased,
@@ -32,17 +34,18 @@ pub enum LodAdaptationStrategy {
 }
 
 /// Adaptive LOD settings
+#[derive(Clone)]
 pub struct AdaptiveLodSettings {
     pub quality_metric: LodQualityMetric,
     pub adaptation_strategy: LodAdaptationStrategy,
-    pub min_quality: f64,  // Minimum quality level (0.0-1.0)
-    pub max_quality: f64,  // Maximum quality level (0.0-1.0)
-    pub distance_thresholds: Vec<f64>,  // Distance thresholds for LOD levels
-    pub complexity_thresholds: Vec<f64>,  // Complexity thresholds for LOD levels
-    pub performance_target_fps: f64,  // Target FPS for performance-based adaptation
-    pub adaptation_rate: f64,  // Rate at which LOD adapts (0.0-1.0)
+    pub min_quality: f64,                // Minimum quality level (0.0-1.0)
+    pub max_quality: f64,                // Maximum quality level (0.0-1.0)
+    pub distance_thresholds: Vec<f64>,   // Distance thresholds for LOD levels
+    pub complexity_thresholds: Vec<f64>, // Complexity thresholds for LOD levels
+    pub performance_target_fps: f64,     // Target FPS for performance-based adaptation
+    pub adaptation_rate: f64,            // Rate at which LOD adapts (0.0-1.0)
     pub enable_frustration_delay: bool,  // Enable frustration delay to prevent LOD popping
-    pub frustration_delay_frames: usize,  // Number of frames to delay LOD changes
+    pub frustration_delay_frames: usize, // Number of frames to delay LOD changes
 }
 
 impl Default for AdaptiveLodSettings {
@@ -64,7 +67,7 @@ impl Default for AdaptiveLodSettings {
 
 /// LOD quality level
 pub struct LodQualityLevel {
-    pub quality: f64,  // Quality level (0.0-1.0)
+    pub quality: f64, // Quality level (0.0-1.0)
     pub triangle_count: usize,
     pub vertex_count: usize,
     pub geometric_error: f64,
@@ -126,10 +129,11 @@ impl AdaptiveLodShape {
     pub fn build_lod_levels(&mut self) {
         // Generate LOD levels based on quality metric
         let quality_steps = 5; // 5 LOD levels
-        
+
         for i in 0..quality_steps {
-            let quality = 1.0 - (i as f64 / (quality_steps - 1) as f64) * (1.0 - self.settings.min_quality);
-            
+            let quality =
+                1.0 - (i as f64 / (quality_steps - 1) as f64) * (1.0 - self.settings.min_quality);
+
             let lod_level = LodQualityLevel {
                 quality,
                 triangle_count: self.calculate_triangle_count(quality),
@@ -138,10 +142,10 @@ impl AdaptiveLodShape {
                 visual_quality: quality,
                 render_time_ms: self.estimate_render_time(quality),
             };
-            
+
             self.lod_levels.push(lod_level);
         }
-        
+
         // Generate LOD meshes
         self.generate_lod_meshes();
     }
@@ -183,18 +187,14 @@ impl AdaptiveLodShape {
     pub fn update(&mut self, camera_position: &Point, current_fps: f64, delta_time: f64) {
         // Calculate distance to camera
         self.distance_to_camera = self.calculate_distance_to_camera(camera_position);
-        
+
         // Calculate complexity
         self.complexity = self.calculate_complexity();
-        
+
         // Determine target quality based on adaptation strategy
         let target_quality = match self.settings.adaptation_strategy {
-            LodAdaptationStrategy::DistanceBased => {
-                self.calculate_distance_based_quality()
-            }
-            LodAdaptationStrategy::ComplexityBased => {
-                self.calculate_complexity_based_quality()
-            }
+            LodAdaptationStrategy::DistanceBased => self.calculate_distance_based_quality(),
+            LodAdaptationStrategy::ComplexityBased => self.calculate_complexity_based_quality(),
             LodAdaptationStrategy::Hybrid => {
                 let distance_quality = self.calculate_distance_based_quality();
                 let complexity_quality = self.calculate_complexity_based_quality();
@@ -208,7 +208,7 @@ impl AdaptiveLodShape {
                 1.0
             }
         };
-        
+
         // Apply frustration delay if enabled
         if self.settings.enable_frustration_delay {
             if (target_quality - self.target_quality).abs() > 0.1 {
@@ -223,11 +223,14 @@ impl AdaptiveLodShape {
         } else {
             self.target_quality = target_quality;
         }
-        
+
         // Smoothly transition to target quality
-        self.current_quality += (self.target_quality - self.current_quality) * self.settings.adaptation_rate;
-        self.current_quality = self.current_quality.clamp(self.settings.min_quality, self.settings.max_quality);
-        
+        self.current_quality +=
+            (self.target_quality - self.current_quality) * self.settings.adaptation_rate;
+        self.current_quality = self
+            .current_quality
+            .clamp(self.settings.min_quality, self.settings.max_quality);
+
         // Update last update time
         self.last_update_time += delta_time;
     }
@@ -249,7 +252,7 @@ impl AdaptiveLodShape {
         // Implementation to calculate quality based on distance
         let distance = self.distance_to_camera;
         let thresholds = &self.settings.distance_thresholds;
-        
+
         if distance < thresholds[0] {
             1.0
         } else if distance < thresholds[1] {
@@ -266,7 +269,7 @@ impl AdaptiveLodShape {
         // Implementation to calculate quality based on complexity
         let complexity = self.complexity;
         let thresholds = &self.settings.complexity_thresholds;
-        
+
         if complexity < thresholds[0] {
             1.0
         } else if complexity < thresholds[1] {
@@ -283,7 +286,7 @@ impl AdaptiveLodShape {
         // Implementation to calculate quality based on performance
         let target_fps = self.settings.performance_target_fps;
         let fps_ratio = current_fps / target_fps;
-        
+
         if fps_ratio >= 1.0 {
             1.0
         } else if fps_ratio >= 0.75 {
@@ -360,12 +363,12 @@ impl AdaptiveLodManager {
         if delta_time > 0.0 {
             self.current_fps = 1.0 / delta_time;
         }
-        
+
         // Update all shapes
         for (_, shape) in &mut self.shapes {
             shape.update(camera_position, self.current_fps, delta_time);
         }
-        
+
         // Update last frame time
         self.last_frame_time += delta_time;
     }
@@ -387,9 +390,10 @@ impl AdaptiveLodManager {
 
     /// Set global LOD settings
     pub fn set_global_settings(&mut self, settings: AdaptiveLodSettings) {
-        self.global_settings = settings;
-        // Update all shapes with new settings
-        for (_, shape) in &mut self.shapes {
+        self.global_settings = settings.clone();
+
+        // Update existing shapes with new settings
+        for shape in &mut self.shapes {
             shape.settings = settings.clone();
         }
     }

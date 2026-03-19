@@ -1266,9 +1266,9 @@ impl ThreeMFWriter {
 
         zip.write_all(xml_content.as_bytes())
             .map_err(|e| e.to_string())?;
-        zip.finish().map_err(|e| e.to_string())?;
+        let finished_cursor = zip.finish().map_err(|e| e.to_string())?;
 
-        Ok(cursor.into_inner())
+        Ok(finished_cursor.into_inner())
     }
 }
 

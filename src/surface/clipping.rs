@@ -20,7 +20,6 @@ pub enum ClippingType {
 }
 
 /// Clipping parameters
-#[derive(Debug, Clone)]
 pub struct ClippingParams {
     /// Clipping type
     pub clip_type: ClippingType,
@@ -34,8 +33,18 @@ pub struct ClippingParams {
     pub custom_clip: Option<Box<dyn Fn(&Point) -> bool>>,
 }
 
+impl PartialEq for ClippingParams {
+    fn eq(&self, other: &Self) -> bool {
+        self.clip_type == other.clip_type
+            && self.plane == other.plane
+            && self.box_bounds == other.box_bounds
+            && self.sphere == other.sphere
+        // custom_clip is not compared as Fn trait objects can't be compared
+    }
+}
+
 /// Clipping plane
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ClippingPlane {
     /// Plane normal
     pub normal: Vector,
@@ -188,7 +197,7 @@ impl SurfaceClipper {
         // Process vertices
         for (i, vertex) in mesh.vertices.iter().enumerate() {
             let distance = vertex.point.distance(center);
-            if distance <= radius {
+            if distance <= *radius {
                 let new_index = clipped_mesh.add_vertex(vertex.point);
                 vertex_map.insert(i, new_index);
             }
@@ -225,7 +234,7 @@ impl SurfaceClipper {
         // Process vertices
         for (i, vertex) in mesh.vertices.iter().enumerate() {
             if clip_func(&vertex.point) {
-                let new_index = clipped_mesh.add_vertex(vertex.point, vertex.normal);
+                let new_index = clipped_mesh.add_vertex(vertex.point);
                 vertex_map.insert(i, new_index);
             }
         }
@@ -257,10 +266,10 @@ mod tests {
     fn test_plane_clipping() {
         let mut mesh = Mesh3D::new();
 
-        let v0 = mesh.add_vertex(Point::new(0.0, 0.0, 0.0), Vector::zero());
-        let v1 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0), Vector::zero());
-        let v2 = mesh.add_vertex(Point::new(0.0, 1.0, 0.0), Vector::zero());
-        let v3 = mesh.add_vertex(Point::new(0.0, 0.0, 1.0), Vector::zero());
+        let v0 = mesh.add_vertex(Point::new(0.0, 0.0, 0.0));
+        let v1 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0));
+        let v2 = mesh.add_vertex(Point::new(0.0, 1.0, 0.0));
+        let v3 = mesh.add_vertex(Point::new(0.0, 0.0, 1.0));
 
         mesh.add_tetrahedron(v0, v1, v2, v3);
 
@@ -285,10 +294,10 @@ mod tests {
     fn test_box_clipping() {
         let mut mesh = Mesh3D::new();
 
-        let v0 = mesh.add_vertex(Point::new(0.0, 0.0, 0.0), Vector::zero());
-        let v1 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0), Vector::zero());
-        let v2 = mesh.add_vertex(Point::new(0.0, 1.0, 0.0), Vector::zero());
-        let v3 = mesh.add_vertex(Point::new(0.0, 0.0, 1.0), Vector::zero());
+        let v0 = mesh.add_vertex(Point::new(0.0, 0.0, 0.0));
+        let v1 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0));
+        let v2 = mesh.add_vertex(Point::new(0.0, 1.0, 0.0));
+        let v3 = mesh.add_vertex(Point::new(0.0, 0.0, 1.0));
 
         mesh.add_tetrahedron(v0, v1, v2, v3);
 
@@ -311,10 +320,10 @@ mod tests {
     fn test_sphere_clipping() {
         let mut mesh = Mesh3D::new();
 
-        let v0 = mesh.add_vertex(Point::new(0.0, 0.0, 0.0), Vector::zero());
-        let v1 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0), Vector::zero());
-        let v2 = mesh.add_vertex(Point::new(0.0, 1.0, 0.0), Vector::zero());
-        let v3 = mesh.add_vertex(Point::new(0.0, 0.0, 1.0), Vector::zero());
+        let v0 = mesh.add_vertex(Point::new(0.0, 0.0, 0.0));
+        let v1 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0));
+        let v2 = mesh.add_vertex(Point::new(0.0, 1.0, 0.0));
+        let v3 = mesh.add_vertex(Point::new(0.0, 0.0, 1.0));
 
         mesh.add_tetrahedron(v0, v1, v2, v3);
 
@@ -337,10 +346,10 @@ mod tests {
     fn test_custom_clipping() {
         let mut mesh = Mesh3D::new();
 
-        let v0 = mesh.add_vertex(Point::new(0.0, 0.0, 0.0), Vector::zero());
-        let v1 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0), Vector::zero());
-        let v2 = mesh.add_vertex(Point::new(0.0, 1.0, 0.0), Vector::zero());
-        let v3 = mesh.add_vertex(Point::new(0.0, 0.0, 1.0), Vector::zero());
+        let v0 = mesh.add_vertex(Point::new(0.0, 0.0, 0.0));
+        let v1 = mesh.add_vertex(Point::new(1.0, 0.0, 0.0));
+        let v2 = mesh.add_vertex(Point::new(0.0, 1.0, 0.0));
+        let v3 = mesh.add_vertex(Point::new(0.0, 0.0, 1.0));
 
         mesh.add_tetrahedron(v0, v1, v2, v3);
 

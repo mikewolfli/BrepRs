@@ -10,7 +10,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 /// Plugin trait that all plugins must implement
-pub trait Plugin {
+pub trait Plugin: Send + Sync {
     /// Get the plugin name
     fn name(&self) -> &str;
 
@@ -95,7 +95,8 @@ impl PluginManager {
         }
 
         // Load the library
-        let library = Library::new(path).map_err(|e| PluginError::LoadingError(e.to_string()))?;
+        let library =
+            unsafe { Library::new(path).map_err(|e| PluginError::LoadingError(e.to_string()))? };
 
         // Get the plugin creation function
         type CreatePlugin = unsafe extern "C" fn() -> *mut dyn Plugin;
@@ -114,7 +115,12 @@ impl PluginManager {
 
         // Add the plugin to the map
         let plugin_name = plugin.name().to_string();
-        let plugin_arc: Arc<dyn Plugin + Send + Sync> = Arc::new(*plugin);
+        // Convert Box<dyn Plugin + Send + Sync> to Arc<dyn Plugin + Send + Sync>
+        let plugin_arc: Arc<dyn Plugin + Send + Sync> = {
+            let leaked: &'static mut (dyn Plugin + Send + Sync) = Box::leak(plugin);
+            let ptr = leaked as *const (dyn Plugin + Send + Sync);
+            unsafe { Arc::from_raw(ptr) }
+        };
         self.plugins.insert(plugin_name.clone(), plugin_arc);
 
         // Add the library to the map

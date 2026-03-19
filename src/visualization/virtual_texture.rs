@@ -37,8 +37,14 @@ pub enum TextureFormat {
     ASTC,
 }
 
+impl Default for TextureFormat {
+    fn default() -> Self {
+        TextureFormat::RGBA
+    }
+}
+
 /// Virtual texture settings
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct VirtualTextureSettings {
     pub tile_size: u32,
     pub max_level: u32,

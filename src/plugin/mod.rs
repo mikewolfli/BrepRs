@@ -78,20 +78,26 @@ impl PluginManager {
             return Ok(());
         }
 
-        // Load plugins from all search paths
-        for path in &self.plugin_paths {
+        // Load plugins from all search paths - clone to avoid borrow conflicts
+        let paths = self.plugin_paths.clone();
+        for path in &paths {
             self.load_plugins_from_path(path)?;
         }
 
-        // Initialize all plugins
+        // Initialize all plugins - collect errors first to avoid borrow conflicts
+        let mut init_errors = Vec::new();
         for (name, plugin) in &self.plugins {
             let mut plugin_mut = plugin.lock().unwrap();
             if let Err(e) = plugin_mut.initialize() {
-                return Err(PluginError::InitializationError(format!(
+                init_errors.push(PluginError::InitializationError(format!(
                     "Plugin {} initialization failed: {}",
                     name, e
                 )));
             }
+        }
+
+        if !init_errors.is_empty() {
+            return Err(init_errors.into_iter().next().unwrap());
         }
 
         self.initialized = true;
