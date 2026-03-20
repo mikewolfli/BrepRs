@@ -142,6 +142,7 @@ impl<W: std::io::Write> JsonStreamSerializer<W> {
 pub struct JsonStreamDeserializer<R: std::io::Read> {
     reader: R,
     buffer: String,
+    position: usize,
 }
 
 impl<R: std::io::Read> JsonStreamDeserializer<R> {
@@ -149,23 +150,229 @@ impl<R: std::io::Read> JsonStreamDeserializer<R> {
         Self {
             reader,
             buffer: String::new(),
+            position: 0,
         }
     }
 
     pub fn read_next<T: for<'de> Deserialize<'de>>(
         &mut self,
     ) -> Result<Option<T>, Box<dyn std::error::Error>> {
-        // Simplified implementation - in production, use a proper streaming JSON parser
-        let mut buf = [0u8; 1024];
-        match self.reader.read(&mut buf) {
-            Ok(0) => Ok(None),
-            Ok(n) => {
-                self.buffer.push_str(&String::from_utf8_lossy(&buf[..n]));
-                // Parse complete JSON objects from buffer
-                // This is a simplified placeholder
-                Ok(None)
+        loop {
+            // Try to find a complete JSON object in the buffer
+            if let Some(json_str) = self.extract_json_object() {
+                // Try to parse the extracted JSON
+                match serde_json::from_str::<T>(json_str) {
+                    Ok(value) => return Ok(Some(value)),
+                    Err(e) => {
+                        // If parsing fails, continue reading more data
+                        eprintln!("JSON parse error: {}, trying to read more data", e);
+                    }
+                }
             }
-            Err(e) => Err(Box::new(e)),
+
+            // Read more data from the reader
+            let mut buf = [0u8; 4096];
+            match self.reader.read(&mut buf) {
+                Ok(0) => {
+                    // End of stream - try to parse remaining buffer
+                    if self.position < self.buffer.len() {
+                        let remaining = &self.buffer[self.position..].trim();
+                        if !remaining.is_empty() {
+                            match serde_json::from_str::<T>(remaining) {
+                                Ok(value) => {
+                                    self.position = self.buffer.len();
+                                    return Ok(Some(value));
+                                }
+                                Err(_) => return Ok(None),
+                            }
+                        }
+                    }
+                    return Ok(None);
+                }
+                Ok(n) => {
+                    self.buffer.push_str(&String::from_utf8_lossy(&buf[..n]));
+                }
+                Err(e) => return Err(Box::new(e)),
+            }
+        }
+    }
+
+    /// Extract a complete JSON object from the buffer
+    fn extract_json_object(&mut self) -> Option<&str> {
+        let remaining = &self.buffer[self.position..];
+        let trimmed = remaining.trim_start();
+
+        // Skip whitespace
+        let start_offset = remaining.len() - trimmed.len();
+        let start_pos = self.position + start_offset;
+
+        if trimmed.is_empty() {
+            return None;
+        }
+
+        // Look for the start of a JSON value
+        let first_char = trimmed.chars().next()?;
+        match first_char {
+            '{' => self.extract_balanced_object(start_pos, '{', '}'),
+            '[' => self.extract_balanced_object(start_pos, '[', ']'),
+            '"' => self.extract_string(start_pos),
+            't' | 'f' => self.extract_boolean(start_pos),
+            'n' => self.extract_null(start_pos),
+            c if c.is_ascii_digit() || c == '-' => self.extract_number(start_pos),
+            _ => None,
+        }
+    }
+
+    /// Extract a balanced object (object or array)
+    fn extract_balanced_object(
+        &mut self,
+        start_pos: usize,
+        open: char,
+        close: char,
+    ) -> Option<&str> {
+        let mut depth = 0;
+        let mut in_string = false;
+        let mut escape_next = false;
+        let chars: Vec<char> = self.buffer[start_pos..].chars().collect();
+
+        for (i, &c) in chars.iter().enumerate() {
+            if escape_next {
+                escape_next = false;
+                continue;
+            }
+
+            match c {
+                '\\' if in_string => escape_next = true,
+                '"' => in_string = !in_string,
+                _ if !in_string => {
+                    if c == open {
+                        depth += 1;
+                    } else if c == close {
+                        depth -= 1;
+                        if depth == 0 {
+                            let end_pos =
+                                start_pos + chars[..=i].iter().map(|c| c.len_utf8()).sum::<usize>();
+                            let result = &self.buffer[start_pos..end_pos];
+                            self.position = end_pos;
+                            return Some(result);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        None
+    }
+
+    /// Extract a JSON string
+    fn extract_string(&mut self, start_pos: usize) -> Option<&str> {
+        let chars: Vec<char> = self.buffer[start_pos..].chars().collect();
+        if *chars.first()? != '"' {
+            return None;
+        }
+
+        let mut escape_next = false;
+        for (i, &c) in chars.iter().skip(1).enumerate() {
+            if escape_next {
+                escape_next = false;
+                continue;
+            }
+
+            match c {
+                '\\' => escape_next = true,
+                '"' => {
+                    let end_pos =
+                        start_pos + chars[..=i + 1].iter().map(|c| c.len_utf8()).sum::<usize>();
+                    let result = &self.buffer[start_pos..end_pos];
+                    self.position = end_pos;
+                    return Some(result);
+                }
+                _ => {}
+            }
+        }
+
+        None
+    }
+
+    /// Extract a JSON boolean
+    fn extract_boolean(&mut self, start_pos: usize) -> Option<&str> {
+        let remaining = &self.buffer[start_pos..];
+        if remaining.starts_with("true") {
+            self.position = start_pos + 4;
+            Some(&self.buffer[start_pos..start_pos + 4])
+        } else if remaining.starts_with("false") {
+            self.position = start_pos + 5;
+            Some(&self.buffer[start_pos..start_pos + 5])
+        } else {
+            None
+        }
+    }
+
+    /// Extract a JSON null
+    fn extract_null(&mut self, start_pos: usize) -> Option<&str> {
+        let remaining = &self.buffer[start_pos..];
+        if remaining.starts_with("null") {
+            self.position = start_pos + 4;
+            Some(&self.buffer[start_pos..start_pos + 4])
+        } else {
+            None
+        }
+    }
+
+    /// Extract a JSON number
+    fn extract_number(&mut self, start_pos: usize) -> Option<&str> {
+        let chars: Vec<char> = self.buffer[start_pos..].chars().collect();
+        let mut end = 0;
+
+        // Optional leading minus
+        if chars.get(end) == Some(&'-') {
+            end += 1;
+        }
+
+        // Integer part
+        while let Some(&c) = chars.get(end) {
+            if c.is_ascii_digit() {
+                end += 1;
+            } else {
+                break;
+            }
+        }
+
+        // Optional decimal part
+        if chars.get(end) == Some(&'.') {
+            end += 1;
+            while let Some(&c) = chars.get(end) {
+                if c.is_ascii_digit() {
+                    end += 1;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        // Optional exponent
+        if let Some(&'e' | &'E') = chars.get(end) {
+            end += 1;
+            if let Some(&'+' | &'-') = chars.get(end) {
+                end += 1;
+            }
+            while let Some(&c) = chars.get(end) {
+                if c.is_ascii_digit() {
+                    end += 1;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        if end > 0 {
+            let end_pos = start_pos + chars[..end].iter().map(|c| c.len_utf8()).sum::<usize>();
+            let result = &self.buffer[start_pos..end_pos];
+            self.position = end_pos;
+            Some(result)
+        } else {
+            None
         }
     }
 }

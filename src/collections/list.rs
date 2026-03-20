@@ -250,7 +250,7 @@ impl<T> List<T> {
         }
     }
 
-    /// 检查是否存在循环引用（仅debug模式）
+    /// Check for cyclic references (debug mode only)
     #[cfg(debug_assertions)]
     pub fn check_cycles(&self) -> bool {
         let mut slow = self.head.borrow().clone();
@@ -328,9 +328,9 @@ mod tests {
         list.append(1);
         list.append(2);
         list.append(3);
-        // 正常无循环
+        // Normal case without cycles
         assert!(!list.check_cycles());
-        // 构造循环（仅测试用，实际API不暴露）
+        // Create cycle (test only, not exposed in public API)
         if let Some(head) = list.head.borrow().clone() {
             if let Some(tail) = list.tail.borrow().as_ref().and_then(|w| w.upgrade()) {
                 *tail.next.borrow_mut() = Some(head.clone());

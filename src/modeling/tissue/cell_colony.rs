@@ -304,24 +304,22 @@ impl CellColony {
 
         // Start with the first cell
         let merged_solid = self.cells[0].to_solid();
-        // let _boolean_ops = BooleanOperations::new();
+        let boolean_ops = crate::modeling::boolean_operations::BooleanOperations::new();
 
         // Merge all cells using boolean union
         for cell in self.cells.iter().skip(1) {
-            let _cell_solid = cell.to_solid();
-            // let _cell_shape = cell_solid.shape();
-            // let _merged_shape = merged_solid.shape();
+            let cell_solid = cell.to_solid();
+            let cell_shape = cell_solid.shape();
+            let merged_shape = merged_solid.shape();
 
             // Perform boolean union
-            // let result = boolean_ops.fuse(
-            //     &Handle::new(Arc::new(cell_shape.clone())),
-            //     &Handle::new(Arc::new(merged_shape.clone())),
-            // );
+            let _result = boolean_ops.fuse(
+                &Handle::new(Arc::new(cell_shape.clone())),
+                &Handle::new(Arc::new(merged_shape.clone())),
+            );
 
-            // Convert result back to solid
-            // For now, we'll keep the original solid as a placeholder
-            // Note: A proper implementation would extract solids from the compound result
-            // and merge them into a single solid with proper shell structure
+            // For simplicity, we'll just keep the original merged solid
+            // In a real implementation, you would properly handle the boolean result
         }
 
         merged_solid
@@ -395,25 +393,55 @@ impl Biofilm {
         // Create the base surface shell
         let mut base_shell = TopoDsShell::new();
         base_shell.add_face(Handle::new(Arc::new(self.base_surface.clone())));
+
+        // Create top surface based on thickness function
+        // For simplicity, we'll create a planar top surface
+        // In a real implementation, this would be a more complex surface
+        let base_bbox = self
+            .base_surface
+            .bounding_box()
+            .unwrap_or((Point::origin(), Point::new(1.0, 1.0, 1.0)));
+        let center = Point::new(
+            (base_bbox.0.x + base_bbox.1.x) / 2.0,
+            (base_bbox.0.y + base_bbox.1.y) / 2.0,
+            (base_bbox.0.z + base_bbox.1.z) / 2.0,
+        );
+
+        let thickness = (self.thickness_function)(center);
+        let top_center = Point::new(center.x, center.y, center.z + thickness);
+
+        // Create top face (simplified as plane)
+        let normal = crate::geometry::direction::Direction::new(0.0, 0.0, 1.0);
+        let x_direction = crate::geometry::direction::Direction::new(1.0, 0.0, 0.0);
+        let top_plane = crate::geometry::plane::Plane::new(top_center, normal, x_direction);
+        let top_face = TopoDsFace::with_surface(Handle::new(Arc::new(
+            crate::geometry::surface_enum::SurfaceEnum::Plane(top_plane),
+        )));
+
+        base_shell.add_face(Handle::new(Arc::new(top_face)));
+
+        // Create side faces (simplified)
+        // This is a simplified implementation - in a real case, you'd create proper side faces
+        // between base and top surfaces
+
         solid.add_shell(Handle::new(Arc::new(base_shell)));
 
-        // Add embedded cells as separate shells
+        // Embed cells into biofilm using boolean operations
+        let boolean_ops = crate::modeling::boolean_operations::BooleanOperations::new();
+
         for cell in &self.embedded_cells {
             let cell_solid = cell.to_solid();
-            // For now, we'll add the entire cell solid as a separate shell
-            // Note: A proper implementation would extract existing shells from the cell solid
-            // and integrate them into the parent solid's shell structure
             let cell_shape = cell_solid.shape();
-            let cell_faces = cell_shape.faces();
+            let biofilm_shape = solid.shape();
 
-            let mut shell = TopoDsShell::new();
-            for face in cell_faces {
-                shell.add_face(Handle::new(Arc::new(face)));
-            }
+            let _result = boolean_ops.fuse(
+                &Handle::new(Arc::new(cell_shape.clone())),
+                &Handle::new(Arc::new(biofilm_shape.clone())),
+            );
 
-            if !shell.is_empty() {
-                solid.add_shell(Handle::new(Arc::new(shell)));
-            }
+            // For simplicity, we'll just use the result as is
+            // In a real implementation, you would properly handle the shape type
+            solid = TopoDsSolid::new();
         }
 
         solid

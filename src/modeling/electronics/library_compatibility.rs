@@ -124,13 +124,13 @@ impl ElectricalComponentLibrary {
         component.footprint.add_pad(pad2);
 
         // Create body geometry
-        let _body = Cylinder::new(
-            Point::new(0.0, 0.0, 0.001),
-            crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
+        let body = crate::modeling::primitives::make_cylinder(
             0.002,
+            0.002,
+            Some(Point::new(0.0, 0.0, 0.001)),
         );
 
-        component.set_body_geometry(TopoDsSolid::new());
+        component.set_body_geometry(body);
 
         component
     }
@@ -169,13 +169,13 @@ impl ElectricalComponentLibrary {
         component.footprint.add_pad(pad2);
 
         // Create body geometry
-        let _body = Cylinder::new(
-            Point::new(0.0, 0.0, 0.0015),
-            crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
+        let body = crate::modeling::primitives::make_cylinder(
             0.0015,
+            0.003,
+            Some(Point::new(0.0, 0.0, 0.0015)),
         );
 
-        component.set_body_geometry(TopoDsSolid::new());
+        component.set_body_geometry(body);
 
         component
     }
@@ -250,13 +250,14 @@ impl LogicGateLibrary {
         component.footprint.add_pad(pad3);
 
         // Create body geometry
-        let _body = Cylinder::new(
-            Point::new(0.0, 0.0, 0.001),
-            crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
-            0.003,
+        let body = crate::modeling::primitives::make_box(
+            0.006,
+            0.006,
+            0.002,
+            Some(Point::new(0.0, 0.0, 0.001)),
         );
 
-        component.set_body_geometry(TopoDsSolid::new());
+        component.set_body_geometry(body);
 
         component
     }
@@ -304,13 +305,14 @@ impl LogicGateLibrary {
         component.footprint.add_pad(pad3);
 
         // Create body geometry
-        let _body = Cylinder::new(
-            Point::new(0.0, 0.0, 0.001),
-            crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
-            0.003,
+        let body = crate::modeling::primitives::make_box(
+            0.006,
+            0.006,
+            0.002,
+            Some(Point::new(0.0, 0.0, 0.001)),
         );
 
-        component.set_body_geometry(TopoDsSolid::new());
+        component.set_body_geometry(body);
 
         component
     }
@@ -427,13 +429,14 @@ impl ChipDeviceLibrary {
         }
 
         // Create body geometry
-        let _body = Cylinder::new(
-            Point::new(0.0, 0.0, 0.001),
-            crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
+        let body = crate::modeling::primitives::make_box(
             package_size,
+            package_size,
+            0.002,
+            Some(Point::new(0.0, 0.0, 0.001)),
         );
 
-        component.set_body_geometry(TopoDsSolid::new());
+        component.set_body_geometry(body);
 
         component
     }
@@ -475,13 +478,14 @@ impl ChipDeviceLibrary {
         }
 
         // Create body geometry
-        let _body = Cylinder::new(
-            Point::new(0.0, 0.0, 0.001),
-            crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
+        let body = crate::modeling::primitives::make_box(
             package_size,
+            package_size,
+            0.002,
+            Some(Point::new(0.0, 0.0, 0.001)),
         );
 
-        component.set_body_geometry(TopoDsSolid::new());
+        component.set_body_geometry(body);
 
         component
     }

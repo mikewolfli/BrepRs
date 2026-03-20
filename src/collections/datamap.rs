@@ -1,49 +1,49 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
-/// 键值对映射，基于HashMap实现。
+/// Key-value pair map, implemented based on HashMap.
 ///
-/// 用于存储任意类型的键值对，支持容量管理和清空操作。
+/// Used to store key-value pairs of any type, supports capacity management and clear operations.
 pub struct DataMap<K, V> {
     data: HashMap<K, V>,
 }
 
 impl<K: Hash + Eq, V> DataMap<K, V> {
-    /// 创建空映射
+    /// Create an empty map
     pub fn new() -> Self {
         Self {
             data: HashMap::new(),
         }
     }
 
-    /// 按容量创建映射
+    /// Create a map with specified capacity
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             data: HashMap::with_capacity(capacity),
         }
     }
 
-    /// 是否为空
+    /// Check if map is empty
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
 
-    /// 元素数量
+    /// Number of elements
     pub fn size(&self) -> usize {
         self.data.len()
     }
 
-    /// 元素数量（等价于size）
+    /// Number of elements (equivalent to size)
     pub fn len(&self) -> usize {
         self.data.len()
     }
 
-    /// 当前容量
+    /// Current capacity
     pub fn capacity(&self) -> usize {
         self.data.capacity()
     }
 
-    /// 清空映射
+    /// Clear the map
     pub fn clear(&mut self) {
         self.data.clear();
     }

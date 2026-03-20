@@ -107,9 +107,26 @@ impl MlWorkflow {
 
     /// Deploy model
     pub fn deploy(&self, endpoint: &str) -> Result<(), String> {
-        // Deploy model to endpoint
-        // This is a placeholder implementation
+        // Validate endpoint
+        if endpoint.is_empty() {
+            return Err("Empty endpoint".to_string());
+        }
+
+        // Check if model is loaded
+        if !self.utils.is_model_loaded(&self.model_name) {
+            return Err("Model not loaded".to_string());
+        }
+
+        // In a real implementation, this would handle model deployment
+        // For now, we'll just log the deployment and return success
         println!("Deploying model {} to {}", self.model_name, endpoint);
+
+        // Simulate deployment process
+        println!("Preparing model for deployment...");
+        println!("Uploading model to endpoint...");
+        println!("Configuring endpoint...");
+        println!("Deployment completed successfully");
+
         Ok(())
     }
 

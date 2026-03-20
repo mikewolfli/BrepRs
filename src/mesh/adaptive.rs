@@ -1,5 +1,5 @@
 //! Adaptive mesh refinement/coarsening (h-adaptivity)
-//! 
+//!
 //! This module provides functionality for adaptive mesh refinement and coarsening
 //! based on user-defined criteria such as error estimation, curvature, or solution gradients.
 
@@ -134,7 +134,11 @@ impl AdaptiveMesher {
     }
 
     /// Calculate face quality for 2D mesh
-    fn calculate_face_quality_2d(&self, mesh: &Mesh2D, face: &crate::mesh::mesh_data::MeshFace) -> f64 {
+    fn calculate_face_quality_2d(
+        &self,
+        mesh: &Mesh2D,
+        face: &crate::mesh::mesh_data::MeshFace,
+    ) -> f64 {
         if face.vertices.len() < 3 {
             return 0.0;
         }
@@ -164,11 +168,7 @@ impl AdaptiveMesher {
         };
 
         // Calculate quality score
-        let area_score = if area > 0.0 {
-            1.0 / area.sqrt()
-        } else {
-            0.0
-        };
+        let area_score = if area > 0.0 { 1.0 / area.sqrt() } else { 0.0 };
 
         let aspect_score = if aspect_ratio < 5.0 {
             1.0
@@ -187,7 +187,9 @@ impl AdaptiveMesher {
         for (face_id, &quality) in &self.element_quality {
             let level = self.element_levels.get(face_id).unwrap_or(&0);
 
-            if quality > self.params.refinement_threshold && *level < self.params.max_refinement_level {
+            if quality > self.params.refinement_threshold
+                && *level < self.params.max_refinement_level
+            {
                 to_refine.insert(*face_id);
             } else if quality < self.params.coarsening_threshold && *level > 0 {
                 to_coarsen.insert(*face_id);
@@ -207,11 +209,7 @@ impl AdaptiveMesher {
             for i in 0..face.vertices.len() {
                 let v0 = face.vertices[i];
                 let v1 = face.vertices[(i + 1) % face.vertices.len()];
-                let edge = if v0 < v1 {
-                    (v0, v1)
-                } else {
-                    (v1, v0)
-                };
+                let edge = if v0 < v1 { (v0, v1) } else { (v1, v0) };
                 edges_to_split.insert(edge);
             }
         }
@@ -230,14 +228,19 @@ impl AdaptiveMesher {
         let new_vertex_id = mesh.add_vertex(midpoint);
 
         // Replace edge with two new edges
-        let mut new_edges = Vec::new();
+        let mut edges_to_remove = Vec::new();
         for (edge_id, edge) in mesh.edges.iter().enumerate() {
-            if (edge.vertices[0] == v0 && edge.vertices[1] == v1) ||
-               (edge.vertices[0] == v1 && edge.vertices[1] == v0) {
-                // Remove old edge
-                // In a real implementation, we would remove the edge
-                // For simplicity, we'll just add new edges
+            if (edge.vertices[0] == v0 && edge.vertices[1] == v1)
+                || (edge.vertices[0] == v1 && edge.vertices[1] == v0)
+            {
+                // Mark old edge for removal
+                edges_to_remove.push(edge_id);
             }
+        }
+
+        // Remove old edges
+        for &edge_id in edges_to_remove.iter().rev() {
+            mesh.edges.remove(edge_id);
         }
 
         mesh.add_edge(v0, new_vertex_id);
@@ -247,16 +250,25 @@ impl AdaptiveMesher {
         for face in &mut mesh.faces {
             let mut vertices = face.vertices.clone();
             for i in 0..vertices.len() {
-                if (vertices[i] == v0 && vertices[(i + 1) % vertices.len()] == v1) ||
-                   (vertices[i] == v1 && vertices[(i + 1) % vertices.len()] == v0) {
+                if (vertices[i] == v0 && vertices[(i + 1) % vertices.len()] == v1)
+                    || (vertices[i] == v1 && vertices[(i + 1) % vertices.len()] == v0)
+                {
                     // Split the face
                     let mut new_face1 = face.clone();
                     let mut new_face2 = face.clone();
-                    
+
                     // Replace edge with new vertex
-                    new_face1.vertices = vec![vertices[i], new_vertex_id, vertices[(i + 1) % vertices.len()]];
-                    new_face2.vertices = vec![vertices[i], vertices[(i + 1) % vertices.len()], new_vertex_id];
-                    
+                    new_face1.vertices = vec![
+                        vertices[i],
+                        new_vertex_id,
+                        vertices[(i + 1) % vertices.len()],
+                    ];
+                    new_face2.vertices = vec![
+                        vertices[i],
+                        vertices[(i + 1) % vertices.len()],
+                        new_vertex_id,
+                    ];
+
                     // Replace original face
                     *face = new_face1;
                     // Add new face
@@ -269,8 +281,95 @@ impl AdaptiveMesher {
 
     /// Coarsen elements for 2D mesh
     fn coarsen_elements_2d(&self, mesh: &mut Mesh2D, to_coarsen: &HashSet<usize>) {
-        // In a real implementation, we would collapse edges
-        // For simplicity, we'll just leave this as a placeholder
+        if to_coarsen.is_empty() {
+            return;
+        }
+
+        // Build vertex-to-face adjacency
+        let mut vertex_faces: HashMap<usize, Vec<usize>> = HashMap::new();
+        for (face_id, face) in mesh.faces.iter().enumerate() {
+            for &v in &face.vertices {
+                vertex_faces.entry(v).or_default().push(face_id);
+            }
+        }
+
+        // Find edges that can be collapsed
+        let mut edges_to_collapse: Vec<(usize, usize)> = Vec::new();
+        let mut processed_faces: HashSet<usize> = HashSet::new();
+
+        for &face_id in to_coarsen {
+            if processed_faces.contains(&face_id) {
+                continue;
+            }
+
+            let face = &mesh.faces[face_id];
+            if face.vertices.len() < 3 {
+                continue;
+            }
+
+            // Find the shortest edge
+            let mut shortest_edge = (0, 1);
+            let mut shortest_length = f64::MAX;
+
+            for i in 0..face.vertices.len() {
+                let v0 = face.vertices[i];
+                let v1 = face.vertices[(i + 1) % face.vertices.len()];
+                let p0 = &mesh.vertices[v0].point;
+                let p1 = &mesh.vertices[v1].point;
+                let length = p0.distance(p1);
+
+                if length < shortest_length {
+                    shortest_length = length;
+                    shortest_edge = (v0, v1);
+                }
+            }
+
+            // Check if collapse is valid
+            let (v0, v1) = shortest_edge;
+            let faces_0 = vertex_faces.get(&v0).map(|v| v.as_slice()).unwrap_or(&[]);
+            let faces_1 = vertex_faces.get(&v1).map(|v| v.as_slice()).unwrap_or(&[]);
+
+            // Only collapse if both vertices are in faces marked for coarsening
+            let can_collapse = faces_0.iter().all(|f| to_coarsen.contains(f))
+                && faces_1.iter().all(|f| to_coarsen.contains(f));
+
+            if can_collapse {
+                edges_to_collapse.push((v0, v1));
+                for &f in faces_0.iter().chain(faces_1.iter()) {
+                    processed_faces.insert(f);
+                }
+            }
+        }
+
+        // Collapse edges
+        for (v0, v1) in edges_to_collapse {
+            // Calculate midpoint
+            let p0 = &mesh.vertices[v0].point;
+            let p1 = &mesh.vertices[v1].point;
+            let midpoint = Point::new(
+                (p0.x + p1.x) / 2.0,
+                (p0.y + p1.y) / 2.0,
+                (p0.z + p1.z) / 2.0,
+            );
+
+            // Update vertex position
+            mesh.vertices[v0].point = midpoint;
+
+            // Update all faces that reference v1 to use v0 instead
+            for face in &mut mesh.faces {
+                for v in &mut face.vertices {
+                    if *v == v1 {
+                        *v = v0;
+                    }
+                }
+            }
+
+            // Remove degenerate faces (faces with duplicate vertices)
+            mesh.faces.retain(|face| {
+                let mut seen = HashSet::new();
+                face.vertices.iter().all(|v| seen.insert(*v))
+            });
+        }
     }
 
     /// Calculate element qualities for 3D mesh
@@ -288,13 +387,19 @@ impl AdaptiveMesher {
         // Calculate hexahedron qualities
         for (hex_id, hex) in mesh.hexahedrons.iter().enumerate() {
             let quality = self.calculate_hexahedron_quality_3d(mesh, hex);
-            self.element_quality.insert(hex_id + mesh.tetrahedrons.len(), quality);
-            self.element_levels.insert(hex_id + mesh.tetrahedrons.len(), 0);
+            self.element_quality
+                .insert(hex_id + mesh.tetrahedrons.len(), quality);
+            self.element_levels
+                .insert(hex_id + mesh.tetrahedrons.len(), 0);
         }
     }
 
     /// Calculate tetrahedron quality for 3D mesh
-    fn calculate_tetrahedron_quality_3d(&self, mesh: &Mesh3D, tetra: &crate::mesh::mesh_data::MeshTetrahedron) -> f64 {
+    fn calculate_tetrahedron_quality_3d(
+        &self,
+        mesh: &Mesh3D,
+        tetra: &crate::mesh::mesh_data::MeshTetrahedron,
+    ) -> f64 {
         let v0 = &mesh.vertices[tetra.vertices[0]].point;
         let v1 = &mesh.vertices[tetra.vertices[1]].point;
         let v2 = &mesh.vertices[tetra.vertices[2]].point;
@@ -340,7 +445,11 @@ impl AdaptiveMesher {
     }
 
     /// Calculate hexahedron quality for 3D mesh
-    fn calculate_hexahedron_quality_3d(&self, mesh: &Mesh3D, hex: &crate::mesh::mesh_data::MeshHexahedron) -> f64 {
+    fn calculate_hexahedron_quality_3d(
+        &self,
+        mesh: &Mesh3D,
+        hex: &crate::mesh::mesh_data::MeshHexahedron,
+    ) -> f64 {
         let v0 = &mesh.vertices[hex.vertices[0]].point;
         let v1 = &mesh.vertices[hex.vertices[1]].point;
         let v2 = &mesh.vertices[hex.vertices[2]].point;
@@ -410,7 +519,9 @@ impl AdaptiveMesher {
         for (tetra_id, &quality) in &self.element_quality {
             if *tetra_id < mesh.tetrahedrons.len() {
                 let level = self.element_levels.get(tetra_id).unwrap_or(&0);
-                if quality > self.params.refinement_threshold && *level < self.params.max_refinement_level {
+                if quality > self.params.refinement_threshold
+                    && *level < self.params.max_refinement_level
+                {
                     to_refine.insert(*tetra_id);
                 } else if quality < self.params.coarsening_threshold && *level > 0 {
                     to_coarsen.insert(*tetra_id);
@@ -422,7 +533,9 @@ impl AdaptiveMesher {
         for (hex_id, &quality) in &self.element_quality {
             if *hex_id >= mesh.tetrahedrons.len() {
                 let level = self.element_levels.get(hex_id).unwrap_or(&0);
-                if quality > self.params.refinement_threshold && *level < self.params.max_refinement_level {
+                if quality > self.params.refinement_threshold
+                    && *level < self.params.max_refinement_level
+                {
                     to_refine.insert(*hex_id);
                 } else if quality < self.params.coarsening_threshold && *level > 0 {
                     to_coarsen.insert(*hex_id);
@@ -435,14 +548,196 @@ impl AdaptiveMesher {
 
     /// Refine elements for 3D mesh
     fn refine_elements_3d(&self, mesh: &mut Mesh3D, to_refine: &HashSet<usize>) {
-        // In a real implementation, we would split edges or faces
-        // For simplicity, we'll just leave this as a placeholder
+        if to_refine.is_empty() {
+            return;
+        }
+
+        let num_tetras = mesh.tetrahedrons.len();
+        let mut new_vertices: HashMap<(usize, usize), usize> = HashMap::new();
+
+        // Create edge midpoints for tetrahedrons
+        for &tetra_id in to_refine {
+            if tetra_id >= num_tetras {
+                continue;
+            }
+
+            let tetra = &mesh.tetrahedrons[tetra_id];
+            let edges = [
+                (tetra.vertices[0], tetra.vertices[1]),
+                (tetra.vertices[0], tetra.vertices[2]),
+                (tetra.vertices[0], tetra.vertices[3]),
+                (tetra.vertices[1], tetra.vertices[2]),
+                (tetra.vertices[1], tetra.vertices[3]),
+                (tetra.vertices[2], tetra.vertices[3]),
+            ];
+
+            for (v0, v1) in edges {
+                let edge_key = if v0 < v1 { (v0, v1) } else { (v1, v0) };
+                if !new_vertices.contains_key(&edge_key) {
+                    let p0 = &mesh.vertices[v0].point;
+                    let p1 = &mesh.vertices[v1].point;
+                    let midpoint = Point::new(
+                        (p0.x + p1.x) / 2.0,
+                        (p0.y + p1.y) / 2.0,
+                        (p0.z + p1.z) / 2.0,
+                    );
+                    let new_id = mesh.vertices.len();
+                    mesh.vertices
+                        .push(crate::mesh::mesh_data::MeshVertex::new(new_id, midpoint));
+                    new_vertices.insert(edge_key, new_id);
+                }
+            }
+        }
+
+        // Subdivide tetrahedrons using red refinement (1-to-8 subdivision)
+        let mut new_tetrahedrons = Vec::new();
+        let mut tetras_to_remove = HashSet::new();
+
+        for &tetra_id in to_refine {
+            if tetra_id >= num_tetras {
+                continue;
+            }
+
+            let tetra = &mesh.tetrahedrons[tetra_id];
+            let v0 = tetra.vertices[0];
+            let v1 = tetra.vertices[1];
+            let v2 = tetra.vertices[2];
+            let v3 = tetra.vertices[3];
+
+            // Get edge midpoints
+            let m01 = new_vertices.get(&(v0.min(v1), v0.max(v1))).unwrap();
+            let m02 = new_vertices.get(&(v0.min(v2), v0.max(v2))).unwrap();
+            let m03 = new_vertices.get(&(v0.min(v3), v0.max(v3))).unwrap();
+            let m12 = new_vertices.get(&(v1.min(v2), v1.max(v2))).unwrap();
+            let m13 = new_vertices.get(&(v1.min(v3), v1.max(v3))).unwrap();
+            let m23 = new_vertices.get(&(v2.min(v3), v2.max(v3))).unwrap();
+
+            // Create 8 new tetrahedrons
+            new_tetrahedrons.push([v0, *m01, *m02, *m03]);
+            new_tetrahedrons.push([v1, *m01, *m12, *m13]);
+            new_tetrahedrons.push([v2, *m02, *m12, *m23]);
+            new_tetrahedrons.push([v3, *m03, *m13, *m23]);
+            new_tetrahedrons.push([*m01, *m02, *m03, *m13]);
+            new_tetrahedrons.push([*m01, *m02, *m12, *m13]);
+            new_tetrahedrons.push([*m02, *m03, *m13, *m23]);
+            new_tetrahedrons.push([*m02, *m12, *m13, *m23]);
+
+            tetras_to_remove.insert(tetra_id);
+        }
+
+        // Remove old tetrahedrons and add new ones
+        mesh.tetrahedrons = mesh
+            .tetrahedrons
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| !tetras_to_remove.contains(i))
+            .map(|(_, t)| t.clone())
+            .collect();
+
+        for verts in new_tetrahedrons {
+            mesh.tetrahedrons
+                .push(crate::mesh::mesh_data::MeshTetrahedron { vertices: verts });
+        }
     }
 
     /// Coarsen elements for 3D mesh
     fn coarsen_elements_3d(&self, mesh: &mut Mesh3D, to_coarsen: &HashSet<usize>) {
-        // In a real implementation, we would collapse edges or faces
-        // For simplicity, we'll just leave this as a placeholder
+        if to_coarsen.is_empty() {
+            return;
+        }
+
+        let num_tetras = mesh.tetrahedrons.len();
+
+        // Build vertex-to-tetrahedron adjacency
+        let mut vertex_tetras: HashMap<usize, Vec<usize>> = HashMap::new();
+        for (tetra_id, tetra) in mesh.tetrahedrons.iter().enumerate() {
+            for &v in &tetra.vertices {
+                vertex_tetras.entry(v).or_default().push(tetra_id);
+            }
+        }
+
+        // Find edges that can be collapsed
+        let mut edges_to_collapse: Vec<(usize, usize)> = Vec::new();
+        let mut processed_tetras: HashSet<usize> = HashSet::new();
+
+        for &tetra_id in to_coarsen {
+            if tetra_id >= num_tetras || processed_tetras.contains(&tetra_id) {
+                continue;
+            }
+
+            let tetra = &mesh.tetrahedrons[tetra_id];
+
+            // Find the shortest edge
+            let mut shortest_edge = (0, 1);
+            let mut shortest_length = f64::MAX;
+
+            for i in 0..4 {
+                for j in (i + 1)..4 {
+                    let v0 = tetra.vertices[i];
+                    let v1 = tetra.vertices[j];
+                    let p0 = &mesh.vertices[v0].point;
+                    let p1 = &mesh.vertices[v1].point;
+                    let length = p0.distance(p1);
+
+                    if length < shortest_length {
+                        shortest_length = length;
+                        shortest_edge = (v0, v1);
+                    }
+                }
+            }
+
+            // Check if collapse is valid
+            let (v0, v1) = shortest_edge;
+            let tetras_0 = vertex_tetras.get(&v0).map(|v| v.as_slice()).unwrap_or(&[]);
+            let tetras_1 = vertex_tetras.get(&v1).map(|v| v.as_slice()).unwrap_or(&[]);
+
+            // Only collapse if both vertices are in tetrahedrons marked for coarsening
+            let can_collapse = tetras_0
+                .iter()
+                .all(|t| to_coarsen.contains(t) || *t >= num_tetras)
+                && tetras_1
+                    .iter()
+                    .all(|t| to_coarsen.contains(t) || *t >= num_tetras);
+
+            if can_collapse {
+                edges_to_collapse.push((v0, v1));
+                for &t in tetras_0.iter().chain(tetras_1.iter()) {
+                    if t < num_tetras {
+                        processed_tetras.insert(t);
+                    }
+                }
+            }
+        }
+
+        // Collapse edges
+        for (v0, v1) in edges_to_collapse {
+            // Calculate midpoint
+            let p0 = &mesh.vertices[v0].point;
+            let p1 = &mesh.vertices[v1].point;
+            let midpoint = Point::new(
+                (p0.x + p1.x) / 2.0,
+                (p0.y + p1.y) / 2.0,
+                (p0.z + p1.z) / 2.0,
+            );
+
+            // Update vertex position
+            mesh.vertices[v0].point = midpoint;
+
+            // Update all tetrahedrons that reference v1 to use v0 instead
+            for tetra in &mut mesh.tetrahedrons {
+                for v in &mut tetra.vertices {
+                    if *v == v1 {
+                        *v = v0;
+                    }
+                }
+            }
+
+            // Remove degenerate tetrahedrons (tetrahedrons with duplicate vertices)
+            mesh.tetrahedrons.retain(|tetra| {
+                let mut seen = HashSet::new();
+                tetra.vertices.iter().all(|v| seen.insert(*v))
+            });
+        }
     }
 }
 
@@ -466,7 +761,7 @@ mod tests {
         let p3 = Point::new(0.0, 1.0, 0.0);
         let p4 = Point::new(0.0, 0.0, 1.0);
         let volume = mesher.calculate_tetrahedron_volume(&p1, &p2, &p3, &p4);
-        assert!((volume - 1.0/6.0).abs() < 1e-6);
+        assert!((volume - 1.0 / 6.0).abs() < 1e-6);
     }
 
     #[test]

@@ -97,6 +97,13 @@ impl Vector {
         self.magnitude() <= tolerance
     }
 
+    /// Reflect the vector over a normal vector
+    #[inline]
+    pub fn reflect(&self, normal: &Vector) -> Vector {
+        let dot_product = self.dot(normal);
+        *self - *normal * (2.0 * dot_product)
+    }
+
     #[inline]
     pub fn is_equal(&self, other: &Vector, tolerance: StandardReal) -> bool {
         let diff = *self - *other;
@@ -279,7 +286,7 @@ impl Vector {
         } else {
             Vector::new(0.0, self.z, -self.y)
         };
-        
+
         // Cross product gives a perpendicular vector
         self.cross(&candidate).normalized()
     }

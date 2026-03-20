@@ -25,13 +25,13 @@ impl SetCoord for Direction {
 }
 
 impl Direction {
-    /// 使用全局容差判断零方向
+    /// Check if direction is zero using global tolerance
     pub fn is_zero_tol(&self) -> bool {
         let mag = (self.x * self.x + self.y * self.y + self.z * self.z).sqrt();
         mag <= TOLERANCE as StandardReal
     }
 
-    /// 使用全局容差判断相等
+    /// Check equality using global tolerance
     pub fn is_equal_tol(&self, other: &Direction) -> bool {
         let diff =
             crate::geometry::Vector::new(self.x - other.x, self.y - other.y, self.z - other.z);
@@ -123,7 +123,7 @@ impl Direction {
         }
     }
 
-    /// 返回归一化方向，若为零向量则返回Err
+    /// Return normalized direction, return Err if zero vector
     pub fn normalized_result(&self) -> Result<Direction, &'static str> {
         let mag = (self.x * self.x + self.y * self.y + self.z * self.z).sqrt();
         if mag > STANDARD_REAL_EPSILON {
@@ -137,12 +137,12 @@ impl Direction {
         }
     }
 
-    /// 返回归一化方向，若为零向量则返回默认方向
+    /// Return normalized direction, return default direction if zero vector
     pub fn normalized(&self) -> Direction {
         self.normalized_result().unwrap_or_default()
     }
 
-    /// 计算与other的夹角，若任一为零向量则返回0
+    /// Calculate angle with other, return 0 if either is zero vector
     pub fn angle(&self, other: &Direction) -> StandardReal {
         self.angle_result(other).unwrap_or(0.0)
     }
@@ -184,7 +184,7 @@ impl Direction {
         cross.x * cross.x + cross.y * cross.y + cross.z * cross.z
     }
 
-    /// 计算与other的夹角，若任一为零向量则返回Err
+    /// Calculate angle with other, return Err if either is zero vector
     pub fn angle_result(&self, other: &Direction) -> Result<StandardReal, &'static str> {
         let mag_self = (self.x * self.x + self.y * self.y + self.z * self.z).sqrt();
         let mag_other = (other.x * other.x + other.y * other.y + other.z * other.z).sqrt();

@@ -335,31 +335,126 @@ impl SurfaceReconstructor {
 
     /// Quadratic polynomial fitting for MLS
     fn quadratic_fit(&self, point: Point, neighbors: &[Point]) -> Option<Point> {
-        // Simple quadratic fit implementation
-        // In a real implementation, this would solve a linear system
+        // Quadratic polynomial fit using linear system solver
+        // f(x,y) = a + bx + cy + dx² + ey² + fxy
 
-        // For now, return a weighted average
-        let mut sum = Point::origin();
-        let mut total_weight = 0.0;
+        let n = neighbors.len();
+        if n < 6 {
+            // Need at least 6 points for quadratic fit
+            // Fallback to weighted average for insufficient points
+            let mut sum = Point::origin();
+            let mut total_weight = 0.0;
 
-        for neighbor in neighbors {
-            let dist = point.distance(neighbor);
-            let weight = 1.0 / (dist * dist + 1e-10);
-            sum.x += neighbor.x * weight;
-            sum.y += neighbor.y * weight;
-            sum.z += neighbor.z * weight;
-            total_weight += weight;
+            for neighbor in neighbors {
+                let dist = point.distance(neighbor);
+                let weight = 1.0 / (dist * dist + 1e-10);
+                sum.x += neighbor.x * weight;
+                sum.y += neighbor.y * weight;
+                sum.z += neighbor.z * weight;
+                total_weight += weight;
+            }
+
+            if total_weight > 0.0 {
+                return Some(Point::new(
+                    sum.x / total_weight,
+                    sum.y / total_weight,
+                    sum.z / total_weight,
+                ));
+            } else {
+                return None;
+            }
         }
 
-        if total_weight > 0.0 {
-            Some(Point::new(
-                sum.x / total_weight,
-                sum.y / total_weight,
-                sum.z / total_weight,
-            ))
+        // Build weighted least squares system
+        let mut a = vec![vec![0.0; 6]; 6];
+        let mut b = vec![0.0; 6];
+
+        for neighbor in neighbors {
+            let dx = neighbor.x - point.x;
+            let dy = neighbor.y - point.y;
+            let dz = neighbor.z - point.z;
+
+            let dist = dx * dx + dy * dy;
+            let weight = 1.0 / (dist + 1e-10);
+
+            // Basis functions: 1, x, y, x², y², xy
+            let basis = vec![1.0, dx, dy, dx * dx, dy * dy, dx * dy];
+
+            // Build system matrix
+            for i in 0..6 {
+                for j in 0..6 {
+                    a[i][j] += basis[i] * basis[j] * weight;
+                }
+                b[i] += basis[i] * dz * weight;
+            }
+        }
+
+        // Solve linear system using LU decomposition
+        if let Some(coeffs) = self.solve_linear_system(&a, &b) {
+            // Evaluate at origin (since we shifted coordinates)
+            let z = coeffs[0]; // Constant term
+            Some(Point::new(point.x, point.y, point.z + z))
         } else {
             None
         }
+    }
+
+    /// Solve linear system using LU decomposition
+    fn solve_linear_system(&self, a: &Vec<Vec<f64>>, b: &Vec<f64>) -> Option<Vec<f64>> {
+        let n = a.len();
+        if n != b.len() || n == 0 {
+            return None;
+        }
+
+        // Create augmented matrix
+        let mut aug: Vec<Vec<f64>> = a
+            .iter()
+            .zip(b.iter())
+            .map(|(row, &val)| {
+                let mut new_row = row.clone();
+                new_row.push(val);
+                new_row
+            })
+            .collect();
+
+        // Gaussian elimination
+        for i in 0..n {
+            // Find pivot
+            let mut max_row = i;
+            for j in i..n {
+                if aug[j][i].abs() > aug[max_row][i].abs() {
+                    max_row = j;
+                }
+            }
+
+            // Swap rows
+            aug.swap(i, max_row);
+
+            // Check for singular matrix
+            if aug[i][i].abs() < 1e-10 {
+                return None;
+            }
+
+            // Eliminate below
+            for j in i + 1..n {
+                let factor = aug[j][i] / aug[i][i];
+                for k in i..n + 1 {
+                    aug[j][k] -= factor * aug[i][k];
+                }
+            }
+        }
+
+        // Back substitution
+        let mut x = vec![0.0; n];
+        for i in (0..n).rev() {
+            x[i] = aug[i][n];
+            for j in i + 1..n {
+                x[i] -= aug[i][j] * x[j];
+            }
+            x[i] /= aug[i][i];
+        }
+
+        Some(x)
     }
 
     /// Alpha shapes reconstruction
@@ -405,14 +500,15 @@ impl SurfaceReconstructor {
         ReconstructionResult { mesh, quality }
     }
 
-    /// Delaunay triangulation implementation
+    /// Delaunay triangulation implementation using Bowyer-Watson algorithm
     fn delaunay_triangulation(&self, points: &[Point]) -> Vec<(usize, usize, usize, usize)> {
-        // Simple Delaunay triangulation implementation
-        // In a real implementation, this would use Bowyer-Watson algorithm
-
         let mut tetrahedrons = Vec::new();
 
-        // Create initial tetrahedron that encloses all points
+        if points.len() < 4 {
+            return tetrahedrons;
+        }
+
+        // Create initial super tetrahedron that encloses all points
         let (min, max) = self.calculate_bounds(points);
         let center = Point::new(
             (min.x + max.x) / 2.0,
@@ -421,53 +517,126 @@ impl SurfaceReconstructor {
         );
         let size = (max.x - min.x).max(max.y - min.y).max(max.z - min.z) * 2.0;
 
-        let _super_tetra = [
+        // Super tetrahedron vertices
+        let super_vertices = vec![
             Point::new(center.x - size, center.y - size, center.z - size),
             Point::new(center.x + size, center.y + size, center.z - size),
             Point::new(center.x + size, center.y - size, center.z + size),
             Point::new(center.x - size, center.y + size, center.z + size),
         ];
 
-        // Add points one by one and update triangulation
+        // Add super tetrahedron
+        tetrahedrons.push((0, 1, 2, 3));
+
+        // Add all points (offset by 4 to account for super vertices)
         for (i, point) in points.iter().enumerate() {
-            // Find tetrahedrons whose circumsphere contains the point
+            let point_idx = i + 4; // Offset for super vertices
+
+            // Find bad tetrahedrons (those whose circumsphere contains the point)
             let mut bad_tetrahedrons = Vec::new();
             let mut good_tetrahedrons = Vec::new();
 
-            if i < 4 {
-                // For first 4 points, create initial tetrahedron
-                if i == 3 {
-                    tetrahedrons.push((0, 1, 2, 3));
+            for tetra in &tetrahedrons {
+                let (a, b, c, d) = *tetra;
+                let v_a = if a < 4 {
+                    &super_vertices[a]
+                } else {
+                    &points[a - 4]
+                };
+                let v_b = if b < 4 {
+                    &super_vertices[b]
+                } else {
+                    &points[b - 4]
+                };
+                let v_c = if c < 4 {
+                    &super_vertices[c]
+                } else {
+                    &points[c - 4]
+                };
+                let v_d = if d < 4 {
+                    &super_vertices[d]
+                } else {
+                    &points[d - 4]
+                };
+
+                if self.point_in_circumsphere(point, v_a, v_b, v_c, v_d) {
+                    bad_tetrahedrons.push(*tetra);
+                } else {
+                    good_tetrahedrons.push(*tetra);
                 }
-            } else {
-                // For subsequent points, use Bowyer-Watson algorithm
-                // This is a simplified version
-                for tetra in &tetrahedrons {
-                    let (a, b, c, d) = *tetra;
-                    if self.point_in_circumsphere(
-                        point, &points[a], &points[b], &points[c], &points[d],
-                    ) {
-                        bad_tetrahedrons.push(*tetra);
-                    } else {
-                        good_tetrahedrons.push(*tetra);
+            }
+
+            // Collect boundary faces of bad tetrahedrons
+            let mut boundary_faces = Vec::new();
+            for tetra in &bad_tetrahedrons {
+                let (a, b, c, d) = *tetra;
+                // Check all four faces of the tetrahedron
+                let faces = [(a, b, c), (a, b, d), (a, c, d), (b, c, d)];
+
+                for face in &faces {
+                    // Check if this face is shared with another bad tetrahedron
+                    let mut is_shared = false;
+                    for other_tetra in &bad_tetrahedrons {
+                        if tetra == other_tetra {
+                            continue;
+                        }
+
+                        let (oa, ob, oc, od) = *other_tetra;
+                        let other_faces = [(oa, ob, oc), (oa, ob, od), (oa, oc, od), (ob, oc, od)];
+
+                        for other_face in &other_faces {
+                            if self.faces_are_equal(face, other_face) {
+                                is_shared = true;
+                                break;
+                            }
+                        }
+
+                        if is_shared {
+                            break;
+                        }
+                    }
+
+                    if !is_shared {
+                        boundary_faces.push(*face);
                     }
                 }
+            }
 
-                // Create new tetrahedrons from the point to the boundary of the bad tetrahedrons
-                // This is a simplified implementation
-                for tetra in &bad_tetrahedrons {
-                    let (a, b, c, d) = *tetra;
-                    tetrahedrons.push((i, a, b, c));
-                    tetrahedrons.push((i, b, c, d));
-                    tetrahedrons.push((i, c, d, a));
-                    tetrahedrons.push((i, d, a, b));
-                }
+            // Create new tetrahedrons from the point to each boundary face
+            for face in &boundary_faces {
+                let (a, b, c) = *face;
+                good_tetrahedrons.push((a, b, c, point_idx));
+            }
 
-                tetrahedrons = good_tetrahedrons;
+            // Replace tetrahedrons with the good ones (including new ones)
+            tetrahedrons = good_tetrahedrons;
+        }
+
+        // Remove tetrahedrons that include super vertices
+        let mut result = Vec::new();
+        for tetra in &tetrahedrons {
+            let (a, b, c, d) = *tetra;
+            // Check if any vertex is a super vertex
+            if a >= 4 && b >= 4 && c >= 4 && d >= 4 {
+                // Adjust indices to exclude super vertices
+                result.push((a - 4, b - 4, c - 4, d - 4));
             }
         }
 
-        tetrahedrons
+        result
+    }
+
+    /// Check if two faces are equal (considering permutations)
+    fn faces_are_equal(
+        &self,
+        face1: &(usize, usize, usize),
+        face2: &(usize, usize, usize),
+    ) -> bool {
+        let mut face1_sorted = vec![face1.0, face1.1, face1.2];
+        let mut face2_sorted = vec![face2.0, face2.1, face2.2];
+        face1_sorted.sort();
+        face2_sorted.sort();
+        face1_sorted == face2_sorted
     }
 
     /// Check if point is inside circumsphere of tetrahedron

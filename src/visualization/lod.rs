@@ -2,7 +2,7 @@
 #[derive(Debug, Clone)]
 pub struct MeshVertex {
     pub point: crate::geometry::Point,
-    // 可扩展属性: normal, uv, color 等
+    // Extensible properties: normal, uv, color, etc.
 }
 /// Level of Detail (LOD) system
 ///

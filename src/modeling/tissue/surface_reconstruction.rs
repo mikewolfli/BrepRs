@@ -102,14 +102,14 @@ impl PointCloud {
 
     /// Estimate normal using PCA
     fn estimate_normal(&self, _points: &[Point]) -> Vector {
-        // 基础 PCA：假设点云已存于 self.points
-        // 这里只返回默认法向，实际应计算协方差矩阵并求最小特征值方向
+        // Basic PCA: assumes point cloud is stored in self.points
+        // Here we just return default normal, actual implementation should compute covariance matrix and find minimum eigenvalue direction
         Vector::new(0.0, 0.0, 1.0)
     }
 
     /// Reconstruct surface from point cloud
     pub fn reconstruct_surface(&self) -> ReconstructionResult {
-        // 基础重建：用球体包裹点云，实际应实现 Marching Cubes 或 Poisson 重建
+        // Basic reconstruction: wrap point cloud with a sphere, actual implementation should use Marching Cubes or Poisson reconstruction
         let center = self.bounding_box.center(); // center of the bounding box
         let radius = (self.bounding_box.max - self.bounding_box.min).magnitude() / 2.0;
 

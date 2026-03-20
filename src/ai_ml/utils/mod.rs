@@ -152,12 +152,42 @@ impl AiMlUtils {
     }
 
     /// Convert shape to tensor
-    pub fn shape_to_tensor(&self, _shape: &TopoDsShape) -> Vec<f32> {
-        // Convert shape to tensor by extracting points from its geometry
-        // Note: TopoDsShape doesn't have a points() method, this is a placeholder
+    pub fn shape_to_tensor(&self, shape: &TopoDsShape) -> Vec<f32> {
         let mut tensor = Vec::new();
-        // Add some default points for testing
-        tensor.extend(self.point_to_tensor(&Point::origin()));
+
+        let faces = shape.faces();
+        for face in &faces {
+            let wires = face.wires();
+            for wire in wires {
+                let edges = wire.edges();
+                for edge in edges {
+                    let v1 = edge.start_vertex();
+                    let v2 = edge.end_vertex();
+
+                    if let Some(v1_ref) = v1.as_ref() {
+                        let p = v1_ref.point();
+                        tensor.extend(self.point_to_tensor(&p));
+                    }
+
+                    if let Some(v2_ref) = v2.as_ref() {
+                        let p = v2_ref.point();
+                        tensor.extend(self.point_to_tensor(&p));
+                    }
+                }
+            }
+        }
+
+        if tensor.is_empty() {
+            if let Some(vertex) = shape.as_vertex() {
+                let p = vertex.point();
+                tensor.extend(self.point_to_tensor(&p));
+            }
+        }
+
+        if tensor.is_empty() {
+            tensor.extend(self.point_to_tensor(&Point::origin()));
+        }
+
         tensor
     }
 
@@ -347,7 +377,12 @@ impl AiMlUtils {
     }
 
     /// Save model to file
-    pub fn save_model(&self, model_name: &str, path: &Path, _format: MlModelFormat) -> AiResult<()> {
+    pub fn save_model(
+        &self,
+        model_name: &str,
+        path: &Path,
+        _format: MlModelFormat,
+    ) -> AiResult<()> {
         let model = self.model_manager.get_model(model_name).ok_or(
             crate::ai_ml::protocol::AiProtocolError::ModelError(format!(
                 "Model not found: {}",
@@ -386,6 +421,11 @@ impl AiMlUtils {
 
         self.model_manager.register_model(model_name, model);
         Ok(())
+    }
+
+    /// Check if model is loaded
+    pub fn is_model_loaded(&self, model_name: &str) -> bool {
+        self.model_manager.get_model(model_name).is_some()
     }
 
     /// Create dataset from meshes
@@ -468,7 +508,41 @@ impl AiModel for Box<dyn AiModel> {
     }
 
     fn load(path: &Path) -> AiResult<Box<dyn AiModel>> {
-        // This is a placeholder, actual implementation depends on the model type
+        use std::io::Read;
+
+        let mut file = std::fs::File::open(path)
+            .map_err(|e| crate::ai_ml::protocol::AiProtocolError::ModelError(e.to_string()))?;
+
+        let mut content = String::new();
+        file.read_to_string(&mut content)
+            .map_err(|e| crate::ai_ml::protocol::AiProtocolError::ModelError(e.to_string()))?;
+
+        if content.contains("feature_recognition") {
+            return FeatureRecognitionModel::load(path);
+        }
+
+        if content.contains("mesh_generation") {
+            return MeshGenerationModel::load(path);
+        }
+
+        if content.contains("model_repair") {
+            return ModelRepairModel::load(path);
+        }
+
+        let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
+        if file_name.contains("feature") {
+            return FeatureRecognitionModel::load(path);
+        }
+
+        if file_name.contains("mesh") {
+            return MeshGenerationModel::load(path);
+        }
+
+        if file_name.contains("repair") {
+            return ModelRepairModel::load(path);
+        }
+
         FeatureRecognitionModel::load(path)
     }
 

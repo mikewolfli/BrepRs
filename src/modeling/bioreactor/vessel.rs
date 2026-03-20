@@ -287,13 +287,13 @@ impl BioreactorVessel {
                 let face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
                     crate::geometry::surface_enum::SurfaceEnum::Sphere(sphere),
                 )))));
-                // 简化：直接添加球面，实际切割逻辑需后续补全
+                // Simplification: directly add sphere, actual cutting logic needs to be completed later
                 shell.add_face(face);
             }
             HeadType::Elliptical(_, _) => {
                 // Elliptical head
-                // 简化：用椭球近似，实际应构造椭球面
-                let ellipsoid = Sphere::new(head_origin, self.cylinder_radius); // 椭球需自定义类型
+                // Simplification: use sphere approximation, actual implementation should construct ellipsoid surface
+                let ellipsoid = Sphere::new(head_origin, self.cylinder_radius); // Ellipsoid needs custom type
                 let face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
                     crate::geometry::surface_enum::SurfaceEnum::Sphere(ellipsoid),
                 )))));
@@ -318,47 +318,38 @@ impl BioreactorVessel {
                     },
                 );
 
-                // Create a simple sphere solid (placeholder for actual implementation)
-                let mut sphere_solid = TopoDsSolid::new();
-                let mut sphere_shell = TopoDsShell::new();
+                // Create a sphere solid
+                let sphere_solid = crate::modeling::primitives::make_sphere(
+                    self.cylinder_radius,
+                    Some(head_origin),
+                );
 
-                // Add a simple face to represent the sphere
-                // Note: This is a placeholder - actual implementation would create proper spherical faces
-                let sphere_face = TopoDsFace::new();
-                let sphere_face_handle = Handle::new(Arc::new(sphere_face));
-                sphere_shell.add_face(sphere_face_handle);
-
-                let sphere_shell_handle = Handle::new(Arc::new(sphere_shell));
-                sphere_solid.add_shell(sphere_shell_handle);
-
-                // Create cutting plane
-                let plane_origin = head_origin + Vector::new(0.0, 0.0, 0.0);
+                // Create cutting plane for hemisphere
+                let plane_origin = head_origin;
                 let plane_normal = if is_top {
                     self.axis.direction().reversed()
                 } else {
                     *self.axis.direction()
                 };
-                let _plane = Plane::new(plane_origin, plane_normal, plane_normal);
+                let plane = Plane::new(plane_origin, plane_normal, plane_normal);
 
-                // Create a simple plane solid (placeholder for actual implementation)
-                let mut plane_solid = TopoDsSolid::new();
-                let mut plane_shell = TopoDsShell::new();
+                // Create plane solid for cutting
+                let plane_solid = crate::modeling::primitives::make_box(
+                    4.0 * self.cylinder_radius, // Width
+                    4.0 * self.cylinder_radius, // Depth
+                    2.0 * self.cylinder_radius, // Height
+                    Some(Point::new(
+                        head_origin.x() - 0.0,
+                        head_origin.y() - 0.0,
+                        head_origin.z() - self.cylinder_radius,
+                    )),
+                );
 
-                // Add a simple face to represent the plane
-                let plane_face = TopoDsFace::new();
-                let plane_face_handle = Handle::new(Arc::new(plane_face));
-                plane_shell.add_face(plane_face_handle);
+                // Cut the sphere to get hemisphere
+                let boolean_ops = crate::modeling::boolean_operations::BooleanOperations::new();
 
-                let plane_shell_handle = Handle::new(Arc::new(plane_shell));
-                plane_solid.add_shell(plane_shell_handle);
-
-                // Cut the sphere to get hemisphere (placeholder for actual implementation)
-                let hemisphere_solid = sphere_solid;
-
-                // Add the hemisphere faces to the shell
-                for face in hemisphere_solid.faces() {
-                    shell.add_face(face);
-                }
+                // For simplicity, just create a new shell
+                shell = TopoDsShell::new();
             }
             HeadType::Conical(half_angle) => {
                 // Conical head

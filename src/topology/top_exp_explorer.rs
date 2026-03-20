@@ -2,7 +2,7 @@ use crate::topology::{
     ShapeType, TopoDsCompSolid, TopoDsCompound, TopoDsEdge, TopoDsFace, TopoDsShape, TopoDsShell,
     TopoDsSolid, TopoDsVertex, TopoDsWire,
 };
-// use std::ops::Deref; // 已移除未用import
+// use std::ops::Deref; // Removed unused import
 use std::collections::HashSet;
 
 /// Explorer for topological shapes
@@ -86,7 +86,7 @@ impl TopExpExplorer {
         let current_shape = self.stack.pop().unwrap();
         let shape_id = current_shape.shape_id();
         self.current = Some(current_shape);
-        // 标记已访问
+        // Mark as visited
         self.visited.insert(shape_id);
         // Add sub-shapes to the stack
         // Clone the shape before exploring to avoid borrow conflicts
@@ -508,7 +508,6 @@ impl TopExpExplorer {
         }
         result
     }
-
 }
 
 impl Iterator for TopExpExplorer {

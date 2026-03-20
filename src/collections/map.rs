@@ -1,49 +1,49 @@
 use std::collections::HashSet;
 use std::hash::Hash;
 
-/// 集合类型，基于HashSet实现。
+/// Collection type, implemented based on HashSet.
 ///
-/// 用于存储唯一元素，支持容量管理和清空操作。
+/// Used to store unique elements, supports capacity management and clear operations.
 pub struct Map<T> {
     data: HashSet<T>,
 }
 
 impl<T: Hash + Eq> Map<T> {
-    /// 创建空集合
+    /// Create an empty collection
     pub fn new() -> Self {
         Self {
             data: HashSet::new(),
         }
     }
 
-    /// 按容量创建集合
+    /// Create a collection with specified capacity
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             data: HashSet::with_capacity(capacity),
         }
     }
 
-    /// 是否为空
+    /// Check if collection is empty
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
 
-    /// 元素数量
+    /// Number of elements
     pub fn size(&self) -> usize {
         self.data.len()
     }
 
-    /// 元素数量（等价于size）
+    /// Number of elements (equivalent to size)
     pub fn len(&self) -> usize {
         self.data.len()
     }
 
-    /// 当前容量
+    /// Current capacity
     pub fn capacity(&self) -> usize {
         self.data.capacity()
     }
 
-    /// 清空集合
+    /// Clear the collection
     pub fn clear(&mut self) {
         self.data.clear();
     }

@@ -1,5 +1,5 @@
 //! Simulation export utilities
-//! 
+//!
 //! This module provides functionality for exporting meshes and field data to various simulation formats.
 
 use crate::mesh::mesh_data::Mesh3D;
@@ -309,14 +309,286 @@ impl SimulationExporter {
 
         writeln!(faces_file, ")")?;
 
-        // Write owner and neighbour files (placeholder)
+        let mut face_to_cells: std::collections::HashMap<Vec<usize>, Vec<usize>> =
+            std::collections::HashMap::new();
+
+        for (cell_idx, tetra) in mesh.tetrahedrons.iter().enumerate() {
+            let faces = [
+                vec![tetra.vertices[0], tetra.vertices[1], tetra.vertices[2]],
+                vec![tetra.vertices[0], tetra.vertices[2], tetra.vertices[3]],
+                vec![tetra.vertices[0], tetra.vertices[3], tetra.vertices[1]],
+                vec![tetra.vertices[1], tetra.vertices[3], tetra.vertices[2]],
+            ];
+
+            for face in &faces {
+                let mut sorted_face = face.clone();
+                sorted_face.sort();
+                face_to_cells
+                    .entry(sorted_face)
+                    .or_insert_with(Vec::new)
+                    .push(cell_idx);
+            }
+        }
+
+        for (cell_idx, hex) in mesh.hexahedrons.iter().enumerate() {
+            let cell_idx = cell_idx + mesh.tetrahedrons.len();
+            let faces = [
+                vec![
+                    hex.vertices[0],
+                    hex.vertices[1],
+                    hex.vertices[2],
+                    hex.vertices[3],
+                ],
+                vec![
+                    hex.vertices[4],
+                    hex.vertices[5],
+                    hex.vertices[6],
+                    hex.vertices[7],
+                ],
+                vec![
+                    hex.vertices[0],
+                    hex.vertices[1],
+                    hex.vertices[5],
+                    hex.vertices[4],
+                ],
+                vec![
+                    hex.vertices[1],
+                    hex.vertices[2],
+                    hex.vertices[6],
+                    hex.vertices[5],
+                ],
+                vec![
+                    hex.vertices[2],
+                    hex.vertices[3],
+                    hex.vertices[7],
+                    hex.vertices[6],
+                ],
+                vec![
+                    hex.vertices[3],
+                    hex.vertices[0],
+                    hex.vertices[4],
+                    hex.vertices[7],
+                ],
+            ];
+
+            for face in &faces {
+                let mut sorted_face = face.clone();
+                sorted_face.sort();
+                face_to_cells
+                    .entry(sorted_face)
+                    .or_insert_with(Vec::new)
+                    .push(cell_idx);
+            }
+        }
+
+        for (cell_idx, prism) in mesh.prisms.iter().enumerate() {
+            let cell_idx = cell_idx + mesh.tetrahedrons.len() + mesh.hexahedrons.len();
+            let faces = [
+                vec![prism.vertices[0], prism.vertices[1], prism.vertices[2]],
+                vec![prism.vertices[3], prism.vertices[4], prism.vertices[5]],
+                vec![
+                    prism.vertices[0],
+                    prism.vertices[1],
+                    prism.vertices[4],
+                    prism.vertices[3],
+                ],
+                vec![
+                    prism.vertices[1],
+                    prism.vertices[2],
+                    prism.vertices[5],
+                    prism.vertices[4],
+                ],
+                vec![
+                    prism.vertices[2],
+                    prism.vertices[0],
+                    prism.vertices[3],
+                    prism.vertices[5],
+                ],
+            ];
+
+            for face in &faces {
+                let mut sorted_face = face.clone();
+                sorted_face.sort();
+                face_to_cells
+                    .entry(sorted_face)
+                    .or_insert_with(Vec::new)
+                    .push(cell_idx);
+            }
+        }
+
         let mut owner_file = File::create(format!("{}/owner", directory))?;
         let mut neighbour_file = File::create(format!("{}/neighbour", directory))?;
 
-        for _ in 0..total_faces {
-            writeln!(owner_file, "0")?;
-            writeln!(neighbour_file, "-1")?;
+        writeln!(owner_file, "{}", total_faces)?;
+        writeln!(owner_file, "(")?;
+        writeln!(neighbour_file, "{}", total_faces)?;
+        writeln!(neighbour_file, "(")?;
+
+        for face in &mesh.faces {
+            let mut sorted_face = face.vertices.clone();
+            sorted_face.sort();
+
+            if let Some(cells) = face_to_cells.get(&sorted_face) {
+                if cells.len() >= 1 {
+                    writeln!(owner_file, "{}", cells[0])?;
+                    if cells.len() >= 2 {
+                        writeln!(neighbour_file, "{}", cells[1])?;
+                    } else {
+                        writeln!(neighbour_file, "-1")?;
+                    }
+                } else {
+                    writeln!(owner_file, "-1")?;
+                    writeln!(neighbour_file, "-1")?;
+                }
+            } else {
+                writeln!(owner_file, "-1")?;
+                writeln!(neighbour_file, "-1")?;
+            }
         }
+
+        for tetra in &mesh.tetrahedrons {
+            let faces = [
+                vec![tetra.vertices[0], tetra.vertices[1], tetra.vertices[2]],
+                vec![tetra.vertices[0], tetra.vertices[2], tetra.vertices[3]],
+                vec![tetra.vertices[0], tetra.vertices[3], tetra.vertices[1]],
+                vec![tetra.vertices[1], tetra.vertices[3], tetra.vertices[2]],
+            ];
+
+            for face in &faces {
+                let mut sorted_face = face.clone();
+                sorted_face.sort();
+
+                if let Some(cells) = face_to_cells.get(&sorted_face) {
+                    if cells.len() >= 1 {
+                        writeln!(owner_file, "{}", cells[0])?;
+                        if cells.len() >= 2 {
+                            writeln!(neighbour_file, "{}", cells[1])?;
+                        } else {
+                            writeln!(neighbour_file, "-1")?;
+                        }
+                    } else {
+                        writeln!(owner_file, "-1")?;
+                        writeln!(neighbour_file, "-1")?;
+                    }
+                } else {
+                    writeln!(owner_file, "-1")?;
+                    writeln!(neighbour_file, "-1")?;
+                }
+            }
+        }
+
+        for hex in &mesh.hexahedrons {
+            let faces = [
+                vec![
+                    hex.vertices[0],
+                    hex.vertices[1],
+                    hex.vertices[2],
+                    hex.vertices[3],
+                ],
+                vec![
+                    hex.vertices[4],
+                    hex.vertices[5],
+                    hex.vertices[6],
+                    hex.vertices[7],
+                ],
+                vec![
+                    hex.vertices[0],
+                    hex.vertices[1],
+                    hex.vertices[5],
+                    hex.vertices[4],
+                ],
+                vec![
+                    hex.vertices[1],
+                    hex.vertices[2],
+                    hex.vertices[6],
+                    hex.vertices[5],
+                ],
+                vec![
+                    hex.vertices[2],
+                    hex.vertices[3],
+                    hex.vertices[7],
+                    hex.vertices[6],
+                ],
+                vec![
+                    hex.vertices[3],
+                    hex.vertices[0],
+                    hex.vertices[4],
+                    hex.vertices[7],
+                ],
+            ];
+
+            for face in &faces {
+                let mut sorted_face = face.clone();
+                sorted_face.sort();
+
+                if let Some(cells) = face_to_cells.get(&sorted_face) {
+                    if cells.len() >= 1 {
+                        writeln!(owner_file, "{}", cells[0])?;
+                        if cells.len() >= 2 {
+                            writeln!(neighbour_file, "{}", cells[1])?;
+                        } else {
+                            writeln!(neighbour_file, "-1")?;
+                        }
+                    } else {
+                        writeln!(owner_file, "-1")?;
+                        writeln!(neighbour_file, "-1")?;
+                    }
+                } else {
+                    writeln!(owner_file, "-1")?;
+                    writeln!(neighbour_file, "-1")?;
+                }
+            }
+        }
+
+        for prism in &mesh.prisms {
+            let faces = [
+                vec![prism.vertices[0], prism.vertices[1], prism.vertices[2]],
+                vec![prism.vertices[3], prism.vertices[4], prism.vertices[5]],
+                vec![
+                    prism.vertices[0],
+                    prism.vertices[1],
+                    prism.vertices[4],
+                    prism.vertices[3],
+                ],
+                vec![
+                    prism.vertices[1],
+                    prism.vertices[2],
+                    prism.vertices[5],
+                    prism.vertices[4],
+                ],
+                vec![
+                    prism.vertices[2],
+                    prism.vertices[0],
+                    prism.vertices[3],
+                    prism.vertices[5],
+                ],
+            ];
+
+            for face in &faces {
+                let mut sorted_face = face.clone();
+                sorted_face.sort();
+
+                if let Some(cells) = face_to_cells.get(&sorted_face) {
+                    if cells.len() >= 1 {
+                        writeln!(owner_file, "{}", cells[0])?;
+                        if cells.len() >= 2 {
+                            writeln!(neighbour_file, "{}", cells[1])?;
+                        } else {
+                            writeln!(neighbour_file, "-1")?;
+                        }
+                    } else {
+                        writeln!(owner_file, "-1")?;
+                        writeln!(neighbour_file, "-1")?;
+                    }
+                } else {
+                    writeln!(owner_file, "-1")?;
+                    writeln!(neighbour_file, "-1")?;
+                }
+            }
+        }
+
+        writeln!(owner_file, ")")?;
+        writeln!(neighbour_file, ")")?;
 
         Ok(())
     }

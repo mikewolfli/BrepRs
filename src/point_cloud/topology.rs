@@ -1,5 +1,5 @@
 //! Point cloud topology analysis module
-//! 
+//!
 //! This module provides functionality for analyzing the topology of point clouds,
 //! including connectivity analysis, neighborhood analysis, and more.
 
@@ -15,33 +15,31 @@ pub struct KNearestNeighbors {
 impl KNearestNeighbors {
     /// Create a new K-nearest neighbors
     pub fn new(k: usize) -> Self {
-        Self {
-            k,
-        }
+        Self { k }
     }
 
     /// Find K-nearest neighbors for each point
     pub fn find(&self, cloud: &PointCloud) -> Vec<Vec<(usize, f64)>> {
         let mut neighbors = Vec::new();
-        
+
         for (i, point) in cloud.points().iter().enumerate() {
             let mut distances = Vec::new();
-            
+
             for (j, other_point) in cloud.points().iter().enumerate() {
                 if i != j {
                     let distance = point.distance(other_point);
                     distances.push((j, distance));
                 }
             }
-            
+
             // Sort by distance
             distances.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-            
+
             // Take first k neighbors
             let k_neighbors = distances.iter().take(self.k).cloned().collect();
             neighbors.push(k_neighbors);
         }
-        
+
         neighbors
     }
 }
@@ -55,46 +53,50 @@ pub struct ConnectivityAnalysis {
 impl ConnectivityAnalysis {
     /// Create a new connectivity analysis
     pub fn new(distance_threshold: f64) -> Self {
-        Self {
-            distance_threshold,
-        }
+        Self { distance_threshold }
     }
 
     /// Analyze connectivity
     pub fn analyze(&self, cloud: &PointCloud) -> Vec<Vec<usize>> {
         let mut connected_components = Vec::new();
         let mut visited = vec![false; cloud.len()];
-        
+
         for i in 0..cloud.len() {
             if !visited[i] {
                 let component = self.find_component(cloud, i, &mut visited);
                 connected_components.push(component);
             }
         }
-        
+
         connected_components
     }
 
     /// Find connected component for a point
-    fn find_component(&self, cloud: &PointCloud, start: usize, visited: &mut Vec<bool>) -> Vec<usize> {
+    fn find_component(
+        &self,
+        cloud: &PointCloud,
+        start: usize,
+        visited: &mut Vec<bool>,
+    ) -> Vec<usize> {
         let mut component = Vec::new();
         let mut queue = std::collections::VecDeque::new();
-        
+
         queue.push_back(start);
         visited[start] = true;
-        
+
         while let Some(current) = queue.pop_front() {
             component.push(current);
-            
+
             // Find all neighbors within threshold
             for (i, point) in cloud.points().iter().enumerate() {
-                if !visited[i] && cloud.points()[current].distance(point) <= self.distance_threshold {
+                if !visited[i] && cloud.points()[current].distance(point) <= self.distance_threshold
+                {
                     queue.push_back(i);
                     visited[i] = true;
                 }
             }
         }
-        
+
         component
     }
 }
@@ -108,9 +110,7 @@ pub struct VoronoiDiagram {
 impl VoronoiDiagram {
     /// Create a new Voronoi diagram
     pub fn new(points: Vec<Point>) -> Self {
-        Self {
-            points,
-        }
+        Self { points }
     }
 
     /// Build the Voronoi diagram
@@ -152,38 +152,202 @@ impl VoronoiDiagram {
     }
 
     /// Process a point event in Fortune's algorithm
-    fn process_point_event(&self, point: &Point, beachline: &mut Vec<Parabola>, events: &mut std::collections::BinaryHeap<(f64, usize, Point)>, result: &mut VoronoiResult) {
-        // Simplified implementation of point event processing
-        // In a full implementation, this would handle parabola arcs and breakpoints
+    fn process_point_event(
+        &self,
+        point: &Point,
+        beachline: &mut Vec<Parabola>,
+        events: &mut std::collections::BinaryHeap<(f64, usize, Point)>,
+        result: &mut VoronoiResult,
+    ) {
         if beachline.is_empty() {
             beachline.push(Parabola::new(point.clone()));
-        } else {
-            // Find the parabola arc above the point
-            let arc_index = self.find_arc_above(point, beachline);
-            
-            // Split the arc and create new arcs
-            self.split_arc(arc_index, point, beachline, events, result);
+            return;
         }
+
+        // Find the parabola arc above the point
+        let arc_index = self.find_arc_above(point, beachline);
+
+        // Get the focus of the arc above
+        let arc_focus = beachline[arc_index].focus.clone();
+
+        // Calculate the breakpoint (Voronoi vertex) between the new point and the arc focus
+        let midpoint = Point::new(
+            (point.x + arc_focus.x) / 2.0,
+            (point.y + arc_focus.y) / 2.0,
+            (point.z + arc_focus.z) / 2.0,
+        );
+
+        // Add Voronoi vertex
+        let vertex_idx = result.vertices.len();
+        result.vertices.push(midpoint);
+
+        // Create edges from the new vertex
+        if vertex_idx > 0 {
+            result.edges.push((vertex_idx - 1, vertex_idx));
+        }
+
+        // Split the arc and create new arcs
+        self.split_arc(arc_index, point, beachline, events, result);
     }
 
     /// Find the parabola arc above a point
     fn find_arc_above(&self, point: &Point, beachline: &[Parabola]) -> usize {
-        // Simplified implementation
-        beachline.len() / 2
+        // Find the parabola whose focus is closest to the point
+        let mut min_dist = f64::MAX;
+        let mut closest_idx = 0;
+
+        for (i, parabola) in beachline.iter().enumerate() {
+            let dist = point.distance(&parabola.focus);
+            if dist < min_dist {
+                min_dist = dist;
+                closest_idx = i;
+            }
+        }
+
+        closest_idx
     }
 
     /// Split a parabola arc
-    fn split_arc(&self, index: usize, point: &Point, beachline: &mut Vec<Parabola>, events: &mut std::collections::BinaryHeap<(f64, usize, Point)>, result: &mut VoronoiResult) {
-        // Simplified implementation
-        beachline.insert(index, Parabola::new(point.clone()));
+    fn split_arc(
+        &self,
+        index: usize,
+        point: &Point,
+        beachline: &mut Vec<Parabola>,
+        events: &mut std::collections::BinaryHeap<(f64, usize, Point)>,
+        result: &mut VoronoiResult,
+    ) {
+        // Store the original arc
+        let original_arc = beachline[index].clone();
+
+        // Remove the original arc
+        beachline.remove(index);
+
+        // Insert three new arcs: original focus, new point, original focus
+        beachline.insert(index, original_arc.clone());
+        beachline.insert(index + 1, Parabola::new(point.clone()));
+        beachline.insert(index + 2, original_arc);
+
+        // Schedule circle events for the new triplets
+        if beachline.len() >= 3 {
+            // Check for potential circle events
+            self.check_circle_events(index, beachline, events, result);
+        }
+    }
+
+    /// Check for circle events
+    fn check_circle_events(
+        &self,
+        start_idx: usize,
+        beachline: &[Parabola],
+        events: &mut std::collections::BinaryHeap<(f64, usize, Point)>,
+        result: &mut VoronoiResult,
+    ) {
+        // Check triplets of consecutive arcs for circle events
+        for i in
+            0.max(start_idx.saturating_sub(2))..beachline.len().saturating_sub(2).min(start_idx + 3)
+        {
+            if i + 2 < beachline.len() {
+                let p1 = &beachline[i].focus;
+                let p2 = &beachline[i + 1].focus;
+                let p3 = &beachline[i + 2].focus;
+
+                // Calculate circumcenter
+                if let Some(circumcenter) = self.calculate_circumcenter(p1, p2, p3) {
+                    // Calculate the y-coordinate of the circle event
+                    let radius = circumcenter.distance(p1);
+                    let event_y = circumcenter.y - radius;
+
+                    // Add circle event
+                    events.push((event_y, i, circumcenter));
+                }
+            }
+        }
+    }
+
+    /// Calculate circumcenter of three points
+    fn calculate_circumcenter(&self, p1: &Point, p2: &Point, p3: &Point) -> Option<Point> {
+        let ax = p1.x;
+        let ay = p1.y;
+        let bx = p2.x;
+        let by = p2.y;
+        let cx = p3.x;
+        let cy = p3.y;
+
+        let d = 2.0 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+
+        if d.abs() < 1e-10 {
+            return None;
+        }
+
+        let ux = ((ax * ax + ay * ay) * (by - cy)
+            + (bx * bx + by * by) * (cy - ay)
+            + (cx * cx + cy * cy) * (ay - by))
+            / d;
+        let uy = ((ax * ax + ay * ay) * (cx - bx)
+            + (bx * bx + by * by) * (ax - cx)
+            + (cx * cx + cy * cy) * (bx - ax))
+            / d;
+
+        Some(Point::new(ux, uy, 0.0))
     }
 
     /// Finalize Voronoi cells
     fn finalize_cells(&self, result: &mut VoronoiResult) {
-        // Simplified implementation
-        for _ in &self.points {
-            result.cells.push(Vec::new());
+        // Build Voronoi cells from edges
+        // Each input point gets a cell
+        let num_points = self.points.len();
+
+        // Initialize empty cells
+        result.cells = vec![Vec::new(); num_points];
+
+        // Assign vertices to cells based on proximity
+        for (v_idx, vertex) in result.vertices.iter().enumerate() {
+            // Find the closest input point
+            let mut min_dist = f64::MAX;
+            let mut closest_point_idx = 0;
+
+            for (p_idx, point) in self.points.iter().enumerate() {
+                let dist = vertex.distance(point);
+                if dist < min_dist {
+                    min_dist = dist;
+                    closest_point_idx = p_idx;
+                }
+            }
+
+            // Add vertex to the cell of the closest point
+            result.cells[closest_point_idx].push(v_idx);
         }
+
+        // Sort vertices in each cell to form proper polygons
+        for cell in &mut result.cells {
+            if cell.len() > 2 {
+                self.sort_cell_vertices(cell, &result.vertices);
+            }
+        }
+    }
+
+    /// Sort vertices in a cell to form a proper polygon
+    fn sort_cell_vertices(&self, cell: &mut Vec<usize>, vertices: &[Point]) {
+        if cell.len() < 3 {
+            return;
+        }
+
+        // Calculate centroid
+        let mut cx = 0.0;
+        let mut cy = 0.0;
+        for &v_idx in cell.iter() {
+            cx += vertices[v_idx].x;
+            cy += vertices[v_idx].y;
+        }
+        cx /= cell.len() as f64;
+        cy /= cell.len() as f64;
+
+        // Sort by angle around centroid
+        cell.sort_by(|&a, &b| {
+            let angle_a = (vertices[a].y - cy).atan2(vertices[a].x - cx);
+            let angle_b = (vertices[b].y - cy).atan2(vertices[b].x - cx);
+            angle_a.partial_cmp(&angle_b).unwrap()
+        });
     }
 }
 
@@ -217,9 +381,7 @@ pub struct DelaunayTriangulation {
 impl DelaunayTriangulation {
     /// Create a new Delaunay triangulation
     pub fn new(points: Vec<Point>) -> Self {
-        Self {
-            points,
-        }
+        Self { points }
     }
 
     /// Build the Delaunay triangulation
@@ -254,13 +416,23 @@ impl DelaunayTriangulation {
             for (j, triangle) in triangles.iter().enumerate() {
                 if bad_triangles.contains(&j) {
                     // Check if this edge is shared with another bad triangle
-                    let edges = [(triangle.0, triangle.1), (triangle.1, triangle.2), (triangle.2, triangle.0)];
+                    let edges = [
+                        (triangle.0, triangle.1),
+                        (triangle.1, triangle.2),
+                        (triangle.2, triangle.0),
+                    ];
                     for edge in edges {
                         let mut is_shared = false;
                         for (k, other_triangle) in triangles.iter().enumerate() {
                             if j != k && bad_triangles.contains(&k) {
-                                let other_edges = [(other_triangle.0, other_triangle.1), (other_triangle.1, other_triangle.2), (other_triangle.2, other_triangle.0)];
-                                if other_edges.contains(&edge) || other_edges.contains(&(edge.1, edge.0)) {
+                                let other_edges = [
+                                    (other_triangle.0, other_triangle.1),
+                                    (other_triangle.1, other_triangle.2),
+                                    (other_triangle.2, other_triangle.0),
+                                ];
+                                if other_edges.contains(&edge)
+                                    || other_edges.contains(&(edge.1, edge.0))
+                                {
                                     is_shared = true;
                                     break;
                                 }
@@ -287,9 +459,16 @@ impl DelaunayTriangulation {
 
         // Remove triangles that share vertices with the super triangle
         let mut valid_triangles = Vec::new();
-        let super_vertices = [self.points.len(), self.points.len() + 1, self.points.len() + 2];
+        let super_vertices = [
+            self.points.len(),
+            self.points.len() + 1,
+            self.points.len() + 2,
+        ];
         for triangle in triangles {
-            if !super_vertices.contains(&triangle.0) && !super_vertices.contains(&triangle.1) && !super_vertices.contains(&triangle.2) {
+            if !super_vertices.contains(&triangle.0)
+                && !super_vertices.contains(&triangle.1)
+                && !super_vertices.contains(&triangle.2)
+            {
                 valid_triangles.push(triangle);
             }
         }
@@ -375,10 +554,12 @@ impl DelaunayTriangulation {
         let dy2 = p2.y - p0.y;
 
         let s = 0.5 / (dx1 * dy2 - dx2 * dy1);
-        let cx = ((p2.y - p0.y) * (p1.x * p1.x - p0.x * p0.x + p1.y * p1.y - p0.y * p0.y) + 
-                  (p0.y - p1.y) * (p2.x * p2.x - p0.x * p0.x + p2.y * p2.y - p0.y * p0.y)) * s;
-        let cy = ((p0.x - p2.x) * (p1.x * p1.x - p0.x * p0.x + p1.y * p1.y - p0.y * p0.y) + 
-                  (p1.x - p0.x) * (p2.x * p2.x - p0.x * p0.x + p2.y * p2.y - p0.y * p0.y)) * s;
+        let cx = ((p2.y - p0.y) * (p1.x * p1.x - p0.x * p0.x + p1.y * p1.y - p0.y * p0.y)
+            + (p0.y - p1.y) * (p2.x * p2.x - p0.x * p0.x + p2.y * p2.y - p0.y * p0.y))
+            * s;
+        let cy = ((p0.x - p2.x) * (p1.x * p1.x - p0.x * p0.x + p1.y * p1.y - p0.y * p0.y)
+            + (p1.x - p0.x) * (p2.x * p2.x - p0.x * p0.x + p2.y * p2.y - p0.y * p0.y))
+            * s;
 
         let radius_squared = (cx - p0.x) * (cx - p0.x) + (cy - p0.y) * (cy - p0.y);
         let distance_squared = (point.x - cx) * (point.x - cx) + (point.y - cy) * (point.y - cy);
@@ -416,7 +597,7 @@ impl PointCloudTopology {
     pub fn analyze(&self, cloud: &PointCloud) -> TopologyResult {
         let neighbors = self.knn.find(cloud);
         let connected_components = self.connectivity.analyze(cloud);
-        
+
         TopologyResult {
             neighbors,
             connected_components,
@@ -440,14 +621,14 @@ mod tests {
     #[test]
     fn test_knn() {
         let mut cloud = PointCloud::new();
-        
+
         for i in 0..10 {
             cloud.add_point(Point::new(i as f64, i as f64, i as f64));
         }
-        
+
         let knn = KNearestNeighbors::new(3);
         let neighbors = knn.find(&cloud);
-        
+
         assert_eq!(neighbors.len(), 10);
         for neighbor_list in &neighbors {
             assert_eq!(neighbor_list.len(), 3);
@@ -457,19 +638,23 @@ mod tests {
     #[test]
     fn test_connectivity_analysis() {
         let mut cloud = PointCloud::new();
-        
+
         // Add points in two clusters
         for i in 0..5 {
             cloud.add_point(Point::new(i as f64, i as f64, i as f64));
         }
-        
+
         for i in 0..5 {
-            cloud.add_point(Point::new(i as f64 + 10.0, i as f64 + 10.0, i as f64 + 10.0));
+            cloud.add_point(Point::new(
+                i as f64 + 10.0,
+                i as f64 + 10.0,
+                i as f64 + 10.0,
+            ));
         }
-        
+
         let connectivity = ConnectivityAnalysis::new(2.0);
         let components = connectivity.analyze(&cloud);
-        
+
         // Should find two connected components
         assert_eq!(components.len(), 2);
         assert_eq!(components[0].len(), 5);
@@ -479,14 +664,14 @@ mod tests {
     #[test]
     fn test_point_cloud_topology() {
         let mut cloud = PointCloud::new();
-        
+
         for i in 0..10 {
             cloud.add_point(Point::new(i as f64, i as f64, i as f64));
         }
-        
+
         let topology = PointCloudTopology::new(3, 2.0);
         let result = topology.analyze(&cloud);
-        
+
         assert_eq!(result.neighbors.len(), 10);
         // Should find one connected component
         assert_eq!(result.connected_components.len(), 1);

@@ -292,6 +292,29 @@ impl BrepBuilder {
     }
 
     // =========================================================================
+    // Primitive Operations
+    // =========================================================================
+
+    /// Create a box (rectangular prism) solid
+    #[inline]
+    pub fn make_box(&self, dx: f64, dy: f64, dz: f64, origin: Point) -> TopoDsSolid {
+        crate::modeling::primitives::make_box(dx, dy, dz, Some(origin))
+    }
+
+    /// Create a cylinder solid
+    #[inline]
+    pub fn make_cylinder(&self, radius: f64, height: f64, origin: Point, direction: crate::geometry::Direction) -> TopoDsSolid {
+        // For simplicity, we use the Z-axis direction for now
+        crate::modeling::primitives::make_cylinder(radius, height, Some(origin))
+    }
+
+    /// Create a sphere solid
+    #[inline]
+    pub fn make_sphere(&self, radius: f64, center: Point) -> TopoDsSolid {
+        crate::modeling::primitives::make_sphere(radius, Some(center))
+    }
+
+    // =========================================================================
     // Compound Operations
     // =========================================================================
 

@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use crate::ai_ml::protocol::AiResult;
 use crate::geometry::Point;
-use crate::mesh::mesh_data::{Mesh3D, MeshFace};
+use crate::mesh::mesh_data::{Mesh3D, MeshFace, MeshVertex};
 use rand;
 
 /// Style Transfer Settings
@@ -151,10 +151,14 @@ impl StyleTransferTool {
             .structural_features
             .insert("size".to_string(), size);
 
-        // Extract color features (placeholder)
+        // Extract color features
+        // For mesh, we'll use vertex colors if available, otherwise default to gray
+        // Assuming no vertex colors for simplicity
+        let average_color = (0.5, 0.5, 0.5);
+
         features
             .color_features
-            .insert("average_color".to_string(), (0.5, 0.5, 0.5));
+            .insert("average_color".to_string(), average_color);
 
         Ok(features)
     }
@@ -419,27 +423,219 @@ impl StyleTransferTool {
     }
 
     /// Remove duplicate vertices
-    fn remove_duplicate_vertices(&self, _mesh: &mut Mesh3D) {
-        // Simplified implementation
-        // In a real implementation, this would find and merge duplicate vertices
+    fn remove_duplicate_vertices(&self, mesh: &mut Mesh3D) {
+        let tolerance = 1e-6;
+        let mut vertex_map: HashMap<usize, usize> = HashMap::new();
+        let mut unique_vertices: Vec<MeshVertex> = Vec::new();
+        let mut is_duplicate = vec![false; mesh.vertices.len()];
+
+        // Find duplicate vertices
+        for i in 0..mesh.vertices.len() {
+            if is_duplicate[i] {
+                continue;
+            }
+
+            let v_i = &mesh.vertices[i];
+            unique_vertices.push(v_i.clone());
+            let new_index = unique_vertices.len() - 1;
+            vertex_map.insert(i, new_index);
+
+            // Check for duplicates
+            for j in i + 1..mesh.vertices.len() {
+                if is_duplicate[j] {
+                    continue;
+                }
+                let v_j = &mesh.vertices[j];
+                let dx = v_i.point.x - v_j.point.x;
+                let dy = v_i.point.y - v_j.point.y;
+                let dz = v_i.point.z - v_j.point.z;
+                let dist_sq = dx * dx + dy * dy + dz * dz;
+
+                if dist_sq < tolerance * tolerance {
+                    is_duplicate[j] = true;
+                    vertex_map.insert(j, new_index);
+                }
+            }
+        }
+
+        // Update mesh
+        mesh.vertices = unique_vertices;
+
+        // Update face vertex indices
+        for face in &mut mesh.faces {
+            for v in &mut face.vertices {
+                if let Some(&new_idx) = vertex_map.get(v) {
+                    *v = new_idx;
+                }
+            }
+        }
+
+        // Update tetrahedron vertex indices
+        for tetra in &mut mesh.tetrahedrons {
+            for v in &mut tetra.vertices {
+                if let Some(&new_idx) = vertex_map.get(v) {
+                    *v = new_idx;
+                }
+            }
+        }
+
+        // Update hexahedron vertex indices
+        for hex in &mut mesh.hexahedrons {
+            for v in &mut hex.vertices {
+                if let Some(&new_idx) = vertex_map.get(v) {
+                    *v = new_idx;
+                }
+            }
+        }
+
+        // Update prism vertex indices
+        for prism in &mut mesh.prisms {
+            for v in &mut prism.vertices {
+                if let Some(&new_idx) = vertex_map.get(v) {
+                    *v = new_idx;
+                }
+            }
+        }
     }
 
     /// Remove degenerate faces
-    fn remove_degenerate_faces(&self, _mesh: &mut Mesh3D) {
-        // Simplified implementation
-        // In a real implementation, this would remove faces with zero area
+    fn remove_degenerate_faces(&self, mesh: &mut Mesh3D) {
+        let tolerance = 1e-10;
+        let mut valid_faces = Vec::new();
+
+        for face in &mesh.faces {
+            if face.vertices.len() < 3 {
+                continue;
+            }
+
+            // Get vertices of the face
+            let v0 = &mesh.vertices[face.vertices[0]];
+            let v1 = &mesh.vertices[face.vertices[1]];
+            let v2 = &mesh.vertices[face.vertices[2]];
+
+            // Calculate edge vectors
+            let e1 = [
+                v1.point.x - v0.point.x,
+                v1.point.y - v0.point.y,
+                v1.point.z - v0.point.z,
+            ];
+            let e2 = [
+                v2.point.x - v0.point.x,
+                v2.point.y - v0.point.y,
+                v2.point.z - v0.point.z,
+            ];
+
+            // Calculate cross product
+            let cross = [
+                e1[1] * e2[2] - e1[2] * e2[1],
+                e1[2] * e2[0] - e1[0] * e2[2],
+                e1[0] * e2[1] - e1[1] * e2[0],
+            ];
+
+            // Calculate area (half of cross product magnitude)
+            let area =
+                0.5 * (cross[0] * cross[0] + cross[1] * cross[1] + cross[2] * cross[2]).sqrt();
+
+            // Keep face if area is above threshold
+            if area > tolerance {
+                valid_faces.push(face.clone());
+            }
+        }
+
+        mesh.faces = valid_faces;
     }
 
     /// Smooth the mesh
-    fn smooth_mesh(&self, _mesh: &mut Mesh3D) {
-        // Simplified implementation
-        // In a real implementation, this would use Laplacian smoothing or similar techniques
+    fn smooth_mesh(&self, mesh: &mut Mesh3D) {
+        let lambda = 0.5; // Smoothing factor
+        let iterations = 3;
+
+        // Build adjacency list
+        let mut adjacency: HashMap<usize, Vec<usize>> = HashMap::new();
+        for face in &mesh.faces {
+            for i in 0..face.vertices.len() {
+                let v0 = face.vertices[i];
+                let v1 = face.vertices[(i + 1) % face.vertices.len()];
+                adjacency.entry(v0).or_default().push(v1);
+                adjacency.entry(v1).or_default().push(v0);
+            }
+        }
+
+        // Apply Laplacian smoothing
+        for _ in 0..iterations {
+            let old_vertices = mesh.vertices.clone();
+
+            for (i, vertex) in mesh.vertices.iter_mut().enumerate() {
+                if let Some(neighbors) = adjacency.get(&i) {
+                    if neighbors.is_empty() {
+                        continue;
+                    }
+
+                    // Calculate centroid of neighbors
+                    let mut cx = 0.0;
+                    let mut cy = 0.0;
+                    let mut cz = 0.0;
+                    for &n in neighbors {
+                        cx += old_vertices[n].point.x;
+                        cy += old_vertices[n].point.y;
+                        cz += old_vertices[n].point.z;
+                    }
+                    let n_count = neighbors.len() as f64;
+                    cx /= n_count;
+                    cy /= n_count;
+                    cz /= n_count;
+
+                    // Move vertex towards centroid
+                    vertex.point.x = vertex.point.x + lambda * (cx - vertex.point.x);
+                    vertex.point.y = vertex.point.y + lambda * (cy - vertex.point.y);
+                    vertex.point.z = vertex.point.z + lambda * (cz - vertex.point.z);
+                }
+            }
+        }
     }
 
     /// Ensure mesh integrity
-    fn ensure_mesh_integrity(&self, _mesh: &mut Mesh3D) {
-        // Simplified implementation
-        // In a real implementation, this would check for and fix mesh issues
+    fn ensure_mesh_integrity(&self, mesh: &mut Mesh3D) {
+        // Check for and remove faces with invalid vertex indices
+        let vertex_count = mesh.vertices.len();
+        mesh.faces
+            .retain(|face| face.vertices.iter().all(|&v| v < vertex_count));
+
+        // Check for and remove tetrahedrons with invalid vertex indices
+        mesh.tetrahedrons
+            .retain(|tetra| tetra.vertices.iter().all(|&v| v < vertex_count));
+
+        // Check for and remove hexahedrons with invalid vertex indices
+        mesh.hexahedrons
+            .retain(|hex| hex.vertices.iter().all(|&v| v < vertex_count));
+
+        // Check for and remove prisms with invalid vertex indices
+        mesh.prisms
+            .retain(|prism| prism.vertices.iter().all(|&v| v < vertex_count));
+
+        // Update bounding box
+        if !mesh.vertices.is_empty() {
+            let mut min_x = mesh.vertices[0].point.x;
+            let mut min_y = mesh.vertices[0].point.y;
+            let mut min_z = mesh.vertices[0].point.z;
+            let mut max_x = mesh.vertices[0].point.x;
+            let mut max_y = mesh.vertices[0].point.y;
+            let mut max_z = mesh.vertices[0].point.z;
+
+            for vertex in &mesh.vertices {
+                min_x = min_x.min(vertex.point.x);
+                min_y = min_y.min(vertex.point.y);
+                min_z = min_z.min(vertex.point.z);
+                max_x = max_x.max(vertex.point.x);
+                max_y = max_y.max(vertex.point.y);
+                max_z = max_z.max(vertex.point.z);
+            }
+
+            mesh.bbox = (
+                Point::new(min_x, min_y, min_z),
+                Point::new(max_x, max_y, max_z),
+            );
+        }
     }
 
     /// Calculate bounding box

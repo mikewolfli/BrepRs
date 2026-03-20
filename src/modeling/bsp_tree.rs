@@ -770,11 +770,29 @@ impl BspTreeBuilder {
             crate::topology::ShapeType::Solid => {
                 // For solids, get faces from the solid's shells
                 if let Some(solid) = shape.as_solid() {
-                    for shell_handle in solid.shells() {
-                        if let Some(shell) = shell_handle.get() {
-                            for face_handle in shell.faces() {
-                                if let Some(face) = face_handle.get() {
-                                    tree.insert_face(face.as_ref().clone());
+                    let shells = solid.shells();
+                    if shells.len() > 10 {
+                        // Parallel processing for large number of shells
+                        let faces: Vec<TopoDsFace> = shells
+                            .par_iter()
+                            .filter_map(|shell_handle| shell_handle.get())
+                            .flat_map(|shell| {
+                                shell.faces()
+                                    .iter()
+                                    .filter_map(|face_handle| face_handle.get())
+                                    .map(|face| face.as_ref().clone())
+                                    .collect::<Vec<TopoDsFace>>()
+                            })
+                            .collect();
+                        tree.build_parallel(&faces);
+                    } else {
+                        // Sequential processing for small number of shells
+                        for shell_handle in shells {
+                            if let Some(shell) = shell_handle.get() {
+                                for face_handle in shell.faces() {
+                                    if let Some(face) = face_handle.get() {
+                                        tree.insert_face(face.as_ref().clone());
+                                    }
                                 }
                             }
                         }
@@ -784,9 +802,21 @@ impl BspTreeBuilder {
             crate::topology::ShapeType::Shell => {
                 // For shells, extract faces directly
                 if let Some(shell) = shape.as_shell() {
-                    for face_handle in shell.faces() {
-                        if let Some(face) = face_handle.get() {
-                            tree.insert_face(face.as_ref().clone());
+                    let faces = shell.faces();
+                    if faces.len() > 100 {
+                        // Parallel processing for large number of faces
+                        let face_vec: Vec<TopoDsFace> = faces
+                            .par_iter()
+                            .filter_map(|face_handle| face_handle.get())
+                            .map(|face| face.as_ref().clone())
+                            .collect();
+                        tree.build_parallel(&face_vec);
+                    } else {
+                        // Sequential processing for small number of faces
+                        for face_handle in faces {
+                            if let Some(face) = face_handle.get() {
+                                tree.insert_face(face.as_ref().clone());
+                            }
                         }
                     }
                 }
@@ -800,11 +830,31 @@ impl BspTreeBuilder {
             crate::topology::ShapeType::Compound => {
                 // For compounds, recursively extract faces from components
                 if let Some(compound) = shape.as_compound() {
-                    for component in compound.components() {
-                        let component_handle = Handle::new(std::sync::Arc::new(component.clone()));
-                        let component_tree = self.build_from_shape(&component_handle);
-                        if let Some(root) = component_tree.root {
-                            tree.merge_tree(&root);
+                    let components = compound.components();
+                    if components.len() > 10 {
+                        // Parallel processing for large number of components
+                        let component_trees: Vec<BspTree> = components
+                            .par_iter()
+                            .map(|component| {
+                                let component_handle = Handle::new(std::sync::Arc::new(component.clone()));
+                                self.build_from_shape(&component_handle)
+                            })
+                            .collect();
+                        
+                        // Merge all component trees
+                        for component_tree in component_trees {
+                            if let Some(root) = component_tree.root {
+                                tree.merge_tree(&root);
+                            }
+                        }
+                    } else {
+                        // Sequential processing for small number of components
+                        for component in components {
+                            let component_handle = Handle::new(std::sync::Arc::new(component.clone()));
+                            let component_tree = self.build_from_shape(&component_handle);
+                            if let Some(root) = component_tree.root {
+                                tree.merge_tree(&root);
+                            }
                         }
                     }
                 }

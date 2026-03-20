@@ -1,169 +1,344 @@
-# BrepRS Future Development Plan
+# Future Development Plan for BrepRs
 
-> This document records the list of features that legacy CAD kernels currently lack (or implement poorly), serving as a product roadmap for BrepRS Phase 2 "Beyond Legacy Kernels".
->
-> Based on the latest information from legacy CAD kernel version 8.0.0 (released in Q1 2026).
+This document outlines the features and enhancements needed to bring BrepRs to the level of commercial 3D libraries like OPENCASCADE.
 
----
+## 1. Advanced Surface Modeling
 
-## I. Legacy CAD Kernel's Core Weaknesses (Opportunities for Overtaking)
+### Full Features
+- **Free-Form Surface Editing**
+  - Control point manipulation for NURBS and Bezier surfaces
+  - Surface fairing and smoothing algorithms
+  - Interactive surface deformation tools
+  - Surface continuity control (G0, G1, G2, G3)
 
-### 1. Technical Debt and Modernization Lag (The Biggest Pain Point)
+- **Surface Matching**
+  - Automatic surface fitting to existing geometry
+  - Surface blending and bridging
+  - Surface transition creation
+  - Seamless surface connection
 
-Legacy CAD kernel 8.0 is working hard to address these issues, but this also exposes its previous severe deficiencies:
+- **Advanced Surface Analysis**
+  - Curvature analysis and visualization
+  - Surface quality evaluation
+  - Gaussian and mean curvature calculation
+  - Surface continuity analysis
 
-| Weakness Area | Legacy Kernel Status (Even 8.0 is still in transition) | BrepRS Rust Advantage |
-|--------------|-----------------------------------------------|----------------------|
-| Memory Safety | 60%+ bugs related to memory management (wild pointers, memory leaks) | Compiler-guaranteed memory safety, no wild pointers |
-| Concurrent Programming | Just migrated to std::mutex, but C++ concurrency remains an advanced skill prone to errors | Native Send/Sync, Rayon enables parallelism in one line |
-| Build System | Custom CMake logic is complex, cross-platform pitfalls | Cargo unified management, cross-platform out-of-the-box |
-| Dependency Management | No official package manager, manual configuration | crates.io ecosystem, clear dependencies |
-| Language Features | C++17 migration in progress, large legacy codebase | Modern Rust, no historical baggage |
+- **Surface Deformation**
+  - Constrained surface deformation
+  - Physics-based surface modeling
+  - Free-form deformation (FFD)
+  - Cage-based deformation
 
-### 2. Excessive API Complexity
+## 2. Assembly System
 
-Legacy CAD kernel's API has been criticized for years:
+### Full Features
+- **Complete Assembly Management**
+  - Hierarchical assembly structure
+  - Component grouping and organization
+  - Assembly tree visualization
+  - Sub-assembly support
 
-- **Verbose naming**: `BRepOffsetAPI_MakePipeShell` (like casting a spell)
-- **Type confusion**: Custom types (`Standard_Real`) mixed with C++ native types, only unified in 8.0
-- **Exception handling**: Custom exception system incompatible with modern C++, planned migration to `std::exception` in 8.0
-- **Smart pointers**: Own Handle macro, not `std::shared_ptr`
+- **Assembly Constraints**
+  - Mate constraints (coincident, parallel, perpendicular, etc.)
+  - Distance and angle constraints
+  - Pattern constraints
+  - Symmetry constraints
 
-### 3. Weak Support for Modern File Formats
+- **Motion Simulation** (NO NEED - Beyond geometric kernel scope)
+  - Kinematic analysis
+  - Joint-based motion simulation
+  - Collision detection during motion
+  - Motion path planning
 
-| Format Type | Legacy Kernel Support Level | Market Demand |
-|------------|-------------------|---------------|
-| glTF | No native support | Standard for 3D Web, gaming, AR/VR |
-| USD | No native support | Next-gen 3D exchange format promoted by NVIDIA, Apple, Pixar |
-| 3MF | Basic support | 3D printing industry standard, legacy kernel support incomplete |
-| FBX | None | Commonly used in gaming/animation industry |
-| OBJ/STL | Available, but average performance | Basic formats, but legacy kernel's read/write performance has room for optimization |
+- **Interference Checking**
+  - Real-time interference detection
+  - Clearance analysis
+  - Clash detection and reporting
+  - Minimum distance calculation
 
-### 4. Difficult Cross-Language Calling
+## 3. Advanced Rendering (NO NEED - Beyond geometric kernel scope)
 
-Legacy CAD kernel is a C++ library, making it very difficult to call from other languages:
+### Full Features
+- **Real-Time Lighting System**
+  - Phong, Blinn-Phong, and PBR lighting models
+  - Dynamic shadows (shadow mapping, ray tracing)
+  - Area lights and soft shadows
+  - Global illumination
 
-- **Python bindings**: Community-maintained, incomplete
-- **JavaScript/WebAssembly**: Can only be compiled through emscripten with difficulty, large size, poor performance
-- **Node.js, C#, Java**: Almost impossible to call directly
+- **Advanced Material System**
+  - Physically Based Rendering (PBR) materials
+  - Material libraries and presets
+  - Texture mapping (diffuse, specular, normal, etc.)
+  - Procedural materials
 
-### 5. Almost Zero WebAssembly Support
+- **Environment Mapping**
+  - Cube maps for reflections
+  - Environment lighting
+  - Reflection and refraction effects
+  - HDR environment support
 
-Legacy CAD kernel cannot run in browsers, while Rust + Wasm can achieve:
+- **Post-Processing**
+  - Anti-aliasing (MSAA, FXAA, TAA)
+  - Depth of field
+  - Bloom and glare effects
+  - Color grading and tonemapping
 
-- Geometry kernel running directly in browser
-- Pure Web-based CAD becomes possible
-- No server needed, local data processing
+- **Real-Time Global Illumination**
+  - Voxel-based global illumination
+  - Screen-space global illumination
+  - Light probes and reflection probes
+  - Dynamic lighting updates
 
-### 6. Algorithm-Level Optimization Space
+## 4. CAD-Specific Features
 
-- **Boolean operations**: Legacy kernel has them, but complex models often fail
-- **Mesh generation**: Legacy kernel's BRep to mesh quality is average
-- **Subdivision surfaces**: Legacy kernel basically doesn't support (only basic ones)
-- **Machine learning integration**: No native support, legacy kernel's data structures cannot be fed directly to PyTorch/TensorFlow
+### Full Features
+- **Dimensioning System** (NO NEED - Beyond geometric kernel scope)
+  - Linear, angular, radial dimensions
+  - Ordinate dimensions
+  - Leader and note creation
+  - Dimension styles and standards
 
----
+- **Tolerance Analysis** (NO NEED - Beyond geometric kernel scope)
+  - Geometric dimensioning and tolerancing (GD&T)
+  - Tolerance stack-up analysis
+  - Statistical tolerance analysis
+  - Tolerance visualization
 
-## II. Features Just Added in Legacy Kernel 8.0 (Learn from them, no need to reinvent)
+- **Engineering Drawing Generation** (NO NEED - Beyond geometric kernel scope)
+  - Automatic 2D view generation
+  - Section views and detail views
+  - Bill of materials (BOM)
+  - Drawing standards compliance (ISO, ANSI, etc.)
 
-These are features just implemented in the latest legacy kernel version. Learn from their API design, but implement more elegantly in Rust:
+- **Parametric Sketching**
+  - 2D sketch creation and editing
+  - Sketch constraints and dimensions
+  - Sketch-based feature creation
+  - Sketch solver
 
-| New Feature | Legacy Kernel 8.0 Implementation | Opportunity |
-|------------|------------------------|-------------|
-| Helix module | Helix generation | Can be implemented more concisely in Rust |
-| New exchange format | New format replacing BRep | Can be directly compatible |
-| Hash caching | Geometry hash caching | Rust's HashMap is inherently strong |
-| constexpr support | Just added | Rust's const fn is natively supported |
-| Unit testing | Just introduced gtest | Rust native integration testing |
+- **Feature History**
+  - Complete feature creation history
+  - Feature reordering and editing
+  - Parametric feature relationships
+  - Feature suppression and activation
 
----
+## 5. Advanced Analysis Tools (NO NEED - Beyond geometric kernel scope)
 
-## III. Feature List for BrepRS to "Go Beyond Legacy Kernels"
+### Full Features
+- **Finite Element Analysis**
+  - Structural stress analysis
+  - Modal analysis
+  - Thermal analysis
+  - Fatigue analysis
 
-### Phase 1 (Can be done immediately after compatibility period)
+- **Computational Fluid Dynamics**
+  - Fluid flow simulation
+  - Heat transfer analysis
+  - Turbulence modeling
+  - Flow visualization
 
-#### 1. Rust Native API (Not a translation of C++ style)
+- **Thermal Analysis**
+  - Heat transfer simulation
+  - Temperature distribution analysis
+  - Thermal stress analysis
+  - Cooling system design
 
-- **Method chaining**: `shape.offset(5.0).fillet(2.0).boolean(&other)`
-- **Generics + Trait bounds**: Compile-time type safety guarantees
-- **Iterators**: `face.edges().filter(|e| e.length() > 1.0)`
+- **Mass Properties Analysis**
+  - Center of mass calculation
+  - Moment of inertia
+  - Volume and surface area
+  - Material property integration
 
-#### 2. Python Bindings
+## 6. User Interface (NO NEED - Beyond geometric kernel scope)
 
-- Use PyO3 to automatically generate Python packages
-- Let Python users call the geometry kernel directly
+### Full Features
+- **Complete GUI System**
+  - Interactive 3D viewport
+  - Toolbars and menus
+  - Property panels
+  - Command line interface
 
-#### 3. WebAssembly Support
+- **Command Line Interface**
+  - Scriptable command system
+  - Batch processing support
+  - Command history and macros
+  - Custom command creation
 
-- wasm-pack compiles to wasm in one command
-- Run CAD algorithms in the browser
+- **Scripting System**
+  - Python or Lua scripting support
+  - API access for automation
+  - Custom tool creation
+  - Batch processing scripts
 
-#### 4. Serialization Support
+- **Plugin System**
+  - Third-party extension support
+  - Plugin management
+  - API documentation for plugin developers
+  - Marketplace for plugins
 
-- Serde derive: One-click implementation of JSON/BSON/MessagePack and other formats
-- Directly connect to databases, network transmission
+## 7. Industry-Specific Features (NO NEED - Beyond geometric kernel scope)
 
-### Phase 2 (Deep Innovation)
+### Full Features
+- **Architecture, Engineering, and Construction (AEC)**
+  - BIM (Building Information Modeling) integration
+  - Architectural elements library
+  - MEP (Mechanical, Electrical, Plumbing) systems
+  - Construction documentation
 
-#### 1. Concurrent Geometric Algorithms
+- **Mechanical Engineering**
+  - Gear and cam generators
+  - Sheet metal design tools
+  - Weldment design
+  - Fastener libraries
 
-- Parallelize boolean operations
-- Parallelize mesh generation
-- Use Rayon: `.par_iter().map(...)`
+- **Electronics**
+  - PCB design integration
+  - Electronic component libraries
+  - Cable and harness design
+  - Thermal management for electronics
 
-#### 2. Native Support for Modern File Formats
+- **Medical**
+  - Medical imaging processing (DICOM)
+  - Prosthetic design tools
+  - Surgical planning
+  - Biomedical device design
 
-- glTF export (directly connect to Three.js/Babylon.js)
-- USD export (connect to NVIDIA Omniverse)
-- Full 3MF support
+## 8. Cloud Services Integration (NO NEED - Beyond geometric kernel scope)
 
-#### 3. Machine Learning Integration
+### Full Features
+- **Cloud Storage**
+  - Model storage and versioning
+  - Collaborative project management
+  - Cloud-based rendering
+  - Backup and recovery
 
-- Direct geometric data to Tensor (using tch-rs or candle)
-- AI model training for feature recognition, model repair
+- **Collaborative Editing**
+  - Real-time multi-user editing
+  - Conflict resolution
+  - Change tracking and notifications
+  - Access control and permissions
 
-#### 4. Incremental Compilation / Hot Reload
+- **Version Control**
+  - Git integration for model history
+  - Branching and merging capabilities
+  - Diff and compare tools
+  - Rollback and history browsing
 
-- Second-level recompilation after code changes
-- Development experience crushes C++
+- **Remote Rendering**
+  - Cloud-based rendering farms
+  - High-quality rendering options
+  - Render queue management
+  - Result delivery and sharing
 
----
+## 9. Mobile Platform Support (NO NEED - Beyond geometric kernel scope)
 
-## IV. BrepRS Development Roadmap
+### Full Features
+- **Mobile Applications**
+  - iOS and Android apps
+  - Touch-optimized interface
+  - Model viewing and basic editing
+  - Cloud synchronization
 
-```text
-BrepRS Development Roadmap
-├── Phase 1 (1-2 years): Legacy Kernel API Compatibility
-│   ├── Core topological data structures (Brep)
-│   ├── Basic geometry (points, lines, surfaces)
-│   ├── Boolean operations (union, intersection, difference)
-│   ├── File I/O (STEP/IGES)
-│   └── Basic visualization
-│
-├── Phase 2 (2-3 years): Rust Native Advantages
-│   ├── Python bindings (PyO3)
-│   ├── WebAssembly support
-│   ├── Concurrent geometric algorithms
-│   ├── Modern file formats (glTF/USD)
-│   └── Better error handling (Result/Option)
-│
-└── Phase 3 (3-5 years): Beyond Legacy Kernels
-    ├── AI integration (geometric feature recognition)
-    ├── Cloud-native design (WebRTC streaming)
-    ├── Real-time collaborative editing (CRDTs)
-    └── Next-generation API designed specifically for Rust ecosystem
-```
+- **Touch Optimization**
+  - Gesture-based navigation
+  - Touch-friendly controls
+  - Pen and stylus support
+  - Multi-touch gestures
 
----
+- **Offline Work**
+  - Local model storage
+  - Offline editing capabilities
+  - Automatic synchronization when online
+  - Conflict resolution
 
-## V. Implementation Recommendations
+## 10. Third-Party Integration
 
-1. **Current Phase**: Focus on completing basic features while maintaining compatibility with legacy kernel API
-2. **Technical Preparation**: Reserve extension points during implementation for future features
-3. **Community Building**: Establish a Rust CAD community to attract more contributors
-4. **Performance Benchmarks**: Establish performance test benchmarks for comparison with legacy kernels
-5. **Documentation First**: Comprehensive documentation is key to attracting users
+### Full Features
+- **CAM Integration**
+  - Toolpath generation
+  - CNC machine simulation (NO NEED - Beyond geometric kernel scope)
+  - Post-processing for different machines
+  - Machining time estimation
 
----
+- **CAE Integration** (NO NEED - Beyond geometric kernel scope)
+  - Analysis software connectors
+  - Mesh generation for analysis
+  - Result visualization
+  - Design optimization workflows
 
-*Note: This document is for long-term planning and will be implemented after basic features are complete.*
+- **PLM Integration** (NO NEED - Beyond geometric kernel scope)
+  - Product lifecycle management
+  - Bill of materials management
+  - Change management
+  - Workflow integration
+
+- **VR/AR Integration** (NO NEED - Beyond geometric kernel scope)
+  - Virtual reality model viewing
+  - Augmented reality assembly guidance
+  - Immersive design reviews
+  - VR/AR collaboration
+
+## 11. Performance and Scalability
+
+### Full Features
+- **Advanced GPU Acceleration**
+  - GPU-accelerated boolean operations
+  - Parallel surface intersection
+  - Real-time rendering optimizations
+  - GPU-based mesh processing
+
+- **Distributed Computing**
+  - Networked processing for large models
+  - Load balancing
+  - Distributed rendering
+  - Cloud computing integration
+
+- **Adaptive Algorithms**
+  - Automatic algorithm selection based on model complexity
+  - Dynamic LOD (Level of Detail) management
+  - Progressive refinement
+  - Resource-aware processing
+
+## 12. Documentation and Support
+
+### Full Features
+- **Comprehensive Documentation**
+  - API reference
+  - User manuals
+  - Tutorials and examples
+  - Knowledge base
+
+- **Support System**
+  - Online support portal
+  - Community forums
+  - Bug reporting and tracking
+  - Feature request system
+
+- **Training Resources**
+  - Video tutorials
+  - Workshops and webinars
+  - Certification programs
+  - Training materials for educators
+
+## Implementation Roadmap
+
+### Phase 1: Core Enhancements (6-12 months)
+- Advanced surface modeling tools
+- Basic assembly system
+- CAD-specific features (parametric modeling and feature history)
+
+### Phase 2: Advanced Features (12-18 months)
+- Full assembly system with constraints
+- Third-party integration (CAM)
+- Performance optimizations
+
+### Phase 3: Ecosystem Development (18+ months)
+- Comprehensive documentation
+- Training and support
+
+## Conclusion
+
+BrepRs has established a solid foundation as a Rust-based BRep modeling library. By implementing these future features, it can evolve into a competitive commercial-grade 3D modeling kernel similar to OPENCASCADE, focusing on core geometric modeling capabilities while avoiding application-specific features.
+
+The development roadmap provides a structured approach to expanding the library's capabilities while maintaining its core strengths of performance, reliability, and Rust-based safety.
+

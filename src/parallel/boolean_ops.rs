@@ -128,35 +128,58 @@ impl ParallelBooleanOps {
         }
 
         let start = Instant::now();
-        let _ops = self.boolean_ops.clone();
+        let ops = self.boolean_ops.clone();
 
         // Use parallel reduction to fuse all shapes
         let result: TopoDsCompound = if shapes.len() >= self.config.min_parallel_size {
-            shapes
-                .par_iter()
-                .cloned()
-                .fold(
-                    || TopoDsCompound::new(),
-                    |mut acc, shape| {
-                        acc.add_component(shape);
-                        acc
-                    },
-                )
-                .reduce(
-                    || TopoDsCompound::new(),
-                    |mut a, b| {
-                        for comp in b.components() {
-                            a.add_component(comp.clone());
+            // First pass: fuse small chunks in parallel
+            let chunk_size = (shapes.len() / (rayon::current_num_threads() * 2)).max(1);
+            let chunks: Vec<TopoDsCompound> = shapes
+                .par_chunks(chunk_size)
+                .map(|chunk| {
+                    let mut chunk_result = TopoDsCompound::new();
+                    for shape in chunk {
+                        if chunk_result.components().is_empty() {
+                            chunk_result.add_component(shape.clone());
+                        } else {
+                            let acc_shape =
+                                Handle::new(std::sync::Arc::new(chunk_result.shape().clone()));
+                            chunk_result = ops.fuse(&acc_shape, shape);
                         }
-                        a
-                    },
-                )
-        } else {
-            let mut compound = TopoDsCompound::new();
-            for shape in shapes {
-                compound.add_component(shape.clone());
+                    }
+                    chunk_result
+                })
+                .collect();
+
+            // Second pass: fuse the results
+            if chunks.len() == 1 {
+                chunks[0].clone()
+            } else {
+                chunks
+                    .into_iter()
+                    .fold(TopoDsCompound::new(), |mut acc, chunk_result| {
+                        if acc.components().is_empty() {
+                            acc = chunk_result;
+                        } else {
+                            let acc_shape = Handle::new(std::sync::Arc::new(acc.shape().clone()));
+                            let chunk_shape =
+                                Handle::new(std::sync::Arc::new(chunk_result.shape().clone()));
+                            acc = ops.fuse(&acc_shape, &chunk_shape);
+                        }
+                        acc
+                    })
             }
-            compound
+        } else {
+            // Sequential processing for small number of shapes
+            shapes.iter().fold(TopoDsCompound::new(), |mut acc, shape| {
+                if acc.components().is_empty() {
+                    acc.add_component(shape.clone());
+                } else {
+                    let acc_shape = Handle::new(std::sync::Arc::new(acc.shape().clone()));
+                    acc = ops.fuse(&acc_shape, shape);
+                }
+                acc
+            })
         };
 
         let elapsed = start.elapsed();
@@ -335,13 +358,44 @@ impl BooleanOperationBuilder {
         let start = Instant::now();
         let ops = BooleanOperations::new();
 
-        // For simplicity, execute sequentially but could be parallelized
-        // based on operation dependencies
+        // Handle empty case
+        if self.operations.is_empty() {
+            let stats = ParallelStats::new()
+                .with_items_processed(0)
+                .with_threads_used(1)
+                .with_elapsed_time_ms(0);
+            return ParallelResult::new(TopoDsCompound::new(), stats);
+        }
+
+        // For operations with dependencies, we need to execute sequentially
+        // but we can parallelize independent operations if possible
         let mut result = TopoDsCompound::new();
+
+        // First pass: collect all fuse operations that can be parallelized
+        let mut fuse_shapes = Vec::new();
+        let mut other_operations = Vec::new();
 
         for (op, shape) in &self.operations {
             match op {
                 BooleanOperation::Fuse => {
+                    fuse_shapes.push(shape.clone());
+                }
+                _ => {
+                    other_operations.push((op, shape.clone()));
+                }
+            }
+        }
+
+        // Parallelize fuse operations if possible
+        if !fuse_shapes.is_empty() {
+            if fuse_shapes.len() >= 100 {
+                // Use parallel processing for many fuse operations
+                let parallel_ops = ParallelBooleanOps::new();
+                let fuse_result = parallel_ops.fuse_many(&fuse_shapes);
+                result = fuse_result.data;
+            } else {
+                // Sequential processing for few fuse operations
+                for shape in &fuse_shapes {
                     if result.components().is_empty() {
                         result.add_component(shape.clone());
                     } else {
@@ -349,17 +403,24 @@ impl BooleanOperationBuilder {
                         result = ops.fuse(&acc_shape, shape);
                     }
                 }
-                BooleanOperation::Cut => {
-                    if !result.components().is_empty() {
-                        let acc_shape = Handle::new(std::sync::Arc::new(result.shape().clone()));
+            }
+        }
+
+        // Execute other operations sequentially (they have dependencies)
+        for (op, shape) in &other_operations {
+            if result.components().is_empty() {
+                // If no result yet, add the shape as initial
+                result.add_component(shape.clone());
+            } else {
+                let acc_shape = Handle::new(std::sync::Arc::new(result.shape().clone()));
+                match op {
+                    BooleanOperation::Cut => {
                         result = ops.cut(&acc_shape, shape);
                     }
-                }
-                BooleanOperation::Common => {
-                    if !result.components().is_empty() {
-                        let acc_shape = Handle::new(std::sync::Arc::new(result.shape().clone()));
+                    BooleanOperation::Common => {
                         result = ops.common(&acc_shape, shape);
                     }
+                    _ => {}
                 }
             }
         }
@@ -367,7 +428,7 @@ impl BooleanOperationBuilder {
         let elapsed = start.elapsed();
         let stats = ParallelStats::new()
             .with_items_processed(self.operations.len())
-            .with_threads_used(1)
+            .with_threads_used(rayon::current_num_threads())
             .with_elapsed_time_ms(elapsed.as_millis() as u64);
 
         ParallelResult::new(result, stats)

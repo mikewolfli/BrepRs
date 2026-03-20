@@ -15,38 +15,41 @@ pub fn bezier_least_squares(points: &[Point]) -> Option<BezierCurve2D> {
     if points.len() < 2 {
         return None;
     }
-    // 完整实现：最小二乘法拟合高阶Bezier曲线
-    // 生成阶数为n-1的Bezier曲线，控制点通过最小二乘法求解
+    // Complete implementation: Least squares fitting for high-order Bezier curves
+    // Generate a Bezier curve of order n-1, control points solved via least squares
     let n = points.len();
     let mut poles = vec![Point::new(0.0, 0.0, 0.0); n];
-    // 端点直接取原始点
+    // Endpoints directly use original points
     poles[0] = points[0];
     poles[n - 1] = points[n - 1];
-    // 中间控制点采用均匀参数化+最小二乘法
+    // Middle control points use uniform parameterization + least squares
     let mut t_vec = Vec::new();
     for i in 0..n {
         t_vec.push(i as f64 / (n as f64 - 1.0));
     }
-    // 构建系数矩阵A和右端b
+    // Build coefficient matrix A and right-hand side b
     let mut a = vec![vec![0.0; n]; n];
     let mut bx = vec![0.0; n];
     let mut by = vec![0.0; n];
     let mut bz = vec![0.0; n];
     for i in 0..n {
+        let t = t_vec[i];
         for j in 0..n {
-            a[i][j] = bernstein(n - 1, j, t_vec[i]);
+            // Binomial coefficient * t^j * (1-t)^(n-1-j)
+            let coeff = binomial(n-1, j) as f64 * t.powi(j as i32) * (1.0 - t).powi((n-1-j) as i32);
+            a[i][j] = coeff;
         }
         bx[i] = points[i].x;
         by[i] = points[i].y;
         bz[i] = points[i].z;
     }
-    // 求解线性方程组Ax=b
+    // Solve linear system Ax = b
     let solve = |a: &Vec<Vec<f64>>, b: &Vec<f64>| -> Vec<f64> {
         let n = a.len();
         let mut a = a.clone();
         let mut b = b.clone();
         for i in 0..n {
-            // 主元
+            // Pivot
             let mut max_row = i;
             for j in i + 1..n {
                 if a[j][i].abs() > a[max_row][i].abs() {
@@ -55,7 +58,7 @@ pub fn bezier_least_squares(points: &[Point]) -> Option<BezierCurve2D> {
             }
             a.swap(i, max_row);
             b.swap(i, max_row);
-            // 消元
+            // Elimination
             for j in i + 1..n {
                 let f = a[j][i] / a[i][i];
                 for k in i..n {
@@ -64,7 +67,7 @@ pub fn bezier_least_squares(points: &[Point]) -> Option<BezierCurve2D> {
                 b[j] -= f * b[i];
             }
         }
-        // 回代
+        // Back substitution
         let mut x = vec![0.0; n];
         for i in (0..n).rev() {
             x[i] = b[i];
@@ -75,13 +78,13 @@ pub fn bezier_least_squares(points: &[Point]) -> Option<BezierCurve2D> {
         }
         x
     };
-    let px = solve(&a, &bx);
-    let py = solve(&a, &by);
-    let pz = solve(&a, &bz);
+    let x_coeffs = solve(&a, &bx);
+    let y_coeffs = solve(&a, &by);
+    let z_coeffs = solve(&a, &bz);
     for i in 0..n {
-        poles[i] = Point::new(px[i], py[i], pz[i]);
+        poles[i] = Point::new(x_coeffs[i], y_coeffs[i], z_coeffs[i]);
     }
-    Some(BezierCurve2D::new(poles))
+    Some(BezierCurve3D::new(n-1, poles))
 }
 
 /// Bernstein polynomial helper function

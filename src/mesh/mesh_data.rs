@@ -2,7 +2,7 @@
 //!
 //! This module provides basic mesh data structures for 2D and 3D meshes.
 
-use crate::geometry::Point;
+use crate::geometry::{Point, Vector};
 use std::collections::HashMap;
 
 #[cfg(feature = "rayon")]
@@ -150,8 +150,6 @@ pub struct MeshFace {
     /// Optional BRep face ID
     pub brep_face_id: Option<i32>,
 }
-
-
 
 impl MeshFace {
     /// Create a new mesh face
@@ -462,35 +460,131 @@ impl Mesh2D {
         Ok(mesh)
     }
 
-    /// Triangulate a BRep face
+    /// Triangulate a BRep face using ear clipping algorithm
     fn triangulate_brep_face(
         face: &crate::topology::topods_face::TopoDsFace,
     ) -> Vec<(Point, Point, Point)> {
-        // Triangulate BRep face
-        // This is a simplified implementation
-        // In a real implementation, you would use a proper triangulation algorithm
+        // Get face vertices
+        let face_vertices = face.vertices();
+        let mut vertices: Vec<Point> = face_vertices.iter().map(|v| v.point().clone()).collect();
+
         let mut triangles = Vec::new();
 
-        // Get face vertices
-        let vertices = face.vertices();
+        if vertices.len() < 3 {
+            return triangles;
+        }
 
-        if vertices.len() >= 3 {
-            // Create triangles from face vertices
-            for i in 2..vertices.len() {
-                let p0 = vertices[0].point().clone();
-                let p1 = vertices[i - 1].point().clone();
-                let p2 = vertices[i].point().clone();
-                triangles.push((p0, p1, p2));
-            }
-        } else if vertices.len() == 3 {
+        if vertices.len() == 3 {
             // Single triangle
-            let p0 = vertices[0].point().clone();
-            let p1 = vertices[1].point().clone();
-            let p2 = vertices[2].point().clone();
-            triangles.push((p0, p1, p2));
+            triangles.push((
+                vertices[0].clone(),
+                vertices[1].clone(),
+                vertices[2].clone(),
+            ));
+            return triangles;
+        }
+
+        // Create vertex indices
+        let mut indices: Vec<usize> = (0..vertices.len()).collect();
+
+        // Ear clipping algorithm
+        let mut n = indices.len();
+        let mut i = 0;
+
+        while n > 3 {
+            let prev = (i + n - 1) % n;
+            let curr = i % n;
+            let next = (i + 1) % n;
+
+            let p0 = &vertices[indices[prev]];
+            let p1 = &vertices[indices[curr]];
+            let p2 = &vertices[indices[next]];
+
+            if Self::is_ear(&indices, &vertices, prev, curr, next) {
+                // Add triangle
+                triangles.push((p0.clone(), p1.clone(), p2.clone()));
+
+                // Remove ear vertex
+                indices.remove(curr);
+                n -= 1;
+                i = 0;
+            } else {
+                i += 1;
+            }
+
+            // Safety check to prevent infinite loop
+            if i > 2 * n {
+                break;
+            }
+        }
+
+        // Add the last triangle
+        if indices.len() == 3 {
+            let p0 = &vertices[indices[0]];
+            let p1 = &vertices[indices[1]];
+            let p2 = &vertices[indices[2]];
+            triangles.push((p0.clone(), p1.clone(), p2.clone()));
         }
 
         triangles
+    }
+
+    /// Check if a vertex is an ear
+    fn is_ear(
+        indices: &Vec<usize>,
+        vertices: &Vec<Point>,
+        prev: usize,
+        curr: usize,
+        next: usize,
+    ) -> bool {
+        let p0 = &vertices[indices[prev]];
+        let p1 = &vertices[indices[curr]];
+        let p2 = &vertices[indices[next]];
+
+        // Check if the triangle is counter-clockwise
+        if !Self::is_ccw(p0, p1, p2) {
+            return false;
+        }
+
+        // Check if any other vertex is inside the triangle
+        for i in 0..indices.len() {
+            if i == prev || i == curr || i == next {
+                continue;
+            }
+
+            let p = &vertices[indices[i]];
+            if Self::point_in_triangle(p, p0, p1, p2) {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    /// Check if three points are counter-clockwise
+    fn is_ccw(p0: &Point, p1: &Point, p2: &Point) -> bool {
+        let area = (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x);
+        area > 0.0
+    }
+
+    /// Check if a point is inside a triangle
+    fn point_in_triangle(p: &Point, a: &Point, b: &Point, c: &Point) -> bool {
+        // Barycentric coordinate system
+        let v0 = Vector::new(c.x - a.x, c.y - a.y, 0.0);
+        let v1 = Vector::new(b.x - a.x, b.y - a.y, 0.0);
+        let v2 = Vector::new(p.x - a.x, p.y - a.y, 0.0);
+
+        let dot00 = v0.dot(&v0);
+        let dot01 = v0.dot(&v1);
+        let dot02 = v0.dot(&v2);
+        let dot11 = v1.dot(&v1);
+        let dot12 = v1.dot(&v2);
+
+        let inv_denom = 1.0 / (dot00 * dot11 - dot01 * dot01);
+        let u = (dot11 * dot02 - dot01 * dot12) * inv_denom;
+        let v = (dot00 * dot12 - dot01 * dot02) * inv_denom;
+
+        u >= 0.0 && v >= 0.0 && (u + v) < 1.0
     }
 
     /// Convert mesh back to BRep shape
@@ -1073,35 +1167,131 @@ impl Mesh3D {
         Ok(mesh)
     }
 
-    /// Triangulate a BRep face
+    /// Triangulate a BRep face using ear clipping algorithm
     fn triangulate_brep_face(
         face: &crate::topology::topods_face::TopoDsFace,
     ) -> Vec<(Point, Point, Point)> {
-        // Triangulate BRep face
-        // This is a simplified implementation
-        // In a real implementation, you would use a proper triangulation algorithm
+        // Get face vertices
+        let face_vertices = face.vertices();
+        let mut vertices: Vec<Point> = face_vertices.iter().map(|v| v.point().clone()).collect();
+
         let mut triangles = Vec::new();
 
-        // Get face vertices
-        let vertices = face.vertices();
+        if vertices.len() < 3 {
+            return triangles;
+        }
 
-        if vertices.len() >= 3 {
-            // Create triangles from face vertices
-            for i in 2..vertices.len() {
-                let p0 = vertices[0].point().clone();
-                let p1 = vertices[i - 1].point().clone();
-                let p2 = vertices[i].point().clone();
-                triangles.push((p0, p1, p2));
-            }
-        } else if vertices.len() == 3 {
+        if vertices.len() == 3 {
             // Single triangle
-            let p0 = vertices[0].point().clone();
-            let p1 = vertices[1].point().clone();
-            let p2 = vertices[2].point().clone();
-            triangles.push((p0, p1, p2));
+            triangles.push((
+                vertices[0].clone(),
+                vertices[1].clone(),
+                vertices[2].clone(),
+            ));
+            return triangles;
+        }
+
+        // Create vertex indices
+        let mut indices: Vec<usize> = (0..vertices.len()).collect();
+
+        // Ear clipping algorithm
+        let mut n = indices.len();
+        let mut i = 0;
+
+        while n > 3 {
+            let prev = (i + n - 1) % n;
+            let curr = i % n;
+            let next = (i + 1) % n;
+
+            let p0 = &vertices[indices[prev]];
+            let p1 = &vertices[indices[curr]];
+            let p2 = &vertices[indices[next]];
+
+            if Self::is_ear(&indices, &vertices, prev, curr, next) {
+                // Add triangle
+                triangles.push((p0.clone(), p1.clone(), p2.clone()));
+
+                // Remove ear vertex
+                indices.remove(curr);
+                n -= 1;
+                i = 0;
+            } else {
+                i += 1;
+            }
+
+            // Safety check to prevent infinite loop
+            if i > 2 * n {
+                break;
+            }
+        }
+
+        // Add the last triangle
+        if indices.len() == 3 {
+            let p0 = &vertices[indices[0]];
+            let p1 = &vertices[indices[1]];
+            let p2 = &vertices[indices[2]];
+            triangles.push((p0.clone(), p1.clone(), p2.clone()));
         }
 
         triangles
+    }
+
+    /// Check if a vertex is an ear
+    fn is_ear(
+        indices: &Vec<usize>,
+        vertices: &Vec<Point>,
+        prev: usize,
+        curr: usize,
+        next: usize,
+    ) -> bool {
+        let p0 = &vertices[indices[prev]];
+        let p1 = &vertices[indices[curr]];
+        let p2 = &vertices[indices[next]];
+
+        // Check if the triangle is counter-clockwise
+        if !Self::is_ccw(p0, p1, p2) {
+            return false;
+        }
+
+        // Check if any other vertex is inside the triangle
+        for i in 0..indices.len() {
+            if i == prev || i == curr || i == next {
+                continue;
+            }
+
+            let p = &vertices[indices[i]];
+            if Self::point_in_triangle(p, p0, p1, p2) {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    /// Check if three points are counter-clockwise
+    fn is_ccw(p0: &Point, p1: &Point, p2: &Point) -> bool {
+        let area = (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x);
+        area > 0.0
+    }
+
+    /// Check if a point is inside a triangle
+    fn point_in_triangle(p: &Point, a: &Point, b: &Point, c: &Point) -> bool {
+        // Barycentric coordinate system
+        let v0 = Vector::new(c.x - a.x, c.y - a.y, 0.0);
+        let v1 = Vector::new(b.x - a.x, b.y - a.y, 0.0);
+        let v2 = Vector::new(p.x - a.x, p.y - a.y, 0.0);
+
+        let dot00 = v0.dot(&v0);
+        let dot01 = v0.dot(&v1);
+        let dot02 = v0.dot(&v2);
+        let dot11 = v1.dot(&v1);
+        let dot12 = v1.dot(&v2);
+
+        let inv_denom = 1.0 / (dot00 * dot11 - dot01 * dot01);
+        let u = (dot11 * dot02 - dot01 * dot12) * inv_denom;
+        let v = (dot00 * dot12 - dot01 * dot02) * inv_denom;
+
+        u >= 0.0 && v >= 0.0 && (u + v) < 1.0
     }
 
     /// Extract tetrahedrons from a BRep solid

@@ -44,6 +44,9 @@ pub mod surface;
 pub mod topology;
 pub mod visualization;
 
+// Re-export modeling module content for easier access
+pub use modeling::*;
+
 // Re-export ai_ml module as ai and ml for backward compatibility
 pub mod ai {
     pub use crate::ai_ml::*;

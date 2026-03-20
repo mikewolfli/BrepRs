@@ -20,7 +20,7 @@ pub struct MemoryManager {
 
 impl MemoryManager {
     #[inline]
-    /// 创建新的内存管理器，debug模式默认启用，release模式可配置
+    /// Create a new memory manager, enabled by default in debug mode, configurable in release mode
     pub fn new() -> Self {
         Self {
             total_allocated: AtomicUsize::new(0),
@@ -30,7 +30,7 @@ impl MemoryManager {
         }
     }
 
-    /// 显式启用/禁用内存跟踪
+    /// Explicitly enable/disable memory tracking
     pub fn set_enabled(&mut self, enabled: bool) {
         self.enabled = enabled;
     }

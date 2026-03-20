@@ -733,17 +733,264 @@ impl TextTo3DGenerator {
     }
 
     /// Add details to the mesh based on features
-    fn add_details(&self, _mesh: &mut Mesh3D, _features: &HashMap<String, String>) -> AiResult<()> {
-        // In a real implementation, this would add more complex details
-        // For now, we'll just return the mesh as is
+    fn add_details(&self, mesh: &mut Mesh3D, features: &HashMap<String, String>) -> AiResult<()> {
+        // Add details based on features
+        if let Some(shape) = features.get("shape") {
+            match shape.as_str() {
+                "sphere" => {
+                    // Add subtle bumps to sphere
+                    self.add_bumps(mesh, 0.1, 10);
+                }
+                "cylinder" => {
+                    // Add grooves to cylinder
+                    self.add_grooves(mesh, 0.05, 5);
+                }
+                "cube" => {
+                    // Add bevels to cube edges
+                    self.add_bevels(mesh, 0.05);
+                }
+                "cone" => {
+                    // Add ridges to cone
+                    self.add_ridges(mesh, 0.05, 8);
+                }
+                "pyramid" => {
+                    // Add texture to pyramid faces
+                    self.add_texture(mesh, 0.1, 0.1);
+                }
+                _ => {}
+            }
+        }
+
         Ok(())
+    }
+
+    /// Add bumps to a mesh
+    fn add_bumps(&self, mesh: &mut Mesh3D, amplitude: f64, count: usize) {
+        for vertex in &mut mesh.vertices {
+            let distance = vertex.point.distance(&crate::geometry::Point::origin());
+            let noise = (vertex.id as f64 * 0.1).sin() * amplitude;
+            let mut direction = Vector::new(vertex.point.x, vertex.point.y, vertex.point.z);
+            if direction.magnitude() > 0.0 {
+                direction.normalize();
+                vertex.point += direction * noise;
+            }
+        }
+    }
+
+    /// Add grooves to a mesh
+    fn add_grooves(&self, mesh: &mut Mesh3D, depth: f64, count: usize) {
+        for vertex in &mut mesh.vertices {
+            let y = vertex.point.y;
+            let groove = (y * count as f64).sin() * depth;
+            let mut direction = Vector::new(vertex.point.x, vertex.point.y, vertex.point.z);
+            direction.y = 0.0;
+            if direction.magnitude() > 0.0 {
+                direction.normalize();
+                vertex.point += direction * groove;
+            }
+        }
+    }
+
+    /// Add bevels to a mesh
+    fn add_bevels(&self, mesh: &mut Mesh3D, radius: f64) {
+        // Simplified bevel implementation
+        for vertex in &mut mesh.vertices {
+            let abs_x = vertex.point.x.abs();
+            let abs_y = vertex.point.y.abs();
+            let abs_z = vertex.point.z.abs();
+            let max_coord = abs_x.max(abs_y).max(abs_z);
+
+            if (abs_x - max_coord).abs() < radius {
+                vertex.point.x = if vertex.point.x > 0.0 {
+                    max_coord - radius
+                } else {
+                    -max_coord + radius
+                };
+            }
+            if (abs_y - max_coord).abs() < radius {
+                vertex.point.y = if vertex.point.y > 0.0 {
+                    max_coord - radius
+                } else {
+                    -max_coord + radius
+                };
+            }
+            if (abs_z - max_coord).abs() < radius {
+                vertex.point.z = if vertex.point.z > 0.0 {
+                    max_coord - radius
+                } else {
+                    -max_coord + radius
+                };
+            }
+        }
+    }
+
+    /// Add ridges to a mesh
+    fn add_ridges(&self, mesh: &mut Mesh3D, height: f64, count: usize) {
+        for vertex in &mut mesh.vertices {
+            let distance =
+                vertex
+                    .point
+                    .distance(&crate::geometry::Point::new(0.0, -vertex.point.y, 0.0));
+            let ridge = (distance * count as f64).sin() * height;
+            let mut direction = Vector::new(vertex.point.x, vertex.point.y, vertex.point.z);
+            direction.normalize();
+            vertex.point += direction * ridge;
+        }
+    }
+
+    /// Add texture to a mesh
+    fn add_texture(&self, mesh: &mut Mesh3D, scale_x: f64, scale_y: f64) {
+        for vertex in &mut mesh.vertices {
+            let noise = (vertex.point.x * scale_x).sin() * (vertex.point.z * scale_y).cos() * 0.05;
+            vertex.point.y += noise;
+        }
     }
 
     /// Optimize the generated mesh
     fn optimize_mesh(&self, mesh: &Mesh3D) -> AiResult<Mesh3D> {
-        // In a real implementation, this would include mesh cleaning and optimization
-        // For now, we'll just return a copy of the mesh
-        Ok(mesh.clone())
+        let mut optimized_mesh = mesh.clone();
+
+        // Clean up duplicate vertices
+        self.remove_duplicate_vertices(&mut optimized_mesh);
+
+        // Fix degenerate faces
+        self.remove_degenerate_faces(&mut optimized_mesh);
+
+        // Recalculate normals
+        self.recalculate_normals(&mut optimized_mesh);
+
+        Ok(optimized_mesh)
+    }
+
+    /// Remove duplicate vertices from the mesh
+    fn remove_duplicate_vertices(&self, mesh: &mut Mesh3D) {
+        let mut unique_vertices = Vec::new();
+        let mut vertex_map = std::collections::HashMap::new();
+
+        let tolerance = 1000.0;
+        for (index, vertex) in mesh.vertices.iter().enumerate() {
+            let key = (
+                (vertex.point.x * tolerance).round() as i64,
+                (vertex.point.y * tolerance).round() as i64,
+                (vertex.point.z * tolerance).round() as i64,
+            );
+            if !vertex_map.contains_key(&key) {
+                vertex_map.insert(key, unique_vertices.len());
+                let mut new_vertex = vertex.clone();
+                new_vertex.id = unique_vertices.len();
+                unique_vertices.push(new_vertex);
+            }
+        }
+
+        // Update face vertex indices
+        for face in &mut mesh.faces {
+            for i in 0..face.vertices.len() {
+                let old_index = face.vertices[i];
+                let old_vertex = &mesh.vertices[old_index];
+                let key = (
+                    (old_vertex.point.x * tolerance).round() as i64,
+                    (old_vertex.point.y * tolerance).round() as i64,
+                    (old_vertex.point.z * tolerance).round() as i64,
+                );
+                if let Some(&new_index) = vertex_map.get(&key) {
+                    face.vertices[i] = new_index;
+                }
+            }
+        }
+
+        mesh.vertices = unique_vertices;
+    }
+
+    /// Remove degenerate faces from the mesh
+    fn remove_degenerate_faces(&self, mesh: &mut Mesh3D) {
+        let mut valid_faces = Vec::new();
+
+        for face in &mesh.faces {
+            // Check if the face has at least 3 unique vertices
+            let mut unique_vertices = std::collections::HashSet::new();
+            for &vertex_id in &face.vertices {
+                unique_vertices.insert(vertex_id);
+            }
+
+            if unique_vertices.len() >= 3 {
+                // Check if the face area is not too small
+                if self.calculate_face_area(mesh, face) > 1e-6 {
+                    let mut new_face = face.clone();
+                    new_face.id = valid_faces.len();
+                    valid_faces.push(new_face);
+                }
+            }
+        }
+
+        mesh.faces = valid_faces;
+    }
+
+    /// Calculate the area of a face
+    fn calculate_face_area(&self, mesh: &Mesh3D, face: &MeshFace) -> f64 {
+        if face.vertices.len() < 3 {
+            return 0.0;
+        }
+
+        // Calculate face area using the shoelace formula for 3D
+        let mut area = 0.0;
+        let v0 = &mesh.vertices[face.vertices[0]];
+
+        for i in 1..face.vertices.len() - 1 {
+            let v1 = &mesh.vertices[face.vertices[i]];
+            let v2 = &mesh.vertices[face.vertices[i + 1]];
+
+            let vec1 = v1.point - v0.point;
+            let vec2 = v2.point - v0.point;
+            let cross = vec1.cross(&vec2);
+            area += cross.magnitude() / 2.0;
+        }
+
+        area
+    }
+
+    /// Recalculate normals for the mesh
+    fn recalculate_normals(&self, mesh: &mut Mesh3D) {
+        // Reset normals
+        for vertex in &mut mesh.vertices {
+            vertex.normal = None;
+        }
+
+        // Calculate face normals and accumulate vertex normals
+        for face in &mut mesh.faces {
+            if face.vertices.len() >= 3 {
+                let v0 = &mesh.vertices[face.vertices[0]];
+                let v1 = &mesh.vertices[face.vertices[1]];
+                let v2 = &mesh.vertices[face.vertices[2]];
+
+                let vec1 = v1.point - v0.point;
+                let vec2 = v2.point - v0.point;
+                let mut normal = vec1.cross(&vec2);
+
+                if normal.magnitude() > 1e-6 {
+                    normal.normalize();
+                    let face_normal = Some([normal.x, normal.y, normal.z]);
+                    face.normal = face_normal;
+
+                    // Accumulate normal to vertices
+                    for &vertex_id in &face.vertices {
+                        let vertex = &mut mesh.vertices[vertex_id];
+                        if let Some(vertex_normal) = vertex.normal {
+                            let mut new_normal = crate::geometry::Vector::new(
+                                vertex_normal[0] + normal.x,
+                                vertex_normal[1] + normal.y,
+                                vertex_normal[2] + normal.z,
+                            );
+                            if new_normal.magnitude() > 1e-6 {
+                                new_normal.normalize();
+                                vertex.normal = Some([new_normal.x, new_normal.y, new_normal.z]);
+                            }
+                        } else {
+                            vertex.normal = face_normal;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// Calculate quality score for the generated mesh
@@ -759,14 +1006,22 @@ impl TextTo3DGenerator {
 
     /// Process sketch
     fn process_sketch(&self, sketch_path: &str) -> AiResult<String> {
-        // In a real implementation, this would include sketch processing
-        // For now, we'll just return the sketch path as a placeholder
         if sketch_path.is_empty() {
             return Err(AiProtocolError::InvalidData(
                 "Empty sketch path".to_string(),
             ));
         }
 
+        // Check if the file exists
+        if !std::path::Path::new(sketch_path).exists() {
+            return Err(AiProtocolError::InvalidData(format!(
+                "Sketch file not found: {}",
+                sketch_path
+            )));
+        }
+
+        // In a real implementation, this would include sketch processing
+        // For now, we'll just validate the file and return the path
         Ok(sketch_path.to_string())
     }
 
@@ -785,12 +1040,20 @@ impl TextTo3DGenerator {
 
     /// Process image
     fn process_image(&self, image_path: &str) -> AiResult<String> {
-        // In a real implementation, this would include image processing
-        // For now, we'll just return the image path as a placeholder
         if image_path.is_empty() {
             return Err(AiProtocolError::InvalidData("Empty image path".to_string()));
         }
 
+        // Check if the file exists
+        if !std::path::Path::new(image_path).exists() {
+            return Err(AiProtocolError::InvalidData(format!(
+                "Image file not found: {}",
+                image_path
+            )));
+        }
+
+        // In a real implementation, this would include image processing
+        // For now, we'll just validate the file and return the path
         Ok(image_path.to_string())
     }
 

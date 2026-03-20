@@ -8,6 +8,7 @@ use std::path::Path;
 use crate::data_exchange::{
     gltf::{GltfExporter, GltfImporter},
     iges::{IgesReader, IgesWriter},
+    jt::{JtReader, JtWriter},
     step::{StepReader, StepWriter},
     stl::{StlReader, StlWriter},
     threemf::{ThreeMfExporter, ThreeMfImporter},
@@ -23,6 +24,7 @@ pub enum FileFormat {
     STL,
     STEP,
     IGES,
+    JT,
     GLTF,
     GLB,
     USDA,
@@ -38,6 +40,7 @@ impl FileFormat {
             FileFormat::STL => "stl",
             FileFormat::STEP => "step",
             FileFormat::IGES => "iges",
+            FileFormat::JT => "jt",
             FileFormat::GLTF => "gltf",
             FileFormat::GLB => "glb",
             FileFormat::USDA => "usda",
@@ -53,6 +56,7 @@ impl FileFormat {
             FileFormat::STL => "application/sla",
             FileFormat::STEP => "application/step",
             FileFormat::IGES => "application/iges",
+            FileFormat::JT => "application/jt",
             FileFormat::GLTF => "model/gltf+json",
             FileFormat::GLB => "model/gltf-binary",
             FileFormat::USDA => "model/vnd.usd+ascii",
@@ -65,11 +69,11 @@ impl FileFormat {
     /// Detect format from file path
     pub fn from_path(path: &Path) -> Option<Self> {
         let extension = path.extension()?.to_str()?.to_lowercase();
-
         match extension.as_str() {
             "stl" => Some(FileFormat::STL),
             "step" | "stp" => Some(FileFormat::STEP),
             "iges" | "igs" => Some(FileFormat::IGES),
+            "jt" => Some(FileFormat::JT),
             "gltf" => Some(FileFormat::GLTF),
             "glb" => Some(FileFormat::GLB),
             "usda" => Some(FileFormat::USDA),
@@ -90,7 +94,7 @@ impl FileFormat {
 
     /// Check if format is BREP-based
     pub fn is_brep_format(&self) -> bool {
-        matches!(self, FileFormat::STEP | FileFormat::IGES)
+        matches!(self, FileFormat::STEP | FileFormat::IGES | FileFormat::JT)
     }
 
     /// Check if format supports colors
@@ -173,6 +177,7 @@ impl FormatValidator {
             FileFormat::GLTF | FileFormat::GLB => Self::validate_gltf(path),
             FileFormat::USDA | FileFormat::USDC | FileFormat::USDZ => Self::validate_usd(path),
             FileFormat::ThreeMF => Self::validate_3mf(path),
+            FileFormat::JT => Self::validate_jt(path),
         };
 
         file_metadata = file_metadata.with_validation(is_valid, errors);
@@ -324,6 +329,37 @@ impl FormatValidator {
 
         (errors.is_empty(), errors)
     }
+
+    fn validate_jt(path: &Path) -> (bool, Vec<String>) {
+        let mut errors = Vec::new();
+
+        // JT files start with specific header
+        if let Ok(mut file) = std::fs::File::open(path) {
+            use std::io::Read;
+            let mut header = [0u8; 80];
+            if let Ok(bytes_read) = file.read(&mut header) {
+                if bytes_read < 8 {
+                    errors.push("JT file too small".to_string());
+                } else {
+                    // Check for JT file signature
+                    let signature = &header[0..8];
+                    if signature != b"Version " && signature != b"Version	" {
+                        // JT files can have different headers, check for common patterns
+                        let header_str = String::from_utf8_lossy(&header[..bytes_read.min(20)]);
+                        if !header_str.contains("Version") {
+                            errors.push("JT file missing version header".to_string());
+                        }
+                    }
+                }
+            } else {
+                errors.push("Failed to read JT file header".to_string());
+            }
+        } else {
+            errors.push("Failed to open JT file".to_string());
+        }
+
+        (errors.is_empty(), errors)
+    }
 }
 
 /// Format converter
@@ -388,6 +424,10 @@ impl FormatConverter {
                     crate::topology::shape_enum::ShapeType::Compound,
                 ))))
             }
+            FileFormat::JT => {
+                let reader = JtReader::new(path.to_str().unwrap());
+                reader.read()
+            }
         }
     }
 
@@ -446,6 +486,10 @@ impl FormatConverter {
                 let mesh_generator = crate::mesh::MeshGenerator::new();
                 exporter.export_shape(shape, &mesh_generator, path)?;
             }
+            FileFormat::JT => {
+                let writer = JtWriter::new(path.to_str().unwrap());
+                writer.write(shape)?;
+            }
         }
 
         Ok(())
@@ -489,6 +533,7 @@ impl FormatCompatibility {
             FileFormat::STL => vec![
                 FileFormat::STEP,
                 FileFormat::IGES,
+                FileFormat::JT,
                 FileFormat::GLTF,
                 FileFormat::GLB,
                 FileFormat::ThreeMF,
@@ -496,6 +541,7 @@ impl FormatCompatibility {
             FileFormat::STEP => vec![
                 FileFormat::STL,
                 FileFormat::IGES,
+                FileFormat::JT,
                 FileFormat::GLTF,
                 FileFormat::GLB,
                 FileFormat::ThreeMF,
@@ -503,6 +549,15 @@ impl FormatCompatibility {
             FileFormat::IGES => vec![
                 FileFormat::STL,
                 FileFormat::STEP,
+                FileFormat::JT,
+                FileFormat::GLTF,
+                FileFormat::GLB,
+                FileFormat::ThreeMF,
+            ],
+            FileFormat::JT => vec![
+                FileFormat::STL,
+                FileFormat::STEP,
+                FileFormat::IGES,
                 FileFormat::GLTF,
                 FileFormat::GLB,
                 FileFormat::ThreeMF,
@@ -511,12 +566,14 @@ impl FormatCompatibility {
                 FileFormat::STL,
                 FileFormat::STEP,
                 FileFormat::IGES,
+                FileFormat::JT,
                 FileFormat::ThreeMF,
             ],
             FileFormat::USDA | FileFormat::USDC | FileFormat::USDZ => vec![
                 FileFormat::STL,
                 FileFormat::STEP,
                 FileFormat::IGES,
+                FileFormat::JT,
                 FileFormat::GLTF,
                 FileFormat::GLB,
                 FileFormat::ThreeMF,
@@ -525,6 +582,7 @@ impl FormatCompatibility {
                 FileFormat::STL,
                 FileFormat::STEP,
                 FileFormat::IGES,
+                FileFormat::JT,
                 FileFormat::GLTF,
                 FileFormat::GLB,
             ],
@@ -545,6 +603,8 @@ mod tests {
     fn test_file_format_extensions() {
         assert_eq!(FileFormat::STL.extension(), "stl");
         assert_eq!(FileFormat::STEP.extension(), "step");
+        assert_eq!(FileFormat::IGES.extension(), "iges");
+        assert_eq!(FileFormat::JT.extension(), "jt");
         assert_eq!(FileFormat::GLTF.extension(), "gltf");
         assert_eq!(FileFormat::ThreeMF.extension(), "3mf");
     }
@@ -557,6 +617,12 @@ mod tests {
         let path = Path::new("test.step");
         assert_eq!(FileFormat::from_path(path), Some(FileFormat::STEP));
 
+        let path = Path::new("test.iges");
+        assert_eq!(FileFormat::from_path(path), Some(FileFormat::IGES));
+
+        let path = Path::new("test.jt");
+        assert_eq!(FileFormat::from_path(path), Some(FileFormat::JT));
+
         let path = Path::new("test.3mf");
         assert_eq!(FileFormat::from_path(path), Some(FileFormat::ThreeMF));
     }
@@ -565,6 +631,8 @@ mod tests {
     fn test_file_format_properties() {
         assert!(FileFormat::STL.is_mesh_format());
         assert!(FileFormat::STEP.is_brep_format());
+        assert!(FileFormat::IGES.is_brep_format());
+        assert!(FileFormat::JT.is_brep_format());
         assert!(FileFormat::GLTF.supports_colors());
         assert!(FileFormat::GLTF.supports_animations());
     }
@@ -573,11 +641,22 @@ mod tests {
     fn test_format_compatibility() {
         let conversions = FormatCompatibility::get_supported_conversions(FileFormat::STL);
         assert!(conversions.contains(&FileFormat::STEP));
+        assert!(conversions.contains(&FileFormat::IGES));
+        assert!(conversions.contains(&FileFormat::JT));
         assert!(conversions.contains(&FileFormat::GLTF));
+
+        let jt_conversions = FormatCompatibility::get_supported_conversions(FileFormat::JT);
+        assert!(jt_conversions.contains(&FileFormat::STL));
+        assert!(jt_conversions.contains(&FileFormat::STEP));
+        assert!(jt_conversions.contains(&FileFormat::IGES));
 
         assert!(FormatCompatibility::is_conversion_supported(
             FileFormat::STL,
             FileFormat::STEP
+        ));
+        assert!(FormatCompatibility::is_conversion_supported(
+            FileFormat::JT,
+            FileFormat::STL
         ));
         assert!(!FormatCompatibility::is_conversion_supported(
             FileFormat::STL,

@@ -124,14 +124,14 @@ impl BoardComponent {
         component.footprint.add_pad(pad2);
 
         // Create resistor body
-        let _body = Cylinder::new(
-            position + Vector::new(0.0, 0.0, 0.001),
-            Direction::from_vector(&Vector::new(0.0, 1.0, 0.0)),
+        let body = crate::modeling::primitives::make_cylinder(
             0.001,
+            0.004,
+            Some(position + Vector::new(0.0, 0.0, 0.002)),
         );
 
-        component.set_body_geometry(TopoDsSolid::new());
-        component.height = 0.002;
+        component.set_body_geometry(body);
+        component.height = 0.004;
         component.color = (0.6, 0.6, 0.6); // Resistor color
 
         component
@@ -164,13 +164,13 @@ impl BoardComponent {
         component.footprint.add_pad(pad2);
 
         // Create capacitor body
-        let _body = Cylinder::new(
-            position + Vector::new(0.0, 0.0, 0.0015),
-            Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
+        let body = crate::modeling::primitives::make_cylinder(
             0.0015,
+            0.003,
+            Some(position + Vector::new(0.0, 0.0, 0.0015)),
         );
 
-        component.set_body_geometry(TopoDsSolid::new());
+        component.set_body_geometry(body);
         component.height = 0.003;
         component.color = (0.0, 0.6, 0.0); // Capacitor color
 
@@ -251,13 +251,14 @@ impl Connector {
         }
 
         // Create header body
-        let _body = Cylinder::new(
-            position + Vector::new(0.0, -pin_pitch / 2.0, 0.001),
-            Direction::from_vector(&Vector::new(0.0, 1.0, 0.0)),
+        let body = crate::modeling::primitives::make_box(
+            0.004,
+            pin_count as f64 * pin_pitch + pin_pitch,
             0.002,
+            Some(position + Vector::new(0.0, (pin_count - 1) as f64 * pin_pitch / 2.0, 0.001)),
         );
 
-        connector.set_body_geometry(TopoDsSolid::new());
+        connector.set_body_geometry(body);
         connector.height = 0.002;
         connector.color = (0.4, 0.4, 0.4); // Header color
 
@@ -311,13 +312,14 @@ impl Connector {
         connector.footprint.add_pad(pad4);
 
         // Create USB body
-        let _body = Cylinder::new(
-            position + Vector::new(0.0, 0.0, 0.005),
-            Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
-            0.0075,
+        let body = crate::modeling::primitives::make_box(
+            0.015,
+            0.01,
+            0.01,
+            Some(position + Vector::new(0.0, 0.0, 0.005)),
         );
 
-        connector.set_body_geometry(TopoDsSolid::new());
+        connector.set_body_geometry(body);
         connector.height = 0.01;
         connector.color = (0.8, 0.8, 0.8); // USB color
 
@@ -411,13 +413,13 @@ impl Sensor {
         sensor.footprint.add_pad(pad3);
 
         // Create temperature sensor body
-        let _body = Cylinder::new(
-            position + Vector::new(0.0, 0.0, 0.002),
-            Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
+        let body = crate::modeling::primitives::make_cylinder(
             0.004,
+            0.004,
+            Some(position + Vector::new(0.0, 0.0, 0.002)),
         );
 
-        sensor.set_body_geometry(TopoDsSolid::new());
+        sensor.set_body_geometry(body);
         sensor.height = 0.004;
         sensor.color = (0.8, 0.4, 0.0); // Temperature sensor color
 
@@ -451,9 +453,12 @@ impl Sensor {
         sensor.footprint.add_pad(pad2);
 
         // Create light sensor body
-        let _body = Sphere::new(position + Vector::new(0.0, 0.0, 0.003), 0.003);
+        let body = crate::modeling::primitives::make_sphere(
+            0.003,
+            Some(position + Vector::new(0.0, 0.0, 0.003)),
+        );
 
-        sensor.set_body_geometry(TopoDsSolid::new());
+        sensor.set_body_geometry(body);
         sensor.height = 0.006;
         sensor.color = (0.9, 0.9, 0.0); // Light sensor color
 

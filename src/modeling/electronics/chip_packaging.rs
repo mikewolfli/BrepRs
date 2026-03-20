@@ -396,33 +396,21 @@ impl ChipPackage {
         let mut solid = TopoDsSolid::new();
 
         // Create package body
-        let (width, _length, height) = self.dimensions;
-        let package_origin = Point::new(self.origin.x, self.origin.y, self.origin.z - height / 2.0);
+        let (width, length, height) = self.dimensions;
+        let package_origin = Point::new(self.origin.x, self.origin.y, self.origin.z);
 
-        // Implement package body geometry
-        // Create a simple cylinder as package body
-        let cylinder = Cylinder::new(
-            package_origin,
-            crate::geometry::Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
-            width / 2.0,
+        // Create a box as package body
+        let body = crate::modeling::primitives::make_box(
+            width,
+            length,
+            height,
+            Some(package_origin),
         );
 
-        // Implement surface conversion
-        use crate::geometry::surface_enum::SurfaceEnum;
-        use crate::handle::Handle;
-        use crate::topology::{TopoDsFace, TopoDsShell};
-        use std::sync::Arc;
-
-        // Create surface and face for package body
-        let surface = SurfaceEnum::Cylinder(cylinder);
-        let face = TopoDsFace::with_surface(Handle::new(Arc::new(surface)));
-
-        // Create shell and add face
-        let mut shell = TopoDsShell::new();
-        shell.add_face(Handle::new(Arc::new(face)));
-
-        // Add shell to solid
-        solid.add_shell(Handle::new(Arc::new(shell)));
+        // Add body shells to solid
+        for shell in body.shells() {
+            solid.add_shell(shell.clone());
+        }
 
         // Add pins
         for pin in &self.pins {

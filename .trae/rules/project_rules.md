@@ -45,13 +45,24 @@
 # ------------------------------------------------------------------------------
 # TASK GENERATION & EXECUTION RULES (FOR TRAE)
 # ------------------------------------------------------------------------------
-- DO NOT limit tasks to 10 or any small number.
+- No limit on goto tasks Quantity.
 - DO NOT simplify, merge, or reduce tasks.
 - List ALL tasks in FULL, complete detail.
 - Preserve the original order: 1, 2, 3, ... until the END.
 - Execute tasks strictly ONE BY ONE, in order, without skipping.
 - Do NOT stop early, do NOT skip steps, do NOT combine steps.
 - Ensure every single task is visible, numbered, and executed fully.
+- Comment code clear and concise, language: English.
+- Comment code rust style.
+- new module must be created in a separate file, and should be imported in the parent module or crate.
+- new function and struct and module should consider the existing code structure and naming conventions to avoid new errors and warnings.
+- new errors and warnings should be fixed immediately.
+- Do not allowed to replace the full implementation code with a stub or placeholder for test passed.
+- Before creating a new function, struct, enum, trait, or impl:
+  YOU MUST FIRST CHECK IF IT ALREADY EXISTS in the current file, module, or project.
+  If it already exists, DO NOT create a new one.
+  Use the existing one instead.
+  fixed current errors and warnings, to avoid heap pollution.
 
 # ------------------------------------------------------------------------------
 # FUNCTION & ITEM DUPLICATION RULES

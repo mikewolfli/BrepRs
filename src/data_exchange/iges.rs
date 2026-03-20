@@ -805,34 +805,101 @@ mod tests {
     }
 
     #[test]
+    fn test_iges_writer() {
+        // Create a temporary IGES file
+        let temp_file = "test_output.iges";
+
+        // Create a simple compound shape
+        let shape = TopoDsShape::new(ShapeType::Compound);
+
+        // Test writing
+        let writer = IgesWriter::new(temp_file);
+        let result = writer.write(&shape);
+        assert!(result.is_ok());
+
+        // Clean up
+        std::fs::remove_file(temp_file).unwrap();
+    }
+
+    #[test]
+    fn test_iges_reader() {
+        // Create a temporary IGES file
+        let temp_file = "test_input.iges";
+        {
+            let mut file = fs::File::create(temp_file).unwrap();
+            writeln!(file, "BrepRs IGES Test                               ").unwrap();
+            // Write header lines (total 80 lines)
+            for _ in 1..80 {
+                writeln!(file, "                                            ").unwrap();
+            }
+            // Write directory section
+            writeln!(file, "1       190     1       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       ").unwrap();
+            // Write parameter section
+            writeln!(file, "1,1H,                                      ").unwrap();
+            writeln!(file, "1,2H,                                      ").unwrap();
+            // Write trailer section
+            writeln!(file, "T                                           ").unwrap();
+            writeln!(file, "T                                           ").unwrap();
+        }
+
+        // Test reading
+        let reader = IgesReader::new(temp_file);
+        let result = reader.read();
+        assert!(result.is_ok());
+
+        // Clean up
+        std::fs::remove_file(temp_file).unwrap();
+    }
+
+    #[test]
     fn test_iges_validate() {
-        // This is a placeholder test
-        // In a real implementation, we would create a test IGES file and validate it
-        let reader = IgesReader::new("test.iges");
-        let validate_result = reader.validate();
-        // The validate operation should fail for a non-existent file
-        assert!(validate_result.is_err());
+        // Create a temporary IGES file
+        let temp_file = "test_validate.iges";
+        {
+            let mut file = fs::File::create(temp_file).unwrap();
+            writeln!(file, "BrepRs IGES Test                               ").unwrap();
+            // Write header lines (total 80 lines)
+            for _ in 1..80 {
+                writeln!(file, "                                            ").unwrap();
+            }
+            // Write directory section
+            writeln!(file, "1       190     1       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       0       ").unwrap();
+            // Write parameter section
+            writeln!(file, "1,1H,                                      ").unwrap();
+            // Write trailer section
+            writeln!(file, "T                                           ").unwrap();
+            writeln!(file, "T                                           ").unwrap();
+        }
+
+        // Test validation
+        let reader = IgesReader::new(temp_file);
+        let result = reader.validate();
+        assert!(result.is_ok());
+
+        // Clean up
+        std::fs::remove_file(temp_file).unwrap();
     }
 
     #[test]
     fn test_iges_read_write_cycle() {
-        // This is a placeholder test
-        // In a real implementation, we would test reading and writing an IGES file
+        // Create a simple compound shape
         let shape = TopoDsShape::new(ShapeType::Compound);
 
-        let writer = IgesWriter::new("test_iges_cycle.iges");
+        let temp_file = "test_iges_cycle.iges";
+        
+        // Test writing
+        let writer = IgesWriter::new(temp_file);
         let write_result = writer.write(&shape);
         assert!(write_result.is_ok());
 
-        let reader = IgesReader::new("test_iges_cycle.iges");
+        // Test reading
+        let reader = IgesReader::new(temp_file);
         let read_result = reader.read();
+        assert!(read_result.is_ok());
 
         // Clean up
-        if Path::new("test_iges_cycle.iges").exists() {
-            let _ = fs::remove_file("test_iges_cycle.iges");
+        if Path::new(temp_file).exists() {
+            let _ = fs::remove_file(temp_file);
         }
-
-        // The read operation should succeed (even with placeholder implementation)
-        assert!(read_result.is_ok());
     }
 }

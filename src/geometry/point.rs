@@ -110,7 +110,7 @@ impl Point {
         self.distance(other) <= tolerance
     }
 
-    /// 使用全局容差判断相等
+    /// Check equality using global tolerance
     pub fn is_equal_tol(&self, other: &Point) -> bool {
         self.distance(other) <= crate::geometry::traits::TOLERANCE as StandardReal
     }

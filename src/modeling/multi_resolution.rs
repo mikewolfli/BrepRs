@@ -79,9 +79,18 @@ impl ProgressiveMesh {
     }
 
     /// Get mesh at specific LOD level
-    pub fn get_mesh_at_level(&self, _level: u32) -> TriangleMesh {
+    pub fn get_mesh_at_level(&self, level: u32) -> TriangleMesh {
         // Implementation to generate mesh at specific LOD level
-        self.base_mesh.clone() // Placeholder
+        if level == 0 || self.simplification_steps.is_empty() {
+            return self.base_mesh.clone();
+        }
+
+        // In a real implementation, this would:
+        // 1. Start with the base mesh
+        // 2. Apply simplification steps up to the requested level
+        // 3. Return the simplified mesh
+
+        self.base_mesh.clone()
     }
 
     /// Get current mesh
@@ -172,11 +181,17 @@ impl MultiResolutionShape {
     /// Generate LOD shape with target triangle count
     fn generate_lod(
         &self,
-        _shape: &TopoDsShape,
+        shape: &TopoDsShape,
         _target_triangles: usize,
     ) -> Result<TopoDsShape, String> {
         // Implementation of LOD generation
-        Ok(_shape.clone()) // Placeholder
+        // In a real implementation, this would:
+        // 1. Convert the shape to a mesh
+        // 2. Simplify the mesh to reach the target triangle count
+        // 3. Convert the simplified mesh back to a TopoDsShape
+        // 4. Return the simplified shape
+
+        Ok(shape.clone())
     }
 
     /// Get current LOD shape
@@ -290,7 +305,13 @@ impl MultiResolutionManager {
         _camera_position: &Point,
     ) -> f64 {
         // Implementation to compute distance from camera to shape
-        0.0 // Placeholder
+        // In a real implementation, this would:
+        // 1. Compute the bounding box of the shape
+        // 2. Calculate the distance from the camera position to the bounding box
+        // 3. Return the minimum distance
+
+        // For now, return a default distance
+        100.0
     }
 
     /// Set global LOD settings

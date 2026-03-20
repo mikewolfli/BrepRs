@@ -1,4 +1,4 @@
-/// 全局容差常量
+/// Global tolerance constant
 pub const TOLERANCE: f64 = 1e-8;
 /// Trait for getting coordinates (x, y, z)
 pub trait GetCoord {

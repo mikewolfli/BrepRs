@@ -371,11 +371,11 @@ impl Mesher3D {
             return Err(Mesher3DError::InvalidGeometry);
         }
 
-        // 完整实现：Delaunay四面体剖分
-        // 这里采用Bowyer-Watson算法进行Delaunay三维剖分
-        // 1. 构建超级四面体包裹所有点
-        // 2. 逐点插入，移除包含新点的四面体，生成新四面体
-        // 3. 移除超级四面体相关四面体
+        // Complete implementation: Delaunay tetrahedralization
+        // Using Bowyer-Watson algorithm for 3D Delaunay triangulation
+        // 1. Build a super tetrahedron that encloses all points
+        // 2. Insert points one by one, remove tetrahedrons containing the new point, generate new tetrahedrons
+        // 3. Remove tetrahedrons related to the super tetrahedron
         use crate::geometry::Point;
         let points = &self.input_vertices;
 

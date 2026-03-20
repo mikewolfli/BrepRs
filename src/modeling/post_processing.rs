@@ -612,10 +612,84 @@ impl MeshDecimator {
 
     /// Decimate mesh
     pub fn decimate(&self, mesh: &Mesh3D) -> Mesh3D {
-        // Implementation of mesh decimation algorithm
-        // This is a placeholder implementation
-        // In a real implementation, we would use target_triangles and error_threshold
-        mesh.clone()
+        if mesh.faces.len() <= self.target_triangles {
+            return mesh.clone();
+        }
+        
+        let mut result = mesh.clone();
+        
+        while result.faces.len() > self.target_triangles {
+            let mut best_edge: Option<usize> = None;
+            let mut best_cost = f64::MAX;
+            let mut best_new_pos = crate::geometry::Point::origin();
+            
+            for edge in &result.edges {
+                let v0 = &result.vertices[edge.vertices[0]];
+                let v1 = &result.vertices[edge.vertices[1]];
+                
+                let cost = self.compute_edge_cost(&v0.point, &v1.point);
+                
+                if cost < best_cost && cost < self.error_threshold {
+                    best_cost = cost;
+                    best_edge = Some(edge.id);
+                    best_new_pos = crate::geometry::Point::new(
+                        (v0.point.x + v1.point.x) / 2.0,
+                        (v0.point.y + v1.point.y) / 2.0,
+                        (v0.point.z + v1.point.z) / 2.0,
+                    );
+                }
+            }
+            
+            if let Some(edge_id) = best_edge {
+                if let Some(edge_idx) = result.edges.iter().position(|e| e.id == edge_id) {
+                    let edge = &result.edges[edge_idx];
+                    let v0_idx = edge.vertices[0];
+                    let v1_idx = edge.vertices[1];
+                    
+                    result.vertices[v0_idx].point = best_new_pos;
+                    
+                    result.vertices.remove(v1_idx);
+                    
+                    for face in &mut result.faces {
+                        for vi in &mut face.vertices {
+                            if *vi == v1_idx {
+                                *vi = v0_idx;
+                            } else if *vi > v1_idx {
+                                *vi -= 1;
+                            }
+                        }
+                    }
+                    
+                    result.edges.remove(edge_idx);
+                    
+                    for edge in &mut result.edges {
+                        for vi in &mut edge.vertices {
+                            if *vi == v1_idx {
+                                *vi = v0_idx;
+                            } else if *vi > v1_idx {
+                                *vi -= 1;
+                            }
+                        }
+                    }
+                    
+                    result.faces.retain(|f| {
+                        let vertices: std::collections::HashSet<_> = f.vertices.iter().cloned().collect();
+                        vertices.len() == f.vertices.len()
+                    });
+                }
+            } else {
+                break;
+            }
+        }
+        
+        result
+    }
+    
+    fn compute_edge_cost(&self, p0: &crate::geometry::Point, p1: &crate::geometry::Point) -> f64 {
+        let dx = p1.x - p0.x;
+        let dy = p1.y - p0.y;
+        let dz = p1.z - p0.z;
+        (dx * dx + dy * dy + dz * dz).sqrt()
     }
 }
 

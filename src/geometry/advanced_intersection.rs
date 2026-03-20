@@ -555,58 +555,334 @@ impl AdvancedIntersectionSolver {
     }
 
     /// Calculate distance from point to surface
-    fn distance_to_surface(&self, _point: &Point, _surface: &SurfaceEnum) -> f64 {
+    fn distance_to_surface(&self, point: &Point, surface: &SurfaceEnum) -> f64 {
         // Implementation of distance calculation
-        0.0 // Placeholder
+        // In a real implementation, this would:
+        // 1. Find the closest point on the surface to the given point
+        // 2. Calculate the distance between the given point and the closest point
+        // 3. Return the distance
+
+        let (u, v) = self.project_to_surface(point, surface);
+        let closest_point = surface.value(u, v);
+        let vector = closest_point - *point;
+        vector.magnitude()
     }
 
     /// Project point to surface
-    fn project_to_surface(&self, _point: &Point, _surface: &SurfaceEnum) -> (f64, f64) {
+    fn project_to_surface(&self, point: &Point, surface: &SurfaceEnum) -> (f64, f64) {
         // Implementation of projection
-        (0.0, 0.0) // Placeholder
+        // In a real implementation, this would:
+        // 1. Find the closest point on the surface to the given point
+        // 2. Return the parametric coordinates (u, v) of the closest point
+
+        // Simple implementation using Newton-Raphson method
+        let mut u = 0.5;
+        let mut v = 0.5;
+
+        for _ in 0..self.settings.max_iterations {
+            let surface_point = surface.value(u, v);
+            let normal = surface.normal(u, v);
+            let vector = surface_point - *point;
+
+            if vector.magnitude() < self.settings.convergence_threshold {
+                break;
+            }
+
+            // Compute surface derivatives
+            let h = 1e-6;
+            let du = (surface.value(u + h, v) - surface.value(u, v)) / h;
+            let dv = (surface.value(u, v + h) - surface.value(u, v)) / h;
+
+            // Solve linear system for delta
+            let dot_du = du.dot(&normal);
+            let dot_dv = dv.dot(&normal);
+            let dot_vector = vector.dot(&normal);
+
+            if dot_du.abs() < self.settings.tolerance || dot_dv.abs() < self.settings.tolerance {
+                break;
+            }
+
+            let delta_u = -dot_vector / dot_du;
+            let delta_v = -dot_vector / dot_dv;
+
+            u += delta_u;
+            v += delta_v;
+
+            // Clamp parameters
+            u = u.clamp(0.0, 1.0);
+            v = v.clamp(0.0, 1.0);
+        }
+
+        (u, v)
     }
 
     /// Check if surface intervals overlap
-    fn check_surface_overlap(&self, _points1: &[Point], _points2: &[Point]) -> bool {
+    fn check_surface_overlap(&self, points1: &[Point], points2: &[Point]) -> bool {
         // Implementation of overlap check
-        true // Placeholder
+        // In a real implementation, this would:
+        // 1. Compute bounding boxes for both sets of points
+        // 2. Check if the bounding boxes overlap
+        // 3. If they do, perform a more detailed overlap check
+
+        // Compute bounding box for points1
+        let mut min1 = Point::new(f64::MAX, f64::MAX, f64::MAX);
+        let mut max1 = Point::new(f64::MIN, f64::MIN, f64::MIN);
+
+        for point in points1 {
+            min1.x = min1.x.min(point.x);
+            min1.y = min1.y.min(point.y);
+            min1.z = min1.z.min(point.z);
+            max1.x = max1.x.max(point.x);
+            max1.y = max1.y.max(point.y);
+            max1.z = max1.z.max(point.z);
+        }
+
+        // Compute bounding box for points2
+        let mut min2 = Point::new(f64::MAX, f64::MAX, f64::MAX);
+        let mut max2 = Point::new(f64::MIN, f64::MIN, f64::MIN);
+
+        for point in points2 {
+            min2.x = min2.x.min(point.x);
+            min2.y = min2.y.min(point.y);
+            min2.z = min2.z.min(point.z);
+            max2.x = max2.x.max(point.x);
+            max2.y = max2.y.max(point.y);
+            max2.z = max2.z.max(point.z);
+        }
+
+        // Check if bounding boxes overlap
+        if max1.x < min2.x || max2.x < min1.x {
+            return false;
+        }
+        if max1.y < min2.y || max2.y < min1.y {
+            return false;
+        }
+        if max1.z < min2.z || max2.z < min1.z {
+            return false;
+        }
+
+        true
     }
 
     /// Solve linear system for curve-surface intersection
     fn solve_linear_system(
         &self,
-        _d_curve: &Vector,
-        _d_surface_du: &Vector,
-        _d_surface_dv: &Vector,
-        _residual: &Vector,
+        d_curve: &Vector,
+        d_surface_du: &Vector,
+        d_surface_dv: &Vector,
+        residual: &Vector,
     ) -> (f64, f64, f64) {
         // Implementation of linear system solver
-        (0.0, 0.0, 0.0) // Placeholder
+        // 1. Construct the Jacobian matrix from the derivatives
+        // 2. Solve the linear system using least squares method
+        // 3. Return the solution (delta_t, delta_u, delta_v)
+
+        // Construct the Jacobian matrix columns
+        let j1 = *d_curve;
+        let j2 = -d_surface_du;
+        let j3 = -d_surface_dv;
+
+        // Compute the normal equations matrix (A^T * A)
+        let a11 = j1.dot(&j1);
+        let a12 = j1.dot(&j2);
+        let a13 = j1.dot(&j3);
+        let a22 = j2.dot(&j2);
+        let a23 = j2.dot(&j3);
+        let a33 = j3.dot(&j3);
+
+        // Compute the right-hand side (A^T * b)
+        let b1 = -j1.dot(residual);
+        let b2 = -j2.dot(residual);
+        let b3 = -j3.dot(residual);
+
+        // Solve the 3x3 system using Gaussian elimination with partial pivoting
+        // This is more numerically stable than Cramer's rule
+        let mut a = [
+            [a11, a12, a13, b1],
+            [a12, a22, a23, b2],
+            [a13, a23, a33, b3],
+        ];
+
+        // Forward elimination
+        for i in 0..3 {
+            // Find pivot row
+            let mut pivot_row = i;
+            for j in i + 1..3 {
+                if a[j][i].abs() > a[pivot_row][i].abs() {
+                    pivot_row = j;
+                }
+            }
+
+            // Swap rows if necessary
+            if pivot_row != i {
+                a.swap(i, pivot_row);
+            }
+
+            // Check if matrix is singular
+            if a[i][i].abs() < self.settings.tolerance {
+                return (0.0, 0.0, 0.0);
+            }
+
+            // Eliminate lower rows
+            for j in i + 1..3 {
+                let factor = a[j][i] / a[i][i];
+                for k in i..4 {
+                    a[j][k] -= factor * a[i][k];
+                }
+            }
+        }
+
+        // Back substitution
+        let mut x = [0.0; 3];
+        for i in (0..3).rev() {
+            x[i] = a[i][3];
+            for j in i + 1..3 {
+                x[i] -= a[i][j] * x[j];
+            }
+            x[i] /= a[i][i];
+        }
+
+        (x[0], x[1], x[2])
     }
 
     /// Solve linear system for surface-surface intersection
     fn solve_surface_surface_system(
         &self,
-        _d1_du: &Vector,
-        _d1_dv: &Vector,
-        _d2_du: &Vector,
-        _d2_dv: &Vector,
-        _residual: &Vector,
+        d1_du: &Vector,
+        d1_dv: &Vector,
+        d2_du: &Vector,
+        d2_dv: &Vector,
+        residual: &Vector,
     ) -> (f64, f64, f64, f64) {
         // Implementation of linear system solver
-        (0.0, 0.0, 0.0, 0.0) // Placeholder
+        // 1. Construct the Jacobian matrix from the derivatives
+        // 2. Solve the linear system using least squares method
+        // 3. Return the solution (delta_u1, delta_v1, delta_u2, delta_v2)
+
+        // Construct the Jacobian matrix columns
+        let j1 = *d1_du;
+        let j2 = *d1_dv;
+        let j3 = -d2_du;
+        let j4 = -d2_dv;
+
+        // Compute the normal equations matrix (A^T * A)
+        let a11 = j1.dot(&j1);
+        let a12 = j1.dot(&j2);
+        let a13 = j1.dot(&j3);
+        let a14 = j1.dot(&j4);
+        let a22 = j2.dot(&j2);
+        let a23 = j2.dot(&j3);
+        let a24 = j2.dot(&j4);
+        let a33 = j3.dot(&j3);
+        let a34 = j3.dot(&j4);
+        let a44 = j4.dot(&j4);
+
+        // Compute the right-hand side (A^T * b)
+        let b1 = -j1.dot(residual);
+        let b2 = -j2.dot(residual);
+        let b3 = -j3.dot(residual);
+        let b4 = -j4.dot(residual);
+
+        // Solve the 4x4 system using Gaussian elimination with partial pivoting
+        let mut a = [
+            [a11, a12, a13, a14, b1],
+            [a12, a22, a23, a24, b2],
+            [a13, a23, a33, a34, b3],
+            [a14, a24, a34, a44, b4],
+        ];
+
+        // Forward elimination
+        for i in 0..4 {
+            // Find pivot row
+            let mut pivot_row = i;
+            for j in i + 1..4 {
+                if a[j][i].abs() > a[pivot_row][i].abs() {
+                    pivot_row = j;
+                }
+            }
+
+            // Swap rows if necessary
+            if pivot_row != i {
+                a.swap(i, pivot_row);
+            }
+
+            // Check if matrix is singular
+            if a[i][i].abs() < self.settings.tolerance {
+                return (0.0, 0.0, 0.0, 0.0);
+            }
+
+            // Eliminate lower rows
+            for j in i + 1..4 {
+                let factor = a[j][i] / a[i][i];
+                for k in i..5 {
+                    a[j][k] -= factor * a[i][k];
+                }
+            }
+        }
+
+        // Back substitution
+        let mut x = [0.0; 4];
+        for i in (0..4).rev() {
+            x[i] = a[i][4];
+            for j in i + 1..4 {
+                x[i] -= a[i][j] * x[j];
+            }
+            x[i] /= a[i][i];
+        }
+
+        (x[0], x[1], x[2], x[3])
     }
 
     /// Remove duplicate curve-surface intersections
-    fn remove_duplicate_intersections(&self, _intersections: &mut Vec<CurveSurfaceIntersection>) {
+    fn remove_duplicate_intersections(&self, intersections: &mut Vec<CurveSurfaceIntersection>) {
         // Implementation of duplicate removal
+        // Remove duplicates based on point proximity
+        let mut unique_intersections = Vec::new();
+
+        for intersection in intersections.iter() {
+            let mut is_duplicate = false;
+
+            for unique in unique_intersections.iter() {
+                let distance = (intersection.point - unique.point).magnitude();
+                if distance < self.settings.tolerance {
+                    is_duplicate = true;
+                    break;
+                }
+            }
+
+            if !is_duplicate {
+                unique_intersections.push(intersection.clone());
+            }
+        }
+
+        *intersections = unique_intersections;
     }
 
     /// Remove duplicate surface-surface intersections
     fn remove_duplicate_surface_intersections(
         &self,
-        _intersections: &mut Vec<SurfaceSurfaceIntersection>,
+        intersections: &mut Vec<SurfaceSurfaceIntersection>,
     ) {
         // Implementation of duplicate removal
+        // Remove duplicates based on point proximity
+        let mut unique_intersections = Vec::new();
+
+        for intersection in intersections.iter() {
+            let mut is_duplicate = false;
+
+            for unique in unique_intersections.iter() {
+                let distance = (intersection.point - unique.point).magnitude();
+                if distance < self.settings.tolerance {
+                    is_duplicate = true;
+                    break;
+                }
+            }
+
+            if !is_duplicate {
+                unique_intersections.push(intersection.clone());
+            }
+        }
+
+        *intersections = unique_intersections;
     }
 }
