@@ -235,14 +235,25 @@ impl ShapeRepairTools {
             if let Some(edge_shape) = explorer.current() {
                 if edge_shape.is_edge() {
                     // SAFETY: Safe because we checked the shape type
-                    let edge = unsafe {
+                    let _edge = unsafe {
                         &*(edge_shape as *const _
                             as *const crate::topology::topods_edge::TopoDsEdge)
                     };
 
-                    // Count adjacent faces (simplified implementation)
-                    // In a real implementation, we would use TopExp to get adjacent faces
-                    let face_count = 0; // Placeholder for face count
+                    // Count adjacent faces using TopExp
+                    let mut face_explorer = crate::topology::top_exp_explorer::TopExpExplorer::new(
+                        edge_shape,
+                        crate::topology::shape_enum::ShapeType::Face,
+                    );
+                    let mut face_count = 0;
+                    while face_explorer.more() {
+                        face_explorer.next();
+                        if let Some(face_shape) = face_explorer.current() {
+                            if face_shape.is_face() {
+                                face_count += 1;
+                            }
+                        }
+                    }
 
                     // For manifold edges, face count should be exactly 2
                     if face_count != 2 {
@@ -425,21 +436,12 @@ impl ShapeRepairTools {
             // Use advanced intersection solver to check for intersection
             let solver = crate::geometry::advanced_intersection::AdvancedIntersectionSolver::new();
 
-            // Convert surfaces to SurfaceEnum (simplified implementation)
-            // In a real implementation, we would create the appropriate SurfaceEnum variant
-            let surface1_enum = crate::geometry::SurfaceEnum::Plane(crate::geometry::Plane::new(
-                crate::geometry::Point::new(0.0, 0.0, 0.0),
-                crate::geometry::Direction::new(0.0, 0.0, 1.0),
-                crate::geometry::Direction::new(0.0, 1.0, 0.0),
-            ));
-            let surface2_enum = crate::geometry::SurfaceEnum::Plane(crate::geometry::Plane::new(
-                crate::geometry::Point::new(0.0, 0.0, 0.0),
-                crate::geometry::Direction::new(0.0, 1.0, 0.0),
-                crate::geometry::Direction::new(1.0, 0.0, 0.0),
-            ));
+            // Get SurfaceEnum from face surfaces
+            let surface1_enum = &**surface1;
+            let surface2_enum = &**surface2;
 
             // Compute surface-surface intersection
-            let intersections = solver.surface_surface_intersection(&surface1_enum, &surface2_enum);
+            let intersections = solver.surface_surface_intersection(surface1_enum, surface2_enum);
 
             if !intersections.is_empty() {
                 // Return the first intersection point pair
@@ -594,12 +596,12 @@ impl ShapeRepairTools {
             );
             let mut v = Vec::new();
             while vertex_explorer.more() {
-                vertex_explorer.next();
                 if let Some(vertex_shape) = vertex_explorer.current() {
                     if vertex_shape.is_vertex() {
-                        v.push(vertex_shape);
+                        v.push(vertex_shape.clone());
                     }
                 }
+                vertex_explorer.next();
             }
             v
         };
@@ -623,7 +625,7 @@ impl ShapeRepairTools {
     fn rebuild_shape_with_merged_vertices(
         &self,
         shape: &TopoDsShape,
-        vertices: &[&TopoDsShape],
+        vertices: &[TopoDsShape],
         vertex_map: &std::collections::HashMap<usize, usize>,
         builder: &crate::modeling::BrepBuilder,
     ) -> Result<TopoDsShape, String> {
@@ -713,7 +715,7 @@ impl ShapeRepairTools {
             builder.add_to_compound(&mut compound_mut, shape_handle);
         }
 
-        Ok(compound_mut.shape().clone())
+        Ok(compound_mut.as_ref().map(|c| c.shape().clone()).unwrap_or_else(|| TopoDsShape::new(crate::topology::shape_enum::ShapeType::Compound)))
     }
 
     /// Merge close vertices
@@ -727,17 +729,16 @@ impl ShapeRepairTools {
         );
 
         while vertex_explorer.more() {
-            vertex_explorer.next();
             if let Some(vertex_shape) = vertex_explorer.current() {
                 if vertex_shape.is_vertex() {
-                    // SAFETY: Safe because we checked the shape type
                     let vertex = unsafe {
                         &*(vertex_shape as *const _
                             as *const crate::topology::topods_vertex::TopoDsVertex)
                     };
-                    vertices.push((vertex.point(), vertex_shape));
+                    vertices.push((vertex.point(), vertex_shape.clone()));
                 }
             }
+            vertex_explorer.next();
         }
 
         if vertices.is_empty() {
@@ -868,7 +869,7 @@ impl ShapeRepairTools {
             builder.add_to_compound(&mut compound_mut, shape_handle);
         }
 
-        Ok(compound_mut.shape().clone())
+        Ok(compound_mut.as_ref().map(|c| c.shape().clone()).unwrap_or_else(|| TopoDsShape::new(crate::topology::shape_enum::ShapeType::Compound)))
     }
 
     /// Fix degenerate faces
@@ -889,15 +890,15 @@ impl ShapeRepairTools {
             let mut valid_faces = Vec::new();
             let mut face_index = 0;
             while face_explorer.more() {
-                face_explorer.next();
                 if let Some(face_shape) = face_explorer.current() {
                     if face_shape.is_face() {
                         if !degenerate_face_indices.contains(&face_index) {
-                            valid_faces.push(face_shape);
+                            valid_faces.push(face_shape.clone());
                         }
                         face_index += 1;
                     }
                 }
+                face_explorer.next();
             }
             (valid_faces, face_index)
         };
@@ -1141,7 +1142,7 @@ impl ShapeRepairTools {
             }
         }
 
-        Ok(TopoDsShape::from(compound_mut))
+        Ok(compound_mut.shape().clone())
     }
 
     /// Fix duplicate faces
@@ -1168,16 +1169,15 @@ impl ShapeRepairTools {
         );
 
         while face_explorer.more() {
-            face_explorer.next();
             if let Some(face_shape) = face_explorer.current() {
                 if face_shape.is_face() {
-                    // Check if this face should be removed
                     if !faces_to_remove.contains(&face_index) {
-                        valid_faces.push(face_shape);
+                        valid_faces.push(face_shape.clone());
                     }
                     face_index += 1;
                 }
             }
+            face_explorer.next();
         }
 
         // Create a new shape with only valid faces

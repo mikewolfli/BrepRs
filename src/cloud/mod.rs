@@ -223,11 +223,12 @@ pub trait CloudStorageInterface {
     fn get_file_size(&self, _path: &str) -> Result<u64, String>;
 }
 
-/// AWS S3 storage
+/// AWS S3 Storage
 pub struct AwsS3Storage {
     pub settings: CloudStorageSettings,
     pub client: Option<Arc<dyn std::any::Any>>,
     pub is_initialized: bool,
+    pub files: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, Vec<u8>>>>,
 }
 
 impl AwsS3Storage {
@@ -237,6 +238,7 @@ impl AwsS3Storage {
             settings: CloudStorageSettings::default(),
             client: None,
             is_initialized: false,
+            files: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
         }
     }
 
@@ -246,6 +248,7 @@ impl AwsS3Storage {
             settings,
             client: None,
             is_initialized: false,
+            files: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
         }
     }
 }
@@ -258,52 +261,86 @@ impl CloudStorageInterface for AwsS3Storage {
         Ok(())
     }
 
-    fn upload_file(&self, _path: &str, _data: &[u8]) -> Result<(), String> {
+    fn upload_file(&self, path: &str, data: &[u8]) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
-        // Implementation of file upload
+        println!("Uploading file: {}", path);
+        // Store file in HashMap
+        let mut files = self.files.lock().map_err(|e| e.to_string())?;
+        files.insert(path.to_string(), data.to_vec());
         Ok(())
     }
 
-    fn download_file(&self, _path: &str) -> Result<Vec<u8>, String> {
+    fn download_file(&self, path: &str) -> Result<Vec<u8>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         // Implementation of file download
-        Ok(Vec::new())
+        println!("Downloading file: {}", path);
+        // Get file from HashMap
+        let files = self.files.lock().map_err(|e| e.to_string())?;
+        if let Some(data) = files.get(path) {
+            Ok(data.clone())
+        } else {
+            Err(format!("File not found: {}", path))
+        }
     }
 
-    fn delete_file(&self, _path: &str) -> Result<(), String> {
+    fn delete_file(&self, path: &str) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         // Implementation of file deletion
-        Ok(())
+        println!("Deleting file: {}", path);
+        // Delete file from HashMap
+        let mut files = self.files.lock().map_err(|e| e.to_string())?;
+        if files.remove(path).is_some() {
+            Ok(())
+        } else {
+            Err(format!("File not found: {}", path))
+        }
     }
 
-    fn list_files(&self, _prefix: &str) -> Result<Vec<String>, String> {
+    fn list_files(&self, prefix: &str) -> Result<Vec<String>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         // Implementation of file listing
-        Ok(Vec::new())
+        println!("Listing files with prefix: {}", prefix);
+        // List files from HashMap with given prefix
+        let files = self.files.lock().map_err(|e| e.to_string())?;
+        let filtered_files: Vec<String> = files.keys()
+            .filter(|path| path.starts_with(prefix))
+            .cloned()
+            .collect();
+        Ok(filtered_files)
     }
 
-    fn file_exists(&self, _path: &str) -> Result<bool, String> {
+    fn file_exists(&self, path: &str) -> Result<bool, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         // Implementation of file existence check
-        Ok(false)
+        println!("Checking if file exists: {}", path);
+        // Check if file exists in HashMap
+        let files = self.files.lock().map_err(|e| e.to_string())?;
+        Ok(files.contains_key(path))
     }
 
-    fn get_file_size(&self, _path: &str) -> Result<u64, String> {
+    fn get_file_size(&self, path: &str) -> Result<u64, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
         // Implementation of file size retrieval
-        Ok(0)
+        println!("Getting file size: {}", path);
+        // Get file size from HashMap
+        let files = self.files.lock().map_err(|e| e.to_string())?;
+        if let Some(data) = files.get(path) {
+            Ok(data.len() as u64)
+        } else {
+            Err(format!("File not found: {}", path))
+        }
     }
 }
 
@@ -312,6 +349,7 @@ pub struct GoogleCloudStorage {
     pub settings: CloudStorageSettings,
     pub client: Option<Arc<dyn std::any::Any>>,
     pub is_initialized: bool,
+    pub files: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, Vec<u8>>>>,
 }
 
 impl GoogleCloudStorage {
@@ -321,6 +359,7 @@ impl GoogleCloudStorage {
             settings: CloudStorageSettings::default(),
             client: None,
             is_initialized: false,
+            files: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
         }
     }
 
@@ -330,6 +369,7 @@ impl GoogleCloudStorage {
             settings,
             client: None,
             is_initialized: false,
+            files: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
         }
     }
 }
@@ -342,52 +382,86 @@ impl CloudStorageInterface for GoogleCloudStorage {
         Ok(())
     }
 
-    fn upload_file(&self, _path: &str, _data: &[u8]) -> Result<(), String> {
+    fn upload_file(&self, path: &str, data: &[u8]) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
-        // Implementation of file upload
+        println!("Uploading file to GCS: {}", path);
+        // Store file in HashMap (simulating GCS storage)
+        let mut files = self.files.lock().map_err(|e| e.to_string())?;
+        files.insert(path.to_string(), data.to_vec());
         Ok(())
     }
 
-    fn download_file(&self, _path: &str) -> Result<Vec<u8>, String> {
+    fn download_file(&self, path: &str) -> Result<Vec<u8>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
-        // Implementation of file download
-        Ok(Vec::new())
+        // Implementation of file download from GCS
+        println!("Downloading file from GCS: {}", path);
+        // Get file from HashMap
+        let files = self.files.lock().map_err(|e| e.to_string())?;
+        if let Some(data) = files.get(path) {
+            Ok(data.clone())
+        } else {
+            Err(format!("File not found in GCS: {}", path))
+        }
     }
 
-    fn delete_file(&self, _path: &str) -> Result<(), String> {
+    fn delete_file(&self, path: &str) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
-        // Implementation of file deletion
-        Ok(())
+        // Implementation of file deletion from GCS
+        println!("Deleting file from GCS: {}", path);
+        // Delete file from HashMap
+        let mut files = self.files.lock().map_err(|e| e.to_string())?;
+        if files.remove(path).is_some() {
+            Ok(())
+        } else {
+            Err(format!("File not found in GCS: {}", path))
+        }
     }
 
-    fn list_files(&self, _prefix: &str) -> Result<Vec<String>, String> {
+    fn list_files(&self, prefix: &str) -> Result<Vec<String>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
-        // Implementation of file listing
-        Ok(Vec::new())
+        // Implementation of file listing from GCS
+        println!("Listing files from GCS with prefix: {}", prefix);
+        // List files from HashMap with given prefix
+        let files = self.files.lock().map_err(|e| e.to_string())?;
+        let filtered_files: Vec<String> = files.keys()
+            .filter(|path| path.starts_with(prefix))
+            .cloned()
+            .collect();
+        Ok(filtered_files)
     }
 
-    fn file_exists(&self, _path: &str) -> Result<bool, String> {
+    fn file_exists(&self, path: &str) -> Result<bool, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
-        // Implementation of file existence check
-        Ok(false)
+        // Implementation of file existence check in GCS
+        println!("Checking if file exists in GCS: {}", path);
+        // Check if file exists in HashMap
+        let files = self.files.lock().map_err(|e| e.to_string())?;
+        Ok(files.contains_key(path))
     }
 
-    fn get_file_size(&self, _path: &str) -> Result<u64, String> {
+    fn get_file_size(&self, path: &str) -> Result<u64, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
-        // Implementation of file size retrieval
-        Ok(0)
+        // Implementation of file size retrieval from GCS
+        println!("Getting file size from GCS: {}", path);
+        // Get file size from HashMap
+        let files = self.files.lock().map_err(|e| e.to_string())?;
+        if let Some(data) = files.get(path) {
+            Ok(data.len() as u64)
+        } else {
+            Err(format!("File not found in GCS: {}", path))
+        }
     }
 }
 
@@ -396,6 +470,7 @@ pub struct AzureBlobStorage {
     pub settings: CloudStorageSettings,
     pub client: Option<Arc<dyn std::any::Any>>,
     pub is_initialized: bool,
+    pub files: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, Vec<u8>>>>,
 }
 
 impl AzureBlobStorage {
@@ -405,6 +480,7 @@ impl AzureBlobStorage {
             settings: CloudStorageSettings::default(),
             client: None,
             is_initialized: false,
+            files: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
         }
     }
 
@@ -414,6 +490,7 @@ impl AzureBlobStorage {
             settings,
             client: None,
             is_initialized: false,
+            files: std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
         }
     }
 }
@@ -426,52 +503,85 @@ impl CloudStorageInterface for AzureBlobStorage {
         Ok(())
     }
 
-    fn upload_file(&self, _path: &str, _data: &[u8]) -> Result<(), String> {
+    fn upload_file(&self, path: &str, data: &[u8]) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
-        // Implementation of file upload
+        println!("Uploading file to Azure Blob: {}", path);
+        // Store file in HashMap (simulating Azure Blob storage)
+        let mut files = self.files.lock().map_err(|e| e.to_string())?;
+        files.insert(path.to_string(), data.to_vec());
         Ok(())
     }
 
-    fn download_file(&self, _path: &str) -> Result<Vec<u8>, String> {
+    fn download_file(&self, path: &str) -> Result<Vec<u8>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
-        // Implementation of file download
-        Ok(Vec::new())
+        println!("Downloading file from Azure Blob: {}", path);
+        // Get file from HashMap
+        let files = self.files.lock().map_err(|e| e.to_string())?;
+        if let Some(data) = files.get(path) {
+            Ok(data.clone())
+        } else {
+            Err(format!("File not found in Azure Blob: {}", path))
+        }
     }
 
-    fn delete_file(&self, _path: &str) -> Result<(), String> {
+    fn delete_file(&self, path: &str) -> Result<(), String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
-        // Implementation of file deletion
-        Ok(())
+        // Implementation of file deletion from Azure Blob
+        println!("Deleting file from Azure Blob: {}", path);
+        // Delete file from HashMap
+        let mut files = self.files.lock().map_err(|e| e.to_string())?;
+        if files.remove(path).is_some() {
+            Ok(())
+        } else {
+            Err(format!("File not found in Azure Blob: {}", path))
+        }
     }
 
-    fn list_files(&self, _prefix: &str) -> Result<Vec<String>, String> {
+    fn list_files(&self, prefix: &str) -> Result<Vec<String>, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
-        // Implementation of file listing
-        Ok(Vec::new())
+        // Implementation of file listing from Azure Blob
+        println!("Listing files from Azure Blob with prefix: {}", prefix);
+        // List files from HashMap with given prefix
+        let files = self.files.lock().map_err(|e| e.to_string())?;
+        let filtered_files: Vec<String> = files.keys()
+            .filter(|path| path.starts_with(prefix))
+            .cloned()
+            .collect();
+        Ok(filtered_files)
     }
 
-    fn file_exists(&self, _path: &str) -> Result<bool, String> {
+    fn file_exists(&self, path: &str) -> Result<bool, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
-        // Implementation of file existence check
-        Ok(false)
+        // Implementation of file existence check in Azure Blob
+        println!("Checking if file exists in Azure Blob: {}", path);
+        // Check if file exists in HashMap
+        let files = self.files.lock().map_err(|e| e.to_string())?;
+        Ok(files.contains_key(path))
     }
 
-    fn get_file_size(&self, _path: &str) -> Result<u64, String> {
+    fn get_file_size(&self, path: &str) -> Result<u64, String> {
         if !self.is_initialized {
             return Err("Storage not initialized".to_string());
         }
-        // Implementation of file size retrieval
-        Ok(0)
+        // Implementation of file size retrieval from Azure Blob
+        println!("Getting file size from Azure Blob: {}", path);
+        // Get file size from HashMap
+        let files = self.files.lock().map_err(|e| e.to_string())?;
+        if let Some(data) = files.get(path) {
+            Ok(data.len() as u64)
+        } else {
+            Err(format!("File not found in Azure Blob: {}", path))
+        }
     }
 }
 

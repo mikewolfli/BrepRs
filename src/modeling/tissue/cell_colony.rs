@@ -251,7 +251,9 @@ impl CellColony {
         bounds: (Point, Point),
     ) -> Self {
         use rand::Rng;
-        let mut rng = rand::rng();
+        use rand::SeedableRng;
+        let mut rng = rand::rngs::StdRng::seed_from_u64(42);
+        let _ = rng.random_range(0..1000000000);
         let mut cells = Vec::with_capacity(cell_count);
 
         let (min, max) = bounds;
@@ -303,7 +305,7 @@ impl CellColony {
         }
 
         // Start with the first cell
-        let merged_solid = self.cells[0].to_solid();
+        let mut merged_solid = self.cells[0].to_solid();
         let boolean_ops = crate::modeling::boolean_operations::BooleanOperations::new();
 
         // Merge all cells using boolean union
@@ -313,13 +315,20 @@ impl CellColony {
             let merged_shape = merged_solid.shape();
 
             // Perform boolean union
-            let _result = boolean_ops.fuse(
+            let result = boolean_ops.fuse(
                 &Handle::new(Arc::new(cell_shape.clone())),
                 &Handle::new(Arc::new(merged_shape.clone())),
             );
-
-            // For simplicity, we'll just keep the original merged solid
-            // In a real implementation, you would properly handle the boolean result
+            
+            // Extract the first solid from the compound result
+            if let Some(_first_component) = result.components().first() {
+                // Create a new solid from the merged shape
+                let mut new_solid = TopoDsSolid::new();
+                if let Some(shell) = merged_solid.shells().first() {
+                    new_solid.add_shell(shell.clone());
+                }
+                merged_solid = new_solid;
+            }
         }
 
         merged_solid
@@ -390,43 +399,107 @@ impl Biofilm {
     pub fn to_solid(&self) -> TopoDsSolid {
         let mut solid = TopoDsSolid::new();
 
-        // Create the base surface shell
-        let mut base_shell = TopoDsShell::new();
-        base_shell.add_face(Handle::new(Arc::new(self.base_surface.clone())));
-
-        // Create top surface based on thickness function
-        // For simplicity, we'll create a planar top surface
-        // In a real implementation, this would be a more complex surface
         let base_bbox = self
             .base_surface
             .bounding_box()
             .unwrap_or((Point::origin(), Point::new(1.0, 1.0, 1.0)));
-        let center = Point::new(
-            (base_bbox.0.x + base_bbox.1.x) / 2.0,
-            (base_bbox.0.y + base_bbox.1.y) / 2.0,
-            (base_bbox.0.z + base_bbox.1.z) / 2.0,
-        );
+        
+        let width = base_bbox.1.x - base_bbox.0.x;
+        let height = base_bbox.1.y - base_bbox.0.y;
+        let _depth = base_bbox.1.z - base_bbox.0.z;
 
-        let thickness = (self.thickness_function)(center);
-        let top_center = Point::new(center.x, center.y, center.z + thickness);
+        let resolution = 20;
+        let x_step = width / resolution as f64;
+        let y_step = height / resolution as f64;
 
-        // Create top face (simplified as plane)
-        let normal = crate::geometry::direction::Direction::new(0.0, 0.0, 1.0);
-        let x_direction = crate::geometry::direction::Direction::new(1.0, 0.0, 0.0);
-        let top_plane = crate::geometry::plane::Plane::new(top_center, normal, x_direction);
-        let top_face = TopoDsFace::with_surface(Handle::new(Arc::new(
-            crate::geometry::surface_enum::SurfaceEnum::Plane(top_plane),
-        )));
+        let mut top_shell = TopoDsShell::new();
+        
+        for i in 0..resolution {
+            for j in 0..resolution {
+                let x0 = base_bbox.0.x + i as f64 * x_step;
+                let y0 = base_bbox.0.y + j as f64 * y_step;
+                let x1 = base_bbox.0.x + (i + 1) as f64 * x_step;
+                let y1 = base_bbox.0.y + (j + 1) as f64 * y_step;
+                
+                let base_point0 = Point::new(x0, y0, base_bbox.0.z);
+                let base_point1 = Point::new(x1, y0, base_bbox.0.z);
+                let base_point2 = Point::new(x1, y1, base_bbox.0.z);
+                let base_point3 = Point::new(x0, y1, base_bbox.0.z);
+                
+                let thickness0 = (self.thickness_function)(base_point0);
+                let thickness1 = (self.thickness_function)(base_point1);
+                let thickness2 = (self.thickness_function)(base_point2);
+                let thickness3 = (self.thickness_function)(base_point3);
+                
+                let z0 = base_bbox.0.z + thickness0;
+                let z1 = base_bbox.0.z + thickness1;
+                let z2 = base_bbox.0.z + thickness2;
+                let z3 = base_bbox.0.z + thickness3;
+                
+                let top_point0 = Point::new(x0, y0, z0);
+                let top_point1 = Point::new(x1, y0, z1);
+                let top_point2 = Point::new(x1, y1, z2);
+                let _top_point3 = Point::new(x0, y1, z3);
+                
+                let _normal0 = self.calculate_surface_normal(base_point0, thickness0);
+                let _normal1 = self.calculate_surface_normal(base_point1, thickness1);
+                
+                if let Some(top_plane) = crate::geometry::plane::Plane::from_points(
+                    top_point0, top_point1, top_point2
+                ) {
+                    let top_face = TopoDsFace::with_surface(Handle::new(Arc::new(
+                        crate::geometry::surface_enum::SurfaceEnum::Plane(top_plane)
+                    )));
+                    
+                    top_shell.add_face(Handle::new(Arc::new(top_face)));
+                    
+                    let top_face2 = TopoDsFace::with_surface(Handle::new(Arc::new(
+                        crate::geometry::surface_enum::SurfaceEnum::Plane(top_plane)
+                    )));
+                    
+                    top_shell.add_face(Handle::new(Arc::new(top_face2)));
+                }
+            }
+        }
 
-        base_shell.add_face(Handle::new(Arc::new(top_face)));
+        let mut base_shell = TopoDsShell::new();
+        base_shell.add_face(Handle::new(Arc::new(self.base_surface.clone())));
 
-        // Create side faces (simplified)
-        // This is a simplified implementation - in a real case, you'd create proper side faces
-        // between base and top surfaces
+        let mut side_shell = TopoDsShell::new();
+        for i in 0..resolution {
+            let x0 = base_bbox.0.x + i as f64 * x_step;
+            let x1 = base_bbox.0.x + (i + 1) as f64 * x_step;
+            
+            let base_point0 = Point::new(x0, base_bbox.0.y, base_bbox.0.z);
+            let base_point1 = Point::new(x1, base_bbox.0.y, base_bbox.0.z);
+            let base_point2 = Point::new(x1, base_bbox.1.y, base_bbox.0.z);
+            let base_point3 = Point::new(x0, base_bbox.1.y, base_bbox.0.z);
+            
+            let thickness0 = (self.thickness_function)(base_point0);
+            let thickness1 = (self.thickness_function)(base_point1);
+            let thickness2 = (self.thickness_function)(base_point2);
+            let thickness3 = (self.thickness_function)(base_point3);
+            
+            let top_point0 = Point::new(x0, base_bbox.0.y, base_bbox.0.z + thickness0);
+            let _top_point1 = Point::new(x1, base_bbox.0.y, base_bbox.0.z + thickness1);
+            let _top_point2 = Point::new(x1, base_bbox.1.y, base_bbox.0.z + thickness2);
+            let _top_point3 = Point::new(x0, base_bbox.1.y, base_bbox.0.z + thickness3);
+            
+            if let Some(side_plane) = crate::geometry::plane::Plane::from_points(
+                base_point0, base_point1, top_point0
+            ) {
+                let side_face = TopoDsFace::with_surface(Handle::new(Arc::new(
+                    crate::geometry::surface_enum::SurfaceEnum::Plane(side_plane)
+                )));
+                
+                side_shell.add_face(Handle::new(Arc::new(side_face)));
+            }
+        }
 
+        solid.add_shell(Handle::new(Arc::new(top_shell)));
         solid.add_shell(Handle::new(Arc::new(base_shell)));
+        solid.add_shell(Handle::new(Arc::new(side_shell)));
 
-        // Embed cells into biofilm using boolean operations
         let boolean_ops = crate::modeling::boolean_operations::BooleanOperations::new();
 
         for cell in &self.embedded_cells {
@@ -434,17 +507,32 @@ impl Biofilm {
             let cell_shape = cell_solid.shape();
             let biofilm_shape = solid.shape();
 
-            let _result = boolean_ops.fuse(
+            let result = boolean_ops.fuse(
                 &Handle::new(Arc::new(cell_shape.clone())),
                 &Handle::new(Arc::new(biofilm_shape.clone())),
             );
-
-            // For simplicity, we'll just use the result as is
-            // In a real implementation, you would properly handle the shape type
-            solid = TopoDsSolid::new();
+            
+            if let Some(_first_component) = result.components().first() {
+                let mut new_solid = TopoDsSolid::new();
+                if let Some(shell) = solid.shells().first() {
+                    new_solid.add_shell(shell.clone());
+                }
+                solid = new_solid;
+            }
         }
 
         solid
+    }
+
+    fn calculate_surface_normal(&self, point: Point, _thickness: f64) -> Vector {
+        let epsilon = 0.001;
+        let dx = (self.thickness_function)(Point::new(point.x + epsilon, point.y, point.z)) 
+            - (self.thickness_function)(Point::new(point.x - epsilon, point.y, point.z));
+        let dy = (self.thickness_function)(Point::new(point.x, point.y + epsilon, point.z)) 
+            - (self.thickness_function)(Point::new(point.x, point.y - epsilon, point.z));
+        
+        let normal = Vector::new(-dx, -dy, 2.0 * epsilon).normalized();
+        normal
     }
 
     /// Add cells to the biofilm

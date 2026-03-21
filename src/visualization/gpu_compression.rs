@@ -493,25 +493,22 @@ impl GpuMemoryCompressor {
         Ok(decompressed)
     }
 
-    // LZ4 compression (placeholder)
+    // LZ4 compression using lz4 crate
     #[inline]
     fn compress_lz4(&self, data: &[u8]) -> Result<Vec<u8>, String> {
-        // Real LZ4 compression
         use lz4::block::compress;
         compress(data, None, false).map_err(|e| e.to_string())
     }
 
     #[inline]
     fn decompress_lz4(&self, compressed: &[u8], original_size: usize) -> Result<Vec<u8>, String> {
-        // Real LZ4 decompression
         use lz4::block::decompress;
         decompress(compressed, Some(original_size.try_into().unwrap())).map_err(|e| e.to_string())
     }
 
-    // Zstandard compression (placeholder)
+    // Zstandard compression using zstd crate
     #[inline]
     fn compress_zstd(&self, data: &[u8]) -> Result<Vec<u8>, String> {
-        // Real Zstd compression
         use std::io::Cursor;
         use zstd::stream::encode_all;
         encode_all(Cursor::new(data), 3).map_err(|e| e.to_string())
@@ -519,7 +516,6 @@ impl GpuMemoryCompressor {
 
     #[inline]
     fn decompress_zstd(&self, compressed: &[u8], _original_size: usize) -> Result<Vec<u8>, String> {
-        // Real Zstd decompression
         use std::io::Cursor;
         use zstd::stream::decode_all;
         decode_all(Cursor::new(compressed)).map_err(|e| e.to_string())

@@ -8,8 +8,12 @@ use std::collections::HashMap;
 #[cfg(feature = "rayon")]
 use rayon::prelude::*;
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 /// Mesh vertex
 #[derive(Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MeshVertex {
     /// Vertex ID
     pub id: usize,
@@ -107,6 +111,7 @@ impl MeshVertex {
 
 /// Mesh edge
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MeshEdge {
     /// Edge ID
     pub id: usize,
@@ -134,6 +139,7 @@ impl MeshEdge {
 
 /// Mesh face
 #[derive(Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MeshFace {
     /// Face ID
     pub id: usize,
@@ -466,7 +472,7 @@ impl Mesh2D {
     ) -> Vec<(Point, Point, Point)> {
         // Get face vertices
         let face_vertices = face.vertices();
-        let mut vertices: Vec<Point> = face_vertices.iter().map(|v| v.point().clone()).collect();
+        let vertices: Vec<Point> = face_vertices.iter().map(|v| v.point().clone()).collect();
 
         let mut triangles = Vec::new();
 
@@ -845,6 +851,7 @@ impl Mesh2D {
 
 /// 3D mesh - AoS (Array of Structs) format
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Mesh3D {
     /// Vertices
     pub vertices: Vec<MeshVertex>,
@@ -1173,7 +1180,7 @@ impl Mesh3D {
     ) -> Vec<(Point, Point, Point)> {
         // Get face vertices
         let face_vertices = face.vertices();
-        let mut vertices: Vec<Point> = face_vertices.iter().map(|v| v.point().clone()).collect();
+        let vertices: Vec<Point> = face_vertices.iter().map(|v| v.point().clone()).collect();
 
         let mut triangles = Vec::new();
 
@@ -1560,6 +1567,7 @@ impl Mesh3D {
 
 /// Mesh tetrahedron
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MeshTetrahedron {
     /// Tetrahedron ID
     pub id: usize,
@@ -1590,6 +1598,7 @@ impl MeshTetrahedron {
 
 /// Mesh hexahedron
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MeshHexahedron {
     /// Hexahedron ID
     pub id: usize,
@@ -1630,6 +1639,7 @@ impl MeshHexahedron {
 
 /// Mesh prism
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MeshPrism {
     /// Prism ID
     pub id: usize,

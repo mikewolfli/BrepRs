@@ -4,7 +4,7 @@
 //! including binary and ASCII formats.
 
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Read};
+use std::io::{BufReader, BufWriter, Read, Write, Seek};
 use std::path::Path;
 
 use crate::topology::{shape_enum::ShapeType, topods_shape::TopoDsShape};
@@ -200,15 +200,17 @@ impl FbxReader {
 
         if &magic == b"Kaydara FBX" {
             // Binary format
-            self.read_binary(&mut reader)
+            self.read_binary(&mut reader)?;
         } else {
             // ASCII format
-            self.read_ascii(&mut reader)
+            self.read_ascii(&mut reader)?;
         }
+        
+        Ok(&self.document)
     }
 
     /// Read binary FBX format
-    fn read_binary(&mut self, reader: &mut BufReader<File>) -> Result<&FbxDocument, FbxError> {
+    fn read_binary(&mut self, reader: &mut BufReader<File>) -> Result<(), FbxError> {
         // 1. Parse the binary FBX format header
         let mut magic = [0u8; 21];
         reader.read_exact(&mut magic)?;
@@ -232,15 +234,12 @@ impl FbxReader {
         self.document.header.magic = magic;
         self.document.header.version = version;
 
-        // 2. Read the node hierarchy
-        self.read_binary_node(reader, &mut self.document.root)?;
+        Self::read_binary_node(reader, &mut self.document.root)?;
 
-        Ok(&self.document)
+        Ok(())
     }
 
-    /// Read binary node
     fn read_binary_node(
-        &self,
         reader: &mut BufReader<File>,
         parent: &mut FbxNode,
     ) -> Result<(), FbxError> {
@@ -248,9 +247,9 @@ impl FbxReader {
         let mut node_header = [0u8; 13];
         reader.read_exact(&mut node_header)?;
 
-        let end_offset = u64::from_le_bytes(node_header[0..8].try_into().unwrap());
-        let num_properties = u32::from_le_bytes(node_header[8..12].try_into().unwrap());
-        let property_list_len = u8::from_le_bytes(node_header[12..13].try_into().unwrap());
+        let end_offset = u64::from_le_bytes(node_header[0..8].try_into().map_err(|_| FbxError::InvalidFormat)?);
+        let num_properties = u32::from_le_bytes(node_header[8..12].try_into().map_err(|_| FbxError::InvalidFormat)?);
+        let property_list_len = u8::from_le_bytes(node_header[12..13].try_into().map_err(|_| FbxError::InvalidFormat)?);
 
         // Read node name
         let mut name_buffer = vec![0u8; property_list_len as usize];
@@ -261,7 +260,7 @@ impl FbxReader {
 
         // Read properties
         for _ in 0..num_properties {
-            let property = self.read_binary_property(reader)?;
+            let property = Self::read_binary_property(reader)?;
             node.add_property(property);
         }
 
@@ -269,7 +268,7 @@ impl FbxReader {
         let current_pos = reader.stream_position()?;
         if current_pos < end_offset {
             while reader.stream_position()? < end_offset {
-                self.read_binary_node(reader, &mut node)?;
+                Self::read_binary_node(reader, &mut node)?;
             }
         }
 
@@ -278,49 +277,42 @@ impl FbxReader {
     }
 
     /// Read binary property
-    fn read_binary_property(&self, reader: &mut BufReader<File>) -> Result<FbxProperty, FbxError> {
+    fn read_binary_property(reader: &mut BufReader<File>) -> Result<FbxProperty, FbxError> {
         let mut type_code = [0u8; 1];
         reader.read_exact(&mut type_code)?;
 
         match type_code[0] as char {
             'C' => {
-                // Boolean
                 let mut value = [0u8; 1];
                 reader.read_exact(&mut value)?;
                 Ok(FbxProperty::Bool(value[0] != 0))
             }
             'Y' => {
-                // Short
                 let mut value = [0u8; 2];
                 reader.read_exact(&mut value)?;
                 Ok(FbxProperty::Short(i16::from_le_bytes(value)))
             }
             'I' => {
-                // Int
                 let mut value = [0u8; 4];
                 reader.read_exact(&mut value)?;
                 Ok(FbxProperty::Int(i32::from_le_bytes(value)))
             }
             'F' => {
-                // Float
                 let mut value = [0u8; 4];
                 reader.read_exact(&mut value)?;
                 Ok(FbxProperty::Float(f32::from_le_bytes(value)))
             }
             'D' => {
-                // Double
                 let mut value = [0u8; 8];
                 reader.read_exact(&mut value)?;
                 Ok(FbxProperty::Double(f64::from_le_bytes(value)))
             }
             'L' => {
-                // Long long
                 let mut value = [0u8; 8];
                 reader.read_exact(&mut value)?;
                 Ok(FbxProperty::LongLong(i64::from_le_bytes(value)))
             }
             'S' => {
-                // String
                 let mut length = [0u8; 4];
                 reader.read_exact(&mut length)?;
                 let length = u32::from_le_bytes(length);
@@ -332,7 +324,6 @@ impl FbxReader {
                 ))
             }
             'R' => {
-                // Binary
                 let mut length = [0u8; 4];
                 reader.read_exact(&mut length)?;
                 let length = u32::from_le_bytes(length);
@@ -342,12 +333,10 @@ impl FbxReader {
                 Ok(FbxProperty::Binary(value))
             }
             'b' => {
-                // Bool array
                 let mut length = [0u8; 4];
                 reader.read_exact(&mut length)?;
                 let length = u32::from_le_bytes(length);
 
-                // Skip encoding
                 let mut encoding = [0u8; 4];
                 reader.read_exact(&mut encoding)?;
 
@@ -360,12 +349,10 @@ impl FbxReader {
                 Ok(FbxProperty::BoolArray(values))
             }
             'i' => {
-                // Int array
                 let mut length = [0u8; 4];
                 reader.read_exact(&mut length)?;
                 let length = u32::from_le_bytes(length);
 
-                // Skip encoding
                 let mut encoding = [0u8; 4];
                 reader.read_exact(&mut encoding)?;
 
@@ -378,12 +365,10 @@ impl FbxReader {
                 Ok(FbxProperty::IntArray(values))
             }
             'f' => {
-                // Float array
                 let mut length = [0u8; 4];
                 reader.read_exact(&mut length)?;
                 let length = u32::from_le_bytes(length);
 
-                // Skip encoding
                 let mut encoding = [0u8; 4];
                 reader.read_exact(&mut encoding)?;
 
@@ -396,12 +381,10 @@ impl FbxReader {
                 Ok(FbxProperty::FloatArray(values))
             }
             'd' => {
-                // Double array
                 let mut length = [0u8; 4];
                 reader.read_exact(&mut length)?;
                 let length = u32::from_le_bytes(length);
 
-                // Skip encoding
                 let mut encoding = [0u8; 4];
                 reader.read_exact(&mut encoding)?;
 
@@ -414,12 +397,10 @@ impl FbxReader {
                 Ok(FbxProperty::DoubleArray(values))
             }
             'l' => {
-                // Long long array
                 let mut length = [0u8; 4];
                 reader.read_exact(&mut length)?;
                 let length = u32::from_le_bytes(length);
 
-                // Skip encoding
                 let mut encoding = [0u8; 4];
                 reader.read_exact(&mut encoding)?;
 
@@ -432,12 +413,10 @@ impl FbxReader {
                 Ok(FbxProperty::LongLongArray(values))
             }
             's' => {
-                // String array
                 let mut length = [0u8; 4];
                 reader.read_exact(&mut length)?;
                 let length = u32::from_le_bytes(length);
 
-                // Skip encoding
                 let mut encoding = [0u8; 4];
                 reader.read_exact(&mut encoding)?;
 
@@ -460,8 +439,87 @@ impl FbxReader {
         }
     }
 
+    /// Parse ASCII property
+    fn parse_ascii_property(line: &str) -> Result<FbxProperty, FbxError> {
+        let trimmed = line.trim();
+
+        if trimmed.starts_with('i')
+            && trimmed[1..].starts_with('{')
+            && trimmed.ends_with('}')
+        {
+            let content = trimmed[2..trimmed.len() - 1].trim();
+            let values: Result<Vec<i32>, _> = content
+                .split(',')
+                .map(|s| s.trim().parse())
+                .collect();
+            Ok(FbxProperty::IntArray(values.map_err(|_| FbxError::InvalidNodeData("Failed to parse int array".to_string()))?))
+        } else if trimmed.starts_with('f')
+            && trimmed[1..].starts_with('{')
+            && trimmed.ends_with('}')
+        {
+            let content = trimmed[2..trimmed.len() - 1].trim();
+            let values: Result<Vec<f32>, _> = content
+                .split(',')
+                .map(|s| s.trim().parse())
+                .collect();
+            Ok(FbxProperty::FloatArray(values.map_err(|_| FbxError::InvalidNodeData("Failed to parse float array".to_string()))?))
+        } else if trimmed.starts_with('d')
+            && trimmed[1..].starts_with('{')
+            && trimmed.ends_with('}')
+        {
+            let content = trimmed[2..trimmed.len() - 1].trim();
+            let values: Result<Vec<f64>, _> = content
+                .split(',')
+                .map(|s| s.trim().parse())
+                .collect();
+            Ok(FbxProperty::DoubleArray(values.map_err(|_| FbxError::InvalidNodeData("Failed to parse double array".to_string()))?))
+        } else if trimmed.starts_with('l')
+            && trimmed[1..].starts_with('{')
+            && trimmed.ends_with('}')
+        {
+            let content = trimmed[2..trimmed.len() - 1].trim();
+            let values: Result<Vec<i64>, _> = content
+                .split(',')
+                .map(|s| s.trim().parse())
+                .collect();
+            Ok(FbxProperty::LongLongArray(values.map_err(|_| FbxError::InvalidNodeData("Failed to parse long long array".to_string()))?))
+        } else if trimmed.starts_with('s')
+            && trimmed[1..].starts_with('{')
+            && trimmed.ends_with('}')
+        {
+            let content = trimmed[2..trimmed.len() - 1].trim();
+            let values: Vec<String> = content
+                .split('"')
+                .filter(|s| !s.trim().is_empty() && *s != ",")
+                .map(|s| s.to_string())
+                .collect();
+            Ok(FbxProperty::StringArray(values))
+        } else if let Ok(int_val) = trimmed.parse::<i32>() {
+            Ok(FbxProperty::Int(int_val))
+        } else if let Ok(float_val) = trimmed.parse::<f32>() {
+            Ok(FbxProperty::Float(float_val))
+        } else if let Ok(double_val) = trimmed.parse::<f64>() {
+            Ok(FbxProperty::Double(double_val))
+        } else if let Ok(long_val) = trimmed.parse::<i64>() {
+            Ok(FbxProperty::LongLong(long_val))
+        } else {
+            Ok(FbxProperty::String(trimmed.to_string()))
+        }
+    }
+
+    /// Get the document
+    pub fn document(&self) -> &FbxDocument {
+        &self.document
+    }
+
+    /// Convert to TopoDsShape
+    pub fn to_shape(&self) -> Result<TopoDsShape, FbxError> {
+        let shape = TopoDsShape::new(ShapeType::Compound);
+        Ok(shape)
+    }
+
     /// Read ASCII FBX format
-    fn read_ascii(&mut self, reader: &mut BufReader<File>) -> Result<&FbxDocument, FbxError> {
+    fn read_ascii(&mut self, reader: &mut BufReader<File>) -> Result<(), FbxError> {
         // 1. Parse the ASCII FBX format header
         let mut content = String::new();
         reader.read_to_string(&mut content)?;
@@ -505,16 +563,12 @@ impl FbxReader {
         // Update header
         self.document.header.version = version;
 
-        // 2. Read the node hierarchy
-        index += 1;
-        self.read_ascii_nodes(&lines, &mut index, &mut self.document.root)?;
+        Self::read_ascii_nodes(&lines, &mut index, &mut self.document.root)?;
 
-        Ok(&self.document)
+        Ok(())
     }
 
-    /// Read ASCII nodes
     fn read_ascii_nodes(
-        &self,
         lines: &Vec<&str>,
         index: &mut usize,
         parent: &mut FbxNode,
@@ -549,11 +603,10 @@ impl FbxReader {
                         parent.add_child(node);
                         return Ok(());
                     } else if prop_line.ends_with('{') {
-                        // Child node
-                        self.read_ascii_nodes(lines, index, &mut node)?;
+                        Self::read_ascii_nodes(lines, index, &mut node)?;
                     } else {
                         // Property
-                        let property = self.parse_ascii_property(prop_line)?;
+                        let property = Self::parse_ascii_property(prop_line)?;
                         node.add_property(property);
                         *index += 1;
                     }
@@ -564,7 +617,7 @@ impl FbxReader {
                 return Ok(());
             } else {
                 // Property
-                let property = self.parse_ascii_property(line)?;
+                let property = Self::parse_ascii_property(line)?;
                 parent.add_property(property);
                 *index += 1;
             }
@@ -573,113 +626,7 @@ impl FbxReader {
         Ok(())
     }
 
-    /// Parse ASCII property
-    fn parse_ascii_property(&self, line: &str) -> Result<FbxProperty, FbxError> {
-        let trimmed = line.trim();
 
-        // Check for different property types
-        if trimmed.starts_with('"') && trimmed.ends_with('"') {
-            // String
-            let value = trimmed.trim_matches('"');
-            Ok(FbxProperty::String(value.to_string()))
-        } else if trimmed == "Y" {
-            // Boolean true
-            Ok(FbxProperty::Bool(true))
-        } else if trimmed == "N" {
-            // Boolean false
-            Ok(FbxProperty::Bool(false))
-        } else if trimmed.starts_with('b')
-            && trimmed[1..].starts_with('{')
-            && trimmed.ends_with('}')
-        {
-            // Bool array
-            let content = trimmed[2..trimmed.len() - 1].trim();
-            let values: Vec<bool> = content.split(',').map(|s| s.trim() == "Y").collect();
-            Ok(FbxProperty::BoolArray(values))
-        } else if trimmed.starts_with('i')
-            && trimmed[1..].starts_with('{')
-            && trimmed.ends_with('}')
-        {
-            // Int array
-            let content = trimmed[2..trimmed.len() - 1].trim();
-            let values: Vec<i32> = content
-                .split(',')
-                .map(|s| s.trim().parse().unwrap_or(0))
-                .collect();
-            Ok(FbxProperty::IntArray(values))
-        } else if trimmed.starts_with('f')
-            && trimmed[1..].starts_with('{')
-            && trimmed.ends_with('}')
-        {
-            // Float array
-            let content = trimmed[2..trimmed.len() - 1].trim();
-            let values: Vec<f32> = content
-                .split(',')
-                .map(|s| s.trim().parse().unwrap_or(0.0))
-                .collect();
-            Ok(FbxProperty::FloatArray(values))
-        } else if trimmed.starts_with('d')
-            && trimmed[1..].starts_with('{')
-            && trimmed.ends_with('}')
-        {
-            // Double array
-            let content = trimmed[2..trimmed.len() - 1].trim();
-            let values: Vec<f64> = content
-                .split(',')
-                .map(|s| s.trim().parse().unwrap_or(0.0))
-                .collect();
-            Ok(FbxProperty::DoubleArray(values))
-        } else if trimmed.starts_with('l')
-            && trimmed[1..].starts_with('{')
-            && trimmed.ends_with('}')
-        {
-            // Long long array
-            let content = trimmed[2..trimmed.len() - 1].trim();
-            let values: Vec<i64> = content
-                .split(',')
-                .map(|s| s.trim().parse().unwrap_or(0))
-                .collect();
-            Ok(FbxProperty::LongLongArray(values))
-        } else if trimmed.starts_with('s')
-            && trimmed[1..].starts_with('{')
-            && trimmed.ends_with('}')
-        {
-            // String array
-            let content = trimmed[2..trimmed.len() - 1].trim();
-            let values: Vec<String> = content
-                .split('"')
-                .filter(|s| !s.trim().is_empty() && s != ",")
-                .map(|s| s.to_string())
-                .collect();
-            Ok(FbxProperty::StringArray(values))
-        } else if let Ok(int_val) = trimmed.parse::<i32>() {
-            // Int
-            Ok(FbxProperty::Int(int_val))
-        } else if let Ok(float_val) = trimmed.parse::<f32>() {
-            // Float
-            Ok(FbxProperty::Float(float_val))
-        } else if let Ok(double_val) = trimmed.parse::<f64>() {
-            // Double
-            Ok(FbxProperty::Double(double_val))
-        } else if let Ok(long_val) = trimmed.parse::<i64>() {
-            // Long long
-            Ok(FbxProperty::LongLong(long_val))
-        } else {
-            // Default to string
-            Ok(FbxProperty::String(trimmed.to_string()))
-        }
-    }
-
-    /// Get the document
-    pub fn document(&self) -> &FbxDocument {
-        &self.document
-    }
-
-    /// Convert to TopoDsShape
-    pub fn to_shape(&self) -> Result<TopoDsShape, FbxError> {
-        let shape = TopoDsShape::new(ShapeType::Compound);
-        Ok(shape)
-    }
 }
 
 /// FBX writer for writing FBX files
@@ -733,7 +680,8 @@ impl FbxWriter {
         // Calculate node size
         let start_pos = writer.stream_position()?;
 
-        // Write placeholder for node header
+        // Write temporary node header (will be updated later with correct values)
+        // The header contains: end_offset (8 bytes), num_properties (4 bytes), name_len (1 byte)
         let mut node_header = [0u8; 13];
         writer.write_all(&node_header)?;
 
@@ -783,38 +731,46 @@ impl FbxWriter {
             FbxProperty::Bool(value) => {
                 writer.write_all(&['C' as u8])?;
                 writer.write_all(&[*value as u8])?;
+                return Ok(());
             }
             FbxProperty::Short(value) => {
                 writer.write_all(&['Y' as u8])?;
                 writer.write_all(&value.to_le_bytes())?;
+                return Ok(());
             }
             FbxProperty::Int(value) => {
                 writer.write_all(&['I' as u8])?;
                 writer.write_all(&value.to_le_bytes())?;
+                return Ok(());
             }
             FbxProperty::Float(value) => {
                 writer.write_all(&['F' as u8])?;
                 writer.write_all(&value.to_le_bytes())?;
+                return Ok(());
             }
             FbxProperty::Double(value) => {
                 writer.write_all(&['D' as u8])?;
                 writer.write_all(&value.to_le_bytes())?;
+                return Ok(());
             }
             FbxProperty::LongLong(value) => {
                 writer.write_all(&['L' as u8])?;
                 writer.write_all(&value.to_le_bytes())?;
+                return Ok(());
             }
             FbxProperty::String(value) => {
                 writer.write_all(&['S' as u8])?;
-                let length = (value.len() as u32).to_le_bytes();
-                writer.write_all(&length)?;
+                let str_length = (value.len() as u32).to_le_bytes();
+                writer.write_all(&str_length)?;
                 writer.write_all(value.as_bytes())?;
+                return Ok(());
             }
             FbxProperty::Binary(value) => {
                 writer.write_all(&['R' as u8])?;
                 let length = (value.len() as u32).to_le_bytes();
                 writer.write_all(&length)?;
                 writer.write_all(value)?;
+                return Ok(());
             }
             FbxProperty::BoolArray(values) => {
                 writer.write_all(&['b' as u8])?;
@@ -825,6 +781,7 @@ impl FbxWriter {
                 for value in values {
                     writer.write_all(&[*value as u8])?;
                 }
+                return Ok(());
             }
             FbxProperty::IntArray(values) => {
                 writer.write_all(&['i' as u8])?;
@@ -835,6 +792,7 @@ impl FbxWriter {
                 for value in values {
                     writer.write_all(&value.to_le_bytes())?;
                 }
+                return Ok(());
             }
             FbxProperty::FloatArray(values) => {
                 writer.write_all(&['f' as u8])?;
@@ -845,6 +803,7 @@ impl FbxWriter {
                 for value in values {
                     writer.write_all(&value.to_le_bytes())?;
                 }
+                return Ok(());
             }
             FbxProperty::DoubleArray(values) => {
                 writer.write_all(&['d' as u8])?;
@@ -855,6 +814,7 @@ impl FbxWriter {
                 for value in values {
                     writer.write_all(&value.to_le_bytes())?;
                 }
+                return Ok(());
             }
             FbxProperty::LongLongArray(values) => {
                 writer.write_all(&['l' as u8])?;
@@ -865,25 +825,22 @@ impl FbxWriter {
                 for value in values {
                     writer.write_all(&value.to_le_bytes())?;
                 }
+                return Ok(());
             }
             FbxProperty::StringArray(values) => {
                 writer.write_all(&['s' as u8])?;
                 let length = (values.len() as u32).to_le_bytes();
                 writer.write_all(&length)?;
-                // Write encoding (0 for default)
                 writer.write_all(&[0u8; 4])?;
                 for value in values {
                     let str_length = (value.len() as u32).to_le_bytes();
                     writer.write_all(&str_length)?;
                     writer.write_all(value.as_bytes())?;
                 }
+                Ok(())
             }
         }
-
-        Ok(())
     }
-
-    /// Write ASCII FBX format
     #[allow(dead_code)]
     fn write_ascii(&self, writer: &mut BufWriter<File>) -> Result<(), FbxError> {
         // 1. Write the ASCII FBX format header

@@ -5,10 +5,9 @@
 
 use crate::foundation::handle::Handle;
 use crate::geometry::{Direction, Point, Vector};
-use crate::topology::{TopoDsEdge, TopoDsFace, TopoDsShape, TopoDsVertex};
+use crate::topology::{TopoDsFace, TopoDsShape};
 use crate::visualization::Color;
 use std::collections::HashMap;
-use std::sync::Arc;
 
 // ============================================================================
 // Materials
@@ -1045,7 +1044,6 @@ pub fn calculate_lighting(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
 
     #[test]
     fn test_material_creation() {

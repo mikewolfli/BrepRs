@@ -239,10 +239,8 @@ impl TopologyValidator {
                 } else {
                     // Validate each wire
                     for wire in wires {
-                        if let Some(wire_ref) = wire.as_ref() {
-                            let wire_result = self.validate_wire(&wire_ref.shape());
-                            result.combine(wire_result);
-                        }
+                        let wire_result = self.validate_wire(wire.shape());
+                        result.combine(wire_result);
                     }
                 }
                 
@@ -279,10 +277,8 @@ impl TopologyValidator {
                 } else {
                     // Validate each face
                     for face in faces {
-                        if let Some(face_ref) = face.as_ref() {
-                            let face_result = self.validate_face(&face_ref.shape());
-                            result.combine(face_result);
-                        }
+                        let face_result = self.validate_face(face.shape());
+                        result.combine(face_result);
                     }
                     
                     // Check face connectivity
@@ -319,10 +315,8 @@ impl TopologyValidator {
                 } else {
                     // Validate each shell
                     for shell in shells {
-                        if let Some(shell_ref) = shell.as_ref() {
-                            let shell_result = self.validate_shell(&shell_ref.shape());
-                            result.combine(shell_result);
-                        }
+                        let shell_result = self.validate_shell(shell.shape());
+                        result.combine(shell_result);
                     }
                 }
                 
@@ -349,10 +343,8 @@ impl TopologyValidator {
                 let compound = &*(shape as *const _ as *const TopoDsCompound);
                 // Validate each component
                 for component in compound.components() {
-                    if let Some(component_ref) = component.as_ref() {
-                        let component_result = self.validate(component_ref);
-                        result.combine(component_result);
-                    }
+                    let component_result = self.validate(component);
+                    result.combine(component_result);
                 }
             }
         } else {
@@ -437,15 +429,11 @@ impl TopologyValidator {
         let mut edge_face_map = std::collections::HashMap::new();
         
         for face in faces {
-            if let Some(face_ref) = face.as_ref() {
-                let wires = face_ref.wires();
-                for wire in wires {
-                    if let Some(wire_ref) = wire.as_ref() {
-                        let edges = wire_ref.edges();
-                        for edge in edges {
-                            edge_face_map.entry(edge.shape_id()).or_insert(Vec::new()).push(face.clone());
-                        }
-                    }
+            let wires = face.wires();
+            for wire in wires {
+                let edges = wire.edges();
+                for edge in edges {
+                    edge_face_map.entry(edge.shape_id()).or_insert(Vec::new()).push(face.clone());
                 }
             }
         }
@@ -649,7 +637,7 @@ impl TopologyValidator {
                 // Repair each shell
                 for shell in solid.shells_mut() {
                     if let Some(shell_ref) = shell.as_mut() {
-                        self.repair_shell(&mut shell_ref.shape_mut());
+                        self.repair_shell(shell_ref.shape_mut());
                     }
                 }
                 
@@ -708,15 +696,18 @@ pub trait ValidatableExt {
 
 impl<T: crate::api::traits::Validatable> ValidatableExt for T {
     fn validate_detailed(&self) -> ValidationResult {
-        let _validator = TopologyValidator::new();
-        // For now, return a basic validation result
-        // In a real implementation, this would use the validator
-        ValidationResult::valid()
+        if self.is_valid() {
+            ValidationResult::valid()
+        } else {
+            let errors = self.validation_errors();
+            ValidationResult::invalid(
+                errors.into_iter().map(|e| ValidationError::TopologyError(e)).collect(),
+                vec![]
+            )
+        }
     }
-    
+
     fn repair_default(&mut self) -> bool {
-        let _validator = TopologyValidator::new();
-        // For now, just call the existing fix method
         self.fix()
     }
 }

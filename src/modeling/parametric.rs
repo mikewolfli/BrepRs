@@ -6,9 +6,9 @@
 use crate::foundation::handle::Handle;
 use crate::geometry::{Direction, Plane, Point, Vector};
 use crate::modeling::BrepBuilder;
-use crate::topology::{TopoDsEdge, TopoDsFace, TopoDsShape, TopoDsSolid, TopoDsVertex, TopoDsWire};
-use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, RwLock};
+use crate::topology::TopoDsShape;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 // ============================================================================
 // Parameter Definitions
@@ -59,6 +59,7 @@ pub struct NumericParam {
     description: String,
     min_value: Option<f64>,
     max_value: Option<f64>,
+    #[allow(dead_code)]
     step: Option<f64>,
 }
 
@@ -1358,7 +1359,6 @@ impl ParametricSphereBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
 
     #[test]
     fn test_parametric_box() {

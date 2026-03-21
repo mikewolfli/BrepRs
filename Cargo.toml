@@ -17,9 +17,20 @@ default = ["wasm", "serde", "rayon"]
 serde = ["dep:serde", "dep:serde_json", "dep:bincode"]
 wasm = ["dep:wasm-bindgen", "dep:js-sys", "dep:web-sys"]
 rayon = ["dep:rayon"]
-gpu = ["dep:wgpu", "dep:pollster"]
-pytorch = ["dep:tch"]
+
+onnxruntime = ["dep:onnxruntime"]
+tch = ["dep:tch"]
 tensorflow = ["dep:tensorflow"]
+wgpu = ["dep:wgpu", "dep:pollster"]
+pollster = ["dep:pollster"]
+websocket = ["dep:tokio-tungstenite", "dep:futures-util"]
+
+nlp = []
+sketch2mesh = []
+imageproc = []
+pytorch = []
+usd-rust = []
+gpu = []
 
 [dependencies]
 thiserror = "1.0"
@@ -56,9 +67,19 @@ zstd = "0.13.3"
 rmp-serde = "1.3.1"
 bson = { version = "3.1.0", features = ["serde"] }
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+mach2 = "0.4"
+
 # ML Framework dependencies
-tch = { version = "0.14", optional = true }
-tensorflow = { version = "0.21", optional = true }
+onnxruntime = { version = "0.0.14", optional = true }
+tch = { version = "0.23.0", optional = true }
+tensorflow = { version = "0.21.0", optional = true }
+reqwest = { version = "0.13.2", features = ["blocking", "multipart", "json"] }
+
+# WebSocket support
+tokio-tungstenite = { version = "0.24.0", optional = true }
+futures-util = { version = "0.3", optional = true }
 
 [dev-dependencies]
 criterion = "0.5"

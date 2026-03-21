@@ -9,10 +9,9 @@ use crate::geometry::{Point, Transform};
 use crate::topology::{
     topods_compound::TopoDsCompound, topods_edge::TopoDsEdge, topods_face::TopoDsFace,
     topods_shell::TopoDsShell, topods_solid::TopoDsSolid, topods_vertex::TopoDsVertex,
-    topods_wire::TopoDsWire, TopoDsShape,
+    topods_wire::TopoDsWire,
 };
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 
 /// BRep model
 #[derive(Debug, Clone)]
@@ -791,7 +790,7 @@ impl BrepBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::geometry::{Point, Vector};
+    use crate::geometry::Vector;
 
     #[test]
     fn test_brep_model_creation() {

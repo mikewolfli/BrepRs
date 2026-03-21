@@ -7,6 +7,7 @@ use std::collections::HashMap;
 
 use crate::ai_ml::protocol::{AiProtocolError, AiResult};
 use crate::ai_ml::text_to_3d::{TextTo3DGenerator, TextTo3DSettings};
+use crate::geometry::Point;
 use crate::mesh::mesh_data::Mesh3D;
 
 /// Multimodal Prompt
@@ -117,9 +118,17 @@ impl InteractiveSession {
     /// Handle user feedback
     pub fn handle_feedback(&mut self, feedback: &str) -> AiResult<Mesh3D> {
         // Process feedback and update mesh
-        // In a real implementation, this would use the feedback to refine the mesh
-        let result = self.generator.generate(&format!("{}", feedback))?;
-        let updated_mesh = self.merge_meshes(&self.current_mesh, &result.mesh)?;
+        // Real implementation: use feedback to refine the mesh
+        let refined_prompt = format!("Refine the mesh based on feedback: {}\nCurrent mesh features: {:.2} vertices, {:.2} faces", 
+            feedback, 
+            self.current_mesh.vertices.len(), 
+            self.current_mesh.faces.len()
+        );
+        
+        let result = self.generator.generate(&refined_prompt)?;
+        
+        // Use mesh morphing to smoothly transition between current and new mesh
+        let updated_mesh = self.morph_meshes(&self.current_mesh, &result.mesh, 0.7)?;
 
         // Update current mesh and history
         self.current_mesh = updated_mesh.clone();
@@ -163,10 +172,72 @@ impl InteractiveSession {
 
     /// Redo last undone action
     pub fn redo(&mut self) -> AiResult<Mesh3D> {
-        // In a real implementation, this would restore the mesh to the state before undo
-        // For now, we'll just return the current mesh
+        // Real implementation: restore the mesh to the state before undo
+        if self.history.is_empty() {
+            return Err(AiProtocolError::InvalidData(
+                "No history to redo".to_string(),
+            ));
+        }
+
+        // Look for the last undo interaction
+        let mut undo_index = None;
+        for (i, interaction) in self.history.iter().rev().enumerate() {
+            if let Interaction::Undo = interaction {
+                undo_index = Some(self.history.len() - 1 - i);
+                break;
+            }
+        }
+
+        if let Some(undo_idx) = undo_index {
+            // Remove the undo interaction
+            self.history.remove(undo_idx);
+
+            // Restore the state before undo
+            if undo_idx > 0 {
+                let previous_interaction = &self.history[undo_idx - 1];
+                if let Interaction::MeshModification(_, mesh) = previous_interaction {
+                    self.current_mesh = mesh.clone();
+                }
+            }
+        }
+
         self.history.push(Interaction::Redo);
         Ok(self.current_mesh.clone())
+    }
+
+    /// Morph between two meshes
+    fn morph_meshes(&self, mesh1: &Mesh3D, mesh2: &Mesh3D, weight: f64) -> AiResult<Mesh3D> {
+        // Real implementation: mesh morphing
+        let mut morphed_mesh = Mesh3D::new();
+
+        // Get the minimum number of vertices
+        let min_vertices = mesh1.vertices.len().min(mesh2.vertices.len());
+
+        // Morph vertices
+        for i in 0..min_vertices {
+            let v1 = &mesh1.vertices[i];
+            let v2 = &mesh2.vertices[i];
+            
+            let morphed_point = Point::new(
+                v1.point.x * (1.0 - weight) + v2.point.x * weight,
+                v1.point.y * (1.0 - weight) + v2.point.y * weight,
+                v1.point.z * (1.0 - weight) + v2.point.z * weight
+            );
+            
+            morphed_mesh.add_vertex(morphed_point);
+        }
+
+        // Add remaining vertices from mesh1
+        for i in min_vertices..mesh1.vertices.len() {
+            morphed_mesh.add_vertex(mesh1.vertices[i].point);
+        }
+
+        // Use faces from mesh1
+        for face in &mesh1.faces {
+            morphed_mesh.add_face(face.vertices.clone());
+        }
+
+        Ok(morphed_mesh)
     }
 
     /// Get current mesh

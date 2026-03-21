@@ -544,10 +544,81 @@ impl PostProcessingEffectImpl for ColorGradingEffect {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
-    fn apply(&self, input: &[u8], _width: usize, height: usize) -> Result<Vec<u8>, String> {
-        // Implementation of color grading effect
-        let _height = height;
-        Ok(input.to_vec())
+    fn apply(&self, input: &[u8], width: usize, height: usize) -> Result<Vec<u8>, String> {
+        // Real implementation of color grading effect
+        // Apply contrast, saturation, brightness, temperature, tint, lift, gamma, and gain adjustments
+        
+        let mut output = Vec::with_capacity(input.len());
+        let settings = &self.settings;
+        
+        for y in 0..height {
+            for x in 0..width {
+                let idx = (y * width + x) * 4;
+                if idx + 3 >= input.len() {
+                    continue;
+                }
+                
+                // Extract RGBA values (assuming RGBA8 format)
+                let r = input[idx] as f32 / 255.0;
+                let g = input[idx + 1] as f32 / 255.0;
+                let b = input[idx + 2] as f32 / 255.0;
+                let a = input[idx + 3];
+                
+                // Apply lift (shadows adjustment)
+                let mut r = r + settings.lift.0 * (1.0 - r);
+                let mut g = g + settings.lift.1 * (1.0 - g);
+                let mut b = b + settings.lift.2 * (1.0 - b);
+                
+                // Apply gamma (midtones adjustment)
+                r = r.powf(1.0 / settings.gamma.0.max(0.01));
+                g = g.powf(1.0 / settings.gamma.1.max(0.01));
+                b = b.powf(1.0 / settings.gamma.2.max(0.01));
+                
+                // Apply gain (highlights adjustment)
+                r *= settings.gain.0;
+                g *= settings.gain.1;
+                b *= settings.gain.2;
+                
+                // Apply brightness
+                r *= settings.brightness;
+                g *= settings.brightness;
+                b *= settings.brightness;
+                
+                // Apply contrast
+                let contrast_factor = settings.contrast;
+                r = (r - 0.5) * contrast_factor + 0.5;
+                g = (g - 0.5) * contrast_factor + 0.5;
+                b = (b - 0.5) * contrast_factor + 0.5;
+                
+                // Apply saturation
+                let luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+                r = luminance + (r - luminance) * settings.saturation;
+                g = luminance + (g - luminance) * settings.saturation;
+                b = luminance + (b - luminance) * settings.saturation;
+                
+                // Apply temperature (warm/cool adjustment)
+                let temp_factor = settings.temperature / 100.0;
+                r = (r * (1.0 + temp_factor * 0.1)).min(1.0);
+                b = (b * (1.0 - temp_factor * 0.1)).min(1.0);
+                
+                // Apply tint (green/magenta adjustment)
+                let tint_factor = settings.tint / 100.0;
+                g = (g * (1.0 + tint_factor * 0.05)).min(1.0);
+                
+                // Clamp values to [0, 1]
+                r = r.max(0.0).min(1.0);
+                g = g.max(0.0).min(1.0);
+                b = b.max(0.0).min(1.0);
+                
+                // Convert back to u8
+                output.push((r * 255.0) as u8);
+                output.push((g * 255.0) as u8);
+                output.push((b * 255.0) as u8);
+                output.push(a);
+            }
+        }
+        
+        Ok(output)
     }
     fn effect_type(&self) -> PostProcessingEffect {
         PostProcessingEffect::ColorGrading
@@ -578,9 +649,63 @@ impl PostProcessingEffectImpl for VignetteEffect {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
-    fn apply(&self, input: &[u8], _width: usize, _height: usize) -> Result<Vec<u8>, String> {
-        // Implementation of vignette effect
-        Ok(input.to_vec())
+    fn apply(&self, input: &[u8], width: usize, height: usize) -> Result<Vec<u8>, String> {
+        // Real implementation of vignette effect
+        // Creates a darkening effect around the edges of the image
+        
+        let mut output = Vec::with_capacity(input.len());
+        let settings = &self.settings;
+        
+        let center_x = width as f32 / 2.0;
+        let center_y = height as f32 / 2.0;
+        let max_distance = (center_x * center_x + center_y * center_y).sqrt();
+        
+        for y in 0..height {
+            for x in 0..width {
+                let idx = (y * width + x) * 4;
+                if idx + 3 >= input.len() {
+                    continue;
+                }
+                
+                // Extract RGBA values
+                let r = input[idx] as f32 / 255.0;
+                let g = input[idx + 1] as f32 / 255.0;
+                let b = input[idx + 2] as f32 / 255.0;
+                let a = input[idx + 3];
+                
+                // Calculate distance from center (normalized)
+                let dx = x as f32 - center_x;
+                let dy = y as f32 - center_y;
+                let distance = (dx * dx + dy * dy).sqrt() / max_distance;
+                
+                // Calculate vignette factor
+                // Inner radius: no vignette, outer radius: full vignette
+                let vignette_start = settings.radius * (1.0 - settings.softness);
+                let vignette_end = settings.radius;
+                
+                let vignette_factor = if distance < vignette_start {
+                    1.0
+                } else if distance > vignette_end {
+                    1.0 - settings.intensity
+                } else {
+                    let t = (distance - vignette_start) / (vignette_end - vignette_start);
+                    1.0 - settings.intensity * t
+                };
+                
+                // Apply vignette
+                let r = r * vignette_factor + settings.color.0 * (1.0 - vignette_factor);
+                let g = g * vignette_factor + settings.color.1 * (1.0 - vignette_factor);
+                let b = b * vignette_factor + settings.color.2 * (1.0 - vignette_factor);
+                
+                // Clamp and convert back to u8
+                output.push((r.max(0.0).min(1.0) * 255.0) as u8);
+                output.push((g.max(0.0).min(1.0) * 255.0) as u8);
+                output.push((b.max(0.0).min(1.0) * 255.0) as u8);
+                output.push(a);
+            }
+        }
+        
+        Ok(output)
     }
     fn effect_type(&self) -> PostProcessingEffect {
         PostProcessingEffect::Vignette
@@ -611,9 +736,49 @@ impl PostProcessingEffectImpl for ChromaticAberrationEffect {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
-    fn apply(&self, input: &[u8], _width: usize, _height: usize) -> Result<Vec<u8>, String> {
-        // Implementation of chromatic aberration effect
-        Ok(input.to_vec())
+    fn apply(&self, input: &[u8], width: usize, height: usize) -> Result<Vec<u8>, String> {
+        // Real implementation of chromatic aberration effect
+        // Simulates color fringing by offsetting RGB channels
+        
+        let mut output = vec![0u8; input.len()];
+        let settings = &self.settings;
+        
+        // Calculate offset in pixels based on intensity and dispersion
+        let offset_x = (settings.offset.0 + settings.intensity * settings.dispersion) * width as f32 * 0.01;
+        let offset_y = (settings.offset.1 + settings.intensity * settings.dispersion) * height as f32 * 0.01;
+        
+        for y in 0..height {
+            for x in 0..width {
+                let idx = (y * width + x) * 4;
+                if idx + 3 >= input.len() {
+                    continue;
+                }
+                
+                // Keep alpha channel unchanged
+                output[idx + 3] = input[idx + 3];
+                
+                // Sample red channel with positive offset
+                let red_x = ((x as f32 + offset_x) as isize).clamp(0, width as isize - 1) as usize;
+                let red_y = ((y as f32 + offset_y) as isize).clamp(0, height as isize - 1) as usize;
+                let red_idx = (red_y * width + red_x) * 4;
+                if red_idx + 3 < input.len() {
+                    output[idx] = input[red_idx];
+                }
+                
+                // Sample green channel at original position
+                output[idx + 1] = input[idx + 1];
+                
+                // Sample blue channel with negative offset
+                let blue_x = ((x as f32 - offset_x) as isize).clamp(0, width as isize - 1) as usize;
+                let blue_y = ((y as f32 - offset_y) as isize).clamp(0, height as isize - 1) as usize;
+                let blue_idx = (blue_y * width + blue_x) * 4;
+                if blue_idx + 3 < input.len() {
+                    output[idx + 2] = input[blue_idx];
+                }
+            }
+        }
+        
+        Ok(output)
     }
     fn effect_type(&self) -> PostProcessingEffect {
         PostProcessingEffect::ChromaticAberration

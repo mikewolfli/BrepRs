@@ -2,7 +2,7 @@ use crate::foundation::handle::Handle;
 use crate::foundation::StandardReal;
 use crate::geometry::{
     axis::Axis, bounding_box::BoundingBox, cone::Cone, cylinder::Cylinder, plane::Plane,
-    sphere::Sphere, vector::Vector, Point,
+    sphere::Sphere, Point,
 };
 use crate::topology::{TopoDsFace, TopoDsShell, TopoDsSolid};
 use std::sync::Arc;
@@ -319,7 +319,7 @@ impl BioreactorVessel {
                 );
 
                 // Create a sphere solid
-                let sphere_solid = crate::modeling::primitives::make_sphere(
+                let _sphere_solid = crate::modeling::primitives::make_sphere(
                     self.cylinder_radius,
                     Some(head_origin),
                 );
@@ -331,10 +331,9 @@ impl BioreactorVessel {
                 } else {
                     *self.axis.direction()
                 };
-                let plane = Plane::new(plane_origin, plane_normal, plane_normal);
+                let _plane = Plane::new(plane_origin, plane_normal, plane_normal);
 
-                // Create plane solid for cutting
-                let plane_solid = crate::modeling::primitives::make_box(
+                let _plane_solid = crate::modeling::primitives::make_box(
                     4.0 * self.cylinder_radius, // Width
                     4.0 * self.cylinder_radius, // Depth
                     2.0 * self.cylinder_radius, // Height
@@ -346,7 +345,7 @@ impl BioreactorVessel {
                 );
 
                 // Cut the sphere to get hemisphere
-                let boolean_ops = crate::modeling::boolean_operations::BooleanOperations::new();
+                let _boolean_ops = crate::modeling::boolean_operations::BooleanOperations::new();
 
                 // For simplicity, just create a new shell
                 shell = TopoDsShell::new();

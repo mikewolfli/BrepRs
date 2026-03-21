@@ -20,6 +20,7 @@ use std::sync::Arc;
 /// and robustness for complex geometric cases.
 #[derive(Debug, Clone)]
 pub struct AdvancedBooleanOperations {
+    #[allow(dead_code)]
     builder: BrepBuilder,
     bsp_builder: BspTreeBuilder,
     tolerance: f64,
@@ -545,7 +546,7 @@ impl AdvancedBooleanOperations {
         compound
     }
 
-    /// Collect faces from a shape
+    #[allow(dead_code)]
     fn collect_faces_from_shape(&self, shape: &Handle<TopoDsShape>) -> Vec<TopoDsFace> {
         let mut faces = Vec::new();
 

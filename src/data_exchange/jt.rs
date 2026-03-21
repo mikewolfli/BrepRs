@@ -5,12 +5,11 @@
 
 use chrono;
 use std::fs::{File, OpenOptions};
-use std::io::{BufRead, BufReader, BufWriter, Read, Write};
+use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
 
 use crate::data_exchange::{DataExchangeError, DataExchangeResult};
 use crate::foundation::handle::Handle;
-use crate::geometry::Point;
 use crate::topology::{shape_enum::ShapeType, topods_shape::TopoDsShape};
 
 /// JT file format error types
@@ -207,10 +206,10 @@ impl JtReader {
     fn read_content(
         &self,
         reader: &mut BufReader<File>,
-        version: JtVersion,
+        _version: JtVersion,
     ) -> DataExchangeResult<Handle<TopoDsShape>> {
         // Read file content based on version
-        let mut shape = TopoDsShape::new(ShapeType::Compound);
+        let shape = TopoDsShape::new(ShapeType::Compound);
 
         // Read geometry data
         let mut line = String::new();
@@ -268,11 +267,10 @@ impl JtReader {
             return Err(JtError::InvalidData("Box parameters".to_string()));
         }
 
-        let width = parameters[0];
-        let height = parameters[1];
-        let depth = parameters[2];
+        let _width = parameters[0];
+        let _height = parameters[1];
+        let _depth = parameters[2];
 
-        // Create box shape (simplified)
         let box_shape = TopoDsShape::new(ShapeType::Solid);
         Ok(box_shape)
     }
@@ -285,12 +283,11 @@ impl JtReader {
             return Err(JtError::MissingData("Sphere radius".to_string()));
         }
 
-        let radius = line
+        let _radius = line
             .trim()
             .parse::<f64>()
             .map_err(|_| JtError::InvalidData("Sphere radius".to_string()))?;
 
-        // Create sphere shape (simplified)
         let sphere_shape = TopoDsShape::new(ShapeType::Solid);
         Ok(sphere_shape)
     }
@@ -315,10 +312,9 @@ impl JtReader {
             return Err(JtError::InvalidData("Cylinder parameters".to_string()));
         }
 
-        let radius = parameters[0];
-        let height = parameters[1];
+        let _radius = parameters[0];
+        let _height = parameters[1];
 
-        // Create cylinder shape (simplified)
         let cylinder_shape = TopoDsShape::new(ShapeType::Solid);
         Ok(cylinder_shape)
     }

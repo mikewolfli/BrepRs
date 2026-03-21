@@ -109,7 +109,61 @@ impl BenchmarkSuite {
     fn get_memory_usage(&self) -> usize {
         // Implementation to get memory usage
         // This is platform-dependent
-        0 // Placeholder
+        #[cfg(target_os = "linux")]
+        {
+            use std::fs::File;
+            use std::io::{BufRead, BufReader};
+            if let Ok(file) = File::open("/proc/self/status") {
+                let reader = BufReader::new(file);
+                for line in reader.lines() {
+                    if let Ok(l) = line {
+                        if l.starts_with("VmRSS:") {
+                            let parts: Vec<&str> = l.split_whitespace().collect();
+                            if parts.len() >= 2 {
+                                if let Ok(kb) = parts[1].parse::<usize>() {
+                                    return kb * 1024;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        #[cfg(target_os = "macos")]
+        {
+            // Simplified macOS memory usage estimation
+            // Using a simple heuristic based on process statistics
+            if let Ok(output) = std::process::Command::new("ps")
+                .args(["-o", "rss=", "-p", &std::process::id().to_string()])
+                .output()
+            {
+                if let Ok(rss) = String::from_utf8_lossy(&output.stdout).trim().parse::<usize>() {
+                    return rss * 1024; // Convert from KB to bytes
+                }
+            }
+        }
+        #[cfg(target_os = "windows")]
+        {
+            use winapi::um::psapi::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS};
+            use winapi::um::processthreadsapi::GetCurrentProcess;
+            use std::mem::size_of;
+            let mut counters = PROCESS_MEMORY_COUNTERS {
+                cb: size_of::<PROCESS_MEMORY_COUNTERS>() as u32,
+                ..unsafe { std::mem::zeroed() }
+            };
+            unsafe {
+                if GetProcessMemoryInfo(
+                    GetCurrentProcess(),
+                    &mut counters,
+                    size_of::<PROCESS_MEMORY_COUNTERS>() as u32,
+                ) != 0
+                {
+                    return counters.WorkingSetSize as usize;
+                }
+            }
+        }
+        // Fallback: return 0 if not supported
+        0
     }
 
     /// Print results

@@ -1,4 +1,4 @@
-use crate::geometry::{Cylinder, Point, Vector};
+use crate::geometry::Point;
 use crate::modeling::electronics::{PadShape, PcbComponentFootprint, PcbLayerType, PcbPad};
 use crate::topology::TopoDsSolid;
 
@@ -58,8 +58,45 @@ impl LibraryComponent {
         if let Some(body) = &self.body_geometry {
             body.clone()
         } else {
-            // Create a simple placeholder solid
-            TopoDsSolid::new()
+            // Create a default bounding box solid based on footprint dimensions
+            let mut solid = TopoDsSolid::new();
+            
+            // Calculate bounding box from footprint pads
+            if !self.footprint.pads.is_empty() {
+                let mut min_x = f64::MAX;
+                let mut max_x = f64::MIN;
+                let mut min_y = f64::MAX;
+                let mut max_y = f64::MIN;
+                
+                for pad in &self.footprint.pads {
+                    let (width, height) = pad.size;
+                    min_x = min_x.min(pad.position.x - width / 2.0);
+                    max_x = max_x.max(pad.position.x + width / 2.0);
+                    min_y = min_y.min(pad.position.y - height / 2.0);
+                    max_y = max_y.max(pad.position.y + height / 2.0);
+                }
+                
+                // Add small margin and height
+                let margin = 0.001;
+                let height = 0.002;
+                
+                // Create a simple box solid using primitives
+                let origin = Point::new(
+                    (min_x + max_x) / 2.0,
+                    (min_y + max_y) / 2.0,
+                    height / 2.0,
+                );
+                let box_solid = crate::modeling::primitives::make_box(
+                    max_x - min_x + margin * 2.0,
+                    max_y - min_y + margin * 2.0,
+                    height,
+                    Some(origin),
+                );
+                
+                solid = box_solid;
+            }
+            
+            solid
         }
     }
 }

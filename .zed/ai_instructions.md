@@ -1,33 +1,48 @@
+
+
 # ZED AI STRICT INSTRUCTIONS – RUST DEVELOPMENT
-# THESE RULES ARE MANDATORY. NO EXCEPTIONS.
 
-# ------------------------------------------------------------------------------
-# FORBIDDEN
-# ------------------------------------------------------------------------------
-- DO NOT use `todo!()`, `todo!`, `unimplemented!()`, `unimplemented!`
-- DO NOT use empty blocks `{ }`, empty functions, empty implementations
-- DO NOT use `simple_impl`, `simple_implemented`, `stub`, `placeholder`, fake logic
-- DO NOT use `Ok(())` or `Ok(Default::default())` as placeholder
-- DO NOT hide incomplete logic inside if / else / match / loop / nested branches
-- DO NOT truncate tasks, limit tasks to 10, or cap task count at any number
-- DO NOT simplify, merge, reduce, or shorten tasks
-- DO NOT skip steps or reorder tasks
-- DO NOT perform bulk edits that break symbol pairs: { } ( ) [ ] < >
-- DO NOT leave unclosed braces, parentheses, or brackets
-- DO NOT guess missing crate features or functions
-- DO NOT delete or modify unrelated code
-- DO NOT rely blindly on tools without full syntax validation
+**This document defines strict requirements for AI code generation and automation in the ZED editor for all Rust development. All rules are mandatory.**
 
-# ------------------------------------------------------------------------------
-# MANDATORY BEHAVIOR
-# ------------------------------------------------------------------------------
-1. Show **ALL tasks in full, complete, original detail** – no truncation, no limit.
-2. List tasks **one by one in strict order** (1, 2, 3, ...) and execute sequentially.
-3. Finish every task fully before moving to the next.
-4. Validate all symbol pairs **before and after every edit**: { } ( ) [ ] < >
-5. Ensure all code is **fully implemented, complete, and ready to compile**.
-6. Use proper Rust error handling with Result.
-7. Support WASM compilation.
-8. Follow project architecture and naming.
-9. Check Cargo.toml features before generating code.
-10. Self-check for forbidden patterns and fix ALL before output.
+---
+## 1. FORBIDDEN
+- Do not use `todo!()`, `unimplemented!()`, or any variants
+- Do not use empty code blocks `{ }`, empty functions, or empty implementations
+- Do not use `simple_impl`, `stub`, `placeholder`, or fake logic
+- Do not use `Ok(())` or `Ok(Default::default())` as placeholders
+- Do not hide incomplete logic inside if/else/match/loop branches
+- Do not truncate, merge, simplify, reorder, or skip tasks
+- Do not perform bulk edits that break symbol pairs: { } ( ) [ ] < >
+- Do not leave unclosed braces, parentheses, brackets, or angle brackets
+- Do not guess crate features or functions that do not exist
+- Do not delete or modify unrelated code
+- Do not blindly rely on tool output; always manually validate syntax
+
+**Common mistakes:**
+```rust
+fn foo() { todo!() }
+fn bar() {}
+let x = Ok(());
+```
+
+---
+## 2. MANDATORY BEHAVIOR
+1. All tasks must be listed **completely, in detail, with no truncation**
+2. Tasks must be executed **strictly in order** (1,2,3...)
+3. Each task must be **fully completed** before proceeding to the next
+4. **Validate all symbol pairs** before and after every edit: { } ( ) [ ] < >
+5. Code must be **fully implemented and compilable**
+6. Error handling must use Rust `Result`
+7. WASM compilation must be supported
+8. Follow project architecture and naming conventions
+9. Check Cargo.toml features before generating code
+10. Self-check for all forbidden patterns and fix before output
+
+**Recommended practice:**
+- Fully leverage Rust's type system and error handling
+- Run `cargo check` locally after code generation to verify
+- Immediately fix any unclosed symbols, placeholders, or fake implementations
+
+---
+**Purpose:**
+This document applies to all Rust projects in the ZED editor, ensuring AI-generated code is safe, standardized, and maintainable.

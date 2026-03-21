@@ -303,7 +303,7 @@ impl BrepBuilder {
 
     /// Create a cylinder solid
     #[inline]
-    pub fn make_cylinder(&self, radius: f64, height: f64, origin: Point, direction: crate::geometry::Direction) -> TopoDsSolid {
+    pub fn make_cylinder(&self, radius: f64, height: f64, origin: Point, _direction: crate::geometry::Direction) -> TopoDsSolid {
         // For simplicity, we use the Z-axis direction for now
         crate::modeling::primitives::make_cylinder(radius, height, Some(origin))
     }

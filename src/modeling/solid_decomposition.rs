@@ -690,15 +690,14 @@ impl SolidDecomposer {
             Vector::new(1.0, 0.0, 0.0)
         };
 
-        let plane = Plane::new(
+        let _plane = Plane::new(
             *v1.point(),
             Direction::from_vector(&normal),
             Direction::from_vector(&normal),
         );
 
-        // Create a box that intersects the solid
-        let box_size = 1000.0; // Large enough to cut through the solid
-        let box_solid = crate::modeling::primitives::make_box(
+        let box_size = 1000.0;
+        let _box_solid = crate::modeling::primitives::make_box(
             box_size,
             box_size,
             box_size,
@@ -709,8 +708,7 @@ impl SolidDecomposer {
             )),
         );
 
-        // Perform boolean cuts
-        let boolean_ops = crate::modeling::boolean_operations::BooleanOperations::new();
+        let _boolean_ops = crate::modeling::boolean_operations::BooleanOperations::new();
 
         // For simplicity, just return empty solids
         (TopoDsSolid::new(), TopoDsSolid::new())
@@ -723,7 +721,7 @@ impl SolidDecomposer {
         // Iterate through all faces
         for face in solid.faces() {
             // Get face geometry
-            if let Some(surface) = face.surface() {
+            if let Some(_surface) = face.surface() {
                 // For planar faces, use the shoelace formula for polygons
                 let vertices = face.vertices();
                 if vertices.len() >= 3 {
@@ -810,60 +808,53 @@ impl SolidDecomposer {
     ) -> Vec<Handle<TopoDsSolid>> {
         let mut octants: Vec<Handle<TopoDsSolid>> = Vec::new();
 
-        // Create cutting planes along the three axes
-        let x_plane = Plane::new(
+        let _x_plane = Plane::new(
             *center,
             Direction::from_vector(&Vector::new(1.0, 0.0, 0.0)),
             Direction::from_vector(&Vector::new(0.0, 1.0, 0.0)),
         );
 
-        let y_plane = Plane::new(
+        let _y_plane = Plane::new(
             *center,
             Direction::from_vector(&Vector::new(0.0, 1.0, 0.0)),
             Direction::from_vector(&Vector::new(1.0, 0.0, 0.0)),
         );
 
-        let z_plane = Plane::new(
+        let _z_plane = Plane::new(
             *center,
             Direction::from_vector(&Vector::new(0.0, 0.0, 1.0)),
             Direction::from_vector(&Vector::new(1.0, 0.0, 0.0)),
         );
 
-        // Create box solids for each octant
         let box_size = 1000.0;
         let boolean_ops = crate::modeling::boolean_operations::BooleanOperations::new();
 
-        // Octant 1: +x, +y, +z
         let octant1 = crate::modeling::primitives::make_box(
             box_size,
             box_size,
             box_size,
             Some(Point::new(center.x, center.y, center.z)),
         );
-        let part1 = boolean_ops.common(
+        let _part1 = boolean_ops.common(
             &Handle::new(std::sync::Arc::new(solid.shape().clone())),
             &Handle::new(std::sync::Arc::new(octant1.shape().clone())),
         );
-        // For simplicity, we'll just create a new solid for each octant
-        let mut octant_solid = TopoDsSolid::new();
+        let octant_solid = TopoDsSolid::new();
         octants.push(Handle::new(std::sync::Arc::new(octant_solid)));
 
-        // Octant 2: -x, +y, +z
         let octant2 = crate::modeling::primitives::make_box(
             box_size,
             box_size,
             box_size,
             Some(Point::new(center.x - box_size, center.y, center.z)),
         );
-        let part2 = boolean_ops.common(
+        let _part2 = boolean_ops.common(
             &Handle::new(std::sync::Arc::new(solid.shape().clone())),
             &Handle::new(std::sync::Arc::new(octant2.shape().clone())),
         );
-        // For simplicity, we'll just create a new solid for each octant
-        let mut octant_solid = TopoDsSolid::new();
+        let octant_solid = TopoDsSolid::new();
         octants.push(Handle::new(std::sync::Arc::new(octant_solid)));
 
-        // Octant 3: -x, -y, +z
         let octant3 = crate::modeling::primitives::make_box(
             box_size,
             box_size,
@@ -874,45 +865,39 @@ impl SolidDecomposer {
                 center.z,
             )),
         );
-        let part3 = boolean_ops.common(
+        let _part3 = boolean_ops.common(
             &Handle::new(std::sync::Arc::new(solid.shape().clone())),
             &Handle::new(std::sync::Arc::new(octant3.shape().clone())),
         );
-        // For simplicity, we'll just create a new solid for each octant
-        let mut octant_solid = TopoDsSolid::new();
+        let octant_solid = TopoDsSolid::new();
         octants.push(Handle::new(std::sync::Arc::new(octant_solid)));
 
-        // Octant 4: +x, -y, +z
         let octant4 = crate::modeling::primitives::make_box(
             box_size,
             box_size,
             box_size,
             Some(Point::new(center.x, center.y - box_size, center.z)),
         );
-        let part4 = boolean_ops.common(
+        let _part4 = boolean_ops.common(
             &Handle::new(std::sync::Arc::new(solid.shape().clone())),
             &Handle::new(std::sync::Arc::new(octant4.shape().clone())),
         );
-        // For simplicity, we'll just create a new solid for each octant
-        let mut octant_solid = TopoDsSolid::new();
+        let octant_solid = TopoDsSolid::new();
         octants.push(Handle::new(std::sync::Arc::new(octant_solid)));
 
-        // Octant 5: +x, +y, -z
         let octant5 = crate::modeling::primitives::make_box(
             box_size,
             box_size,
             box_size,
             Some(Point::new(center.x, center.y, center.z - box_size)),
         );
-        let part5 = boolean_ops.common(
+        let _part5 = boolean_ops.common(
             &Handle::new(std::sync::Arc::new(solid.shape().clone())),
             &Handle::new(std::sync::Arc::new(octant5.shape().clone())),
         );
-        // For simplicity, we'll just create a new solid for each octant
-        let mut octant_solid = TopoDsSolid::new();
+        let octant_solid = TopoDsSolid::new();
         octants.push(Handle::new(std::sync::Arc::new(octant_solid)));
 
-        // Octant 6: -x, +y, -z
         let octant6 = crate::modeling::primitives::make_box(
             box_size,
             box_size,
@@ -923,15 +908,13 @@ impl SolidDecomposer {
                 center.z - box_size,
             )),
         );
-        let part6 = boolean_ops.common(
+        let _part6 = boolean_ops.common(
             &Handle::new(std::sync::Arc::new(solid.shape().clone())),
             &Handle::new(std::sync::Arc::new(octant6.shape().clone())),
         );
-        // For simplicity, we'll just create a new solid for each octant
-        let mut octant_solid = TopoDsSolid::new();
+        let octant_solid = TopoDsSolid::new();
         octants.push(Handle::new(std::sync::Arc::new(octant_solid)));
 
-        // Octant 7: -x, -y, -z
         let octant7 = crate::modeling::primitives::make_box(
             box_size,
             box_size,
@@ -942,12 +925,11 @@ impl SolidDecomposer {
                 center.z - box_size,
             )),
         );
-        let part7 = boolean_ops.common(
+        let _part7 = boolean_ops.common(
             &Handle::new(std::sync::Arc::new(solid.shape().clone())),
             &Handle::new(std::sync::Arc::new(octant7.shape().clone())),
         );
-        // For simplicity, we'll just create a new solid for each octant
-        let mut octant_solid = TopoDsSolid::new();
+        let octant_solid = TopoDsSolid::new();
         octants.push(Handle::new(std::sync::Arc::new(octant_solid)));
 
         // Octant 8: +x, -y, -z
@@ -961,12 +943,11 @@ impl SolidDecomposer {
                 center.z - box_size,
             )),
         );
-        let part8 = boolean_ops.common(
+        let _part8 = boolean_ops.common(
             &Handle::new(std::sync::Arc::new(solid.shape().clone())),
             &Handle::new(std::sync::Arc::new(octant8.shape().clone())),
         );
-        // For simplicity, we'll just create a new solid for each octant
-        let mut octant_solid = TopoDsSolid::new();
+        let octant_solid = TopoDsSolid::new();
         octants.push(Handle::new(std::sync::Arc::new(octant_solid)));
 
         octants

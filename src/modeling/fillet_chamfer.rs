@@ -573,10 +573,31 @@ impl FilletChamfer {
     pub fn can_fillet_edge(&self, edge: &Handle<TopoDsEdge>) -> bool {
         if let Some(edge_ref) = edge.get() {
             // Check if edge has adjacent faces
-            // In a real implementation, we would check:
-            // - Edge has exactly two adjacent faces
-            // - Faces are not coplanar
-            // - Edge is not degenerate
+            // Real implementation: Check all required conditions
+            let adjacent_faces = edge_ref.adjacent_faces();
+            
+            // Edge must have exactly two adjacent faces
+            if adjacent_faces.len() != 2 {
+                return false;
+            }
+            
+            // Check if faces are not coplanar
+            if let (Some(face1), Some(face2)) = (adjacent_faces[0].get(), adjacent_faces[1].get()) {
+                // Try to get normals from surfaces if available
+                if let (Some(surface1), Some(surface2)) = (face1.surface(), face2.surface()) {
+                    // For plane surfaces, u and v don't matter; for others, use (0,0)
+                    let normal1 = surface1.normal(0.0, 0.0);
+                    let normal2 = surface2.normal(0.0, 0.0);
+                    
+                    // Check if normals are not parallel (faces not coplanar)
+                    let dot_product = normal1.x * normal2.x + normal1.y * normal2.y + normal1.z * normal2.z;
+                    if dot_product.abs() > 1.0 - 1e-6 {
+                        return false;
+                    }
+                }
+            }
+            
+            // Edge must not be degenerate
             !edge_ref.is_degenerate()
         } else {
             false
@@ -593,10 +614,30 @@ impl FilletChamfer {
     pub fn can_chamfer_face(&self, face: &Handle<TopoDsFace>) -> bool {
         if let Some(face_ref) = face.get() {
             // Check if face has edges
-            // In a real implementation, we would check:
-            // - Face has at least one edge
-            // - Face is not degenerate
-            face_ref.num_wires() > 0
+            // Real implementation: Check all required conditions
+            
+            // Face must have at least one wire
+            if face_ref.num_wires() == 0 {
+                return false;
+            }
+            
+            // Check if face has at least one edge
+            let mut has_edge = false;
+            for wire in face_ref.wires() {
+                if let Some(wire_ref) = wire.get() {
+                    if wire_ref.num_edges() > 0 {
+                        has_edge = true;
+                        break;
+                    }
+                }
+            }
+            
+            if !has_edge {
+                return false;
+            }
+            
+            // Face must not be degenerate
+            !face_ref.is_degenerate()
         } else {
             false
         }

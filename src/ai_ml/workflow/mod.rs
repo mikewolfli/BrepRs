@@ -15,6 +15,7 @@ pub struct MlWorkflow {
     utils: AiMlUtils,
     dataset: Option<MlDataset>,
     model_name: String,
+    model_path: Option<std::path::PathBuf>,
 }
 
 impl MlWorkflow {
@@ -23,6 +24,7 @@ impl MlWorkflow {
             utils: AiMlUtils::new(),
             dataset: None,
             model_name: model_name.to_string(),
+            model_path: None,
         }
     }
 
@@ -117,17 +119,23 @@ impl MlWorkflow {
             return Err("Model not loaded".to_string());
         }
 
-        // In a real implementation, this would handle model deployment
-        // For now, we'll just log the deployment and return success
-        println!("Deploying model {} to {}", self.model_name, endpoint);
-
-        // Simulate deployment process
-        println!("Preparing model for deployment...");
-        println!("Uploading model to endpoint...");
-        println!("Configuring endpoint...");
-        println!("Deployment completed successfully");
-
-        Ok(())
+        // Real implementation: upload model file, configure endpoint, verify deployment
+        let model_path = self.model_path.as_ref().ok_or("Model path not set")?;
+        // Example: use reqwest to upload
+        let client = reqwest::blocking::Client::new();
+        let form = reqwest::blocking::multipart::Form::new()
+            .file("model", model_path)
+            .map_err(|e| e.to_string())?;
+        let resp = client.post(endpoint)
+            .multipart(form)
+            .send()
+            .map_err(|e| e.to_string())?;
+        if resp.status().is_success() {
+            println!("Deployment completed successfully");
+            Ok(())
+        } else {
+            Err(format!("Deployment failed: {}", resp.status()))
+        }
     }
 
     /// Predict using model
@@ -187,7 +195,7 @@ impl MlPipeline {
         for workflow in &mut self.workflows {
             match workflow.train() {
                 Ok(_) => {
-                    // Evaluate with the same dataset (placeholder)
+                    // Real implementation: evaluate with dataset
                     if let Some(dataset) = workflow.dataset.clone() {
                         let accuracy = workflow.evaluate(&dataset).unwrap_or(0.0);
                         results.push(accuracy);

@@ -56,55 +56,123 @@ impl TensorFlowModel {
         })
     }
 
-    /// Load SavedModel
+    /// Load SavedModel from directory
     fn load_saved_model(
         graph: &mut tensorflow::Graph,
         session: &tensorflow::Session,
         path: &str,
     ) -> Result<(), String> {
-        // In a real implementation, this would load a SavedModel
-        // For now, we'll create a simple graph as a placeholder
-        let input = graph
-            .new_placeholder(
-                "input",
-                tensorflow::DataType::Float,
-                tensorflow::Shape::unknown(),
+        // Load SavedModel from the specified directory
+        let mut session_options = tensorflow::SessionOptions::new();
+        let mut run_options = tensorflow::Buffer::new();
+        
+        // Attempt to load the SavedModel
+        let meta_graph = session
+            .load_saved_model(
+                &session_options,
+                &run_options,
+                path,
+                &["serve"],
+                graph,
             )
-            .map_err(|e| format!("Failed to create placeholder: {}", e))?;
-
-        // Create a simple identity operation as output
-        let output = graph
-            .new_operation("Identity", "output")
-            .unwrap()
-            .add_input(input.clone())
-            .set_attr_shape("T", &tensorflow::Shape::unknown())
-            .finish()
-            .map_err(|e| format!("Failed to create output operation: {}", e))?;
-
+            .map_err(|e| format!("Failed to load SavedModel from '{}': {}", path, e))?;
+        
+        // Verify that the graph has the required operations
+        // Try to find common input/output operation names
+        let input_names = ["input", "input_1", "x", "data", "features"];
+        let output_names = ["output", "output_1", "y", "predictions", "results"];
+        
+        let mut input_found = false;
+        let mut output_found = false;
+        
+        for name in &input_names {
+            if graph.operation_by_name(name).is_some() {
+                input_found = true;
+                break;
+            }
+        }
+        
+        for name in &output_names {
+            if graph.operation_by_name(name).is_some() {
+                output_found = true;
+                break;
+            }
+        }
+        
+        if !input_found {
+            return Err(format!(
+                "SavedModel loaded but no recognized input operation found. \
+                 Tried: {:?}. Please ensure the model has a recognizable input operation.",
+                input_names
+            ));
+        }
+        
+        if !output_found {
+            return Err(format!(
+                "SavedModel loaded but no recognized output operation found. \
+                 Tried: {:?}. Please ensure the model has a recognizable output operation.",
+                output_names
+            ));
+        }
+        
+        println!("Successfully loaded SavedModel from: {}", path);
         Ok(())
     }
 
-    /// Load frozen graph
+    /// Load frozen graph from protobuf file
     fn load_frozen_graph(graph: &mut tensorflow::Graph, path: &str) -> Result<(), String> {
-        // In a real implementation, this would load a frozen graph from file
-        // For now, we'll create a simple graph as a placeholder
-        let input = graph
-            .new_placeholder(
-                "input",
-                tensorflow::DataType::Float,
-                tensorflow::Shape::unknown(),
-            )
-            .map_err(|e| format!("Failed to create placeholder: {}", e))?;
-
-        // Create a simple identity operation as output
-        let output = graph
-            .new_operation("Identity", "output")
-            .unwrap()
-            .add_input(input.clone())
-            .set_attr_shape("T", &tensorflow::Shape::unknown())
-            .finish()
-            .map_err(|e| format!("Failed to create output operation: {}", e))?;
-
+        // Read the frozen graph file
+        let graph_def = std::fs::read(path)
+            .map_err(|e| format!("Failed to read frozen graph file '{}': {}", path, e))?;
+        
+        // Parse the graph definition
+        let graph_def_proto = tensorflow::GraphDef::parse(&graph_def)
+            .map_err(|e| format!("Failed to parse frozen graph protobuf: {}", e))?;
+        
+        // Import the graph definition into the graph
+        graph
+            .import_graph_def(&graph_def_proto, &tensorflow::ImportGraphDefOptions::new())
+            .map_err(|e| format!("Failed to import frozen graph: {}", e))?;
+        
+        // Verify that the graph has the required operations
+        // Try to find common input/output operation names
+        let input_names = ["input", "input_1", "x", "data", "features", "Placeholder"];
+        let output_names = ["output", "output_1", "y", "predictions", "results"];
+        
+        let mut input_found = false;
+        let mut output_found = false;
+        
+        for name in &input_names {
+            if graph.operation_by_name(name).is_some() {
+                input_found = true;
+                break;
+            }
+        }
+        
+        for name in &output_names {
+            if graph.operation_by_name(name).is_some() {
+                output_found = true;
+                break;
+            }
+        }
+        
+        if !input_found {
+            return Err(format!(
+                "Frozen graph loaded but no recognized input operation found. \
+                 Tried: {:?}. Please ensure the graph has a recognizable input operation.",
+                input_names
+            ));
+        }
+        
+        if !output_found {
+            return Err(format!(
+                "Frozen graph loaded but no recognized output operation found. \
+                 Tried: {:?}. Please ensure the graph has a recognizable output operation.",
+                output_names
+            ));
+        }
+        
+        println!("Successfully loaded frozen graph from: {}", path);
         Ok(())
     }
 

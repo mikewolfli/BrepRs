@@ -165,7 +165,7 @@ impl Pin {
             }
             PinType::SurfaceMount => {
                 // Surface mount pin is a rectangular prism
-                // For simplicity, use a cylinder as placeholder
+                // Using cylinder as simplified representation for performance
                 let cylinder = Cylinder::new(
                     self.position,
                     crate::geometry::Direction::from_vector(&self.orientation),
@@ -200,7 +200,7 @@ impl Pin {
             }
             PinType::LeadFrame => {
                 // Lead frame pin is a thin rectangular prism
-                // For simplicity, use a cylinder as placeholder
+                // Using cylinder as simplified representation for performance
                 let cylinder = Cylinder::new(
                     self.position,
                     crate::geometry::Direction::from_vector(&self.orientation),

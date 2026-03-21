@@ -396,6 +396,12 @@ impl TopoDsFace {
     pub fn get(&self) -> Option<&Self> {
         Some(self)
     }
+
+    /// Check if this face is degenerate (area is zero or has no valid wires)
+    pub fn is_degenerate(&self) -> bool {
+        // A face is degenerate if it has no wires or its area is zero
+        self.wires.is_empty() || self.area() < 1e-12
+    }
 }
 
 impl Default for TopoDsFace {

@@ -137,59 +137,75 @@ impl DynamicSurface {
         vertices: &mut Vec<Point>,
         edges: &mut Vec<(usize, usize)>,
         faces: &mut Vec<Vec<usize>>,
-        _vertex_map: &mut HashMap<usize, usize>,
+        vertex_map: &mut HashMap<usize, usize>,
         vertex_index_map: &mut HashMap<Point, usize>,
     ) {
-        // For simplicity, we'll create a basic topology extraction
-        // In a real implementation, you would use OpenCASCADE's topology traversal
+        // Real implementation: Extract actual topology from the shape
+        // This implementation uses the shape's actual vertices, edges, and faces
 
         // Extract faces from the shape
         let shape_faces = shape.faces();
 
-        for _face in shape_faces {
-            let mut face_vertices = Vec::new();
+        for (face_idx, face) in shape_faces.iter().enumerate() {
+            if let Some(face_ref) = face.get() {
+                let mut face_vertices = Vec::new();
 
-            // For simplicity, we'll create a basic face with 4 vertices
-            // In a real implementation, you would extract actual vertices from the face
-            let center = Point::new(0.0, 0.0, 0.0);
-            let size = 1.0;
+                // Extract actual vertices from the face
+                let outer_wire = face_ref.outer_wire();
+                if let Some(wire) = outer_wire {
+                    if let Some(wire_ref) = wire.get() {
+                        let wire_vertices = wire_ref.vertices();
 
-            let v0 = Point::new(center.x - size / 2.0, center.y - size / 2.0, center.z);
-            let v1 = Point::new(center.x + size / 2.0, center.y - size / 2.0, center.z);
-            let v2 = Point::new(center.x + size / 2.0, center.y + size / 2.0, center.z);
-            let v3 = Point::new(center.x - size / 2.0, center.y + size / 2.0, center.z);
+                        for vertex in wire_vertices {
+                            if let Some(vertex_ref) = vertex.get() {
+                                let point = vertex_ref.point();
+                                
+                                // Get or create vertex index
+                                let idx = if let Some(&idx) = vertex_index_map.get(point) {
+                                    idx
+                                } else {
+                                    let idx = vertices.len();
+                                    vertices.push(*point);
+                                    vertex_index_map.insert(*point, idx);
+                                    idx
+                                };
 
-            let vertices_to_add = vec![v0, v1, v2, v3];
+                                if !face_vertices.contains(&idx) {
+                                    face_vertices.push(idx);
+                                }
+                            }
+                        }
 
-            for vertex in vertices_to_add {
-                let idx = if let Some(&idx) = vertex_index_map.get(&vertex) {
-                    idx
-                } else {
-                    let idx = vertices.len();
-                    vertices.push(vertex);
-                    vertex_index_map.insert(vertex, idx);
-                    idx
-                };
-
-                if !face_vertices.contains(&idx) {
-                    face_vertices.push(idx);
-                }
-            }
-
-            // Add edges
-            if face_vertices.len() >= 2 {
-                for i in 0..face_vertices.len() {
-                    let j = (i + 1) % face_vertices.len();
-                    let edge = (face_vertices[i], face_vertices[j]);
-                    if !edges.contains(&edge) && !edges.contains(&(edge.1, edge.0)) {
-                        edges.push(edge);
+                        // Extract edges from the wire
+                        let wire_edges = wire_ref.edges();
+                        for edge in wire_edges {
+                            if let Some(edge_ref) = edge.get() {
+                                let v1 = edge_ref.start_vertex();
+                                let v2 = edge_ref.end_vertex();
+                                
+                                if let (Some(v1_ref), Some(v2_ref)) = (v1.get(), v2.get()) {
+                                    let p1 = v1_ref.point();
+                                    let p2 = v2_ref.point();
+                                    
+                                    let idx1 = *vertex_index_map.get(p1).unwrap();
+                                    let idx2 = *vertex_index_map.get(p2).unwrap();
+                                    
+                                    let edge = (idx1, idx2);
+                                    if !edges.contains(&edge) && !edges.contains(&(edge.1, edge.0)) {
+                                        edges.push(edge);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-            }
 
-            // Add face if it has at least 3 vertices
-            if face_vertices.len() >= 3 {
-                faces.push(face_vertices);
+                // Add face if it has at least 3 vertices
+                if face_vertices.len() >= 3 {
+                    faces.push(face_vertices);
+                    // Map original face index to current face index
+                    vertex_map.insert(face_idx, faces.len() - 1);
+                }
             }
         }
     }
@@ -972,15 +988,20 @@ impl DynamicSurface {
 
     /// Remesh surface to improve quality
     pub fn remesh(&mut self, target_edge_length: StandardReal) {
-        // Simple remeshing for demonstration
-        // In a real implementation, you would use a proper remeshing algorithm
+        // Real implementation: Proper remeshing algorithm
+        // 1. Split long edges
+        // 2. Collapse short edges
+        // 3. Update face connectivity
+        
+        // Step 1: Split long edges
         let mut new_vertices = self.vertices.clone();
         let mut new_edges = self.edges.clone();
-        let new_faces = self.faces.clone();
+        let mut new_faces = self.faces.clone();
 
         // Split long edges
         let mut edges_to_add: Vec<(usize, usize)> = Vec::new();
         let mut edges_to_remove: Vec<usize> = Vec::new();
+        let mut face_updates: HashMap<usize, Vec<usize>> = HashMap::new();
 
         for (edge_idx, &(v1, v2)) in self.edges.iter().enumerate() {
             let edge_length = (self.vertices[v1] - self.vertices[v2]).magnitude();
@@ -998,6 +1019,33 @@ impl DynamicSurface {
                 edges_to_remove.push(edge_idx);
                 edges_to_add.push((v1, new_vertex_idx));
                 edges_to_add.push((new_vertex_idx, v2));
+
+                // Update faces that contain this edge
+                for (face_idx, face) in self.faces.iter().enumerate() {
+                    if let Some(pos) = face.iter().position(|&vid| vid == v1) {
+                        let next_pos = (pos + 1) % face.len();
+                        if face[next_pos] == v2 {
+                            let mut updated_face = face.clone();
+                            updated_face.insert(next_pos, new_vertex_idx);
+                            face_updates.insert(face_idx, updated_face);
+                        }
+                    }
+                    if let Some(pos) = face.iter().position(|&vid| vid == v2) {
+                        let next_pos = (pos + 1) % face.len();
+                        if face[next_pos] == v1 {
+                            let mut updated_face = face.clone();
+                            updated_face.insert(next_pos, new_vertex_idx);
+                            face_updates.insert(face_idx, updated_face);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Update faces
+        for (face_idx, updated_face) in face_updates {
+            if face_idx < new_faces.len() {
+                new_faces[face_idx] = updated_face;
             }
         }
 
@@ -1011,16 +1059,100 @@ impl DynamicSurface {
         filtered_edges.extend(edges_to_add);
         new_edges = filtered_edges;
 
-        // Update faces (simplified)
-        // In a real implementation, you would need to properly update face connectivity
+        // Step 2: Collapse short edges
+        let mut edges_to_collapse: Vec<usize> = Vec::new();
+        let mut vertex_map: HashMap<usize, usize> = HashMap::new();
 
-        self.vertices = new_vertices;
-        self.edges = new_edges;
-        self.faces = new_faces;
+        for (edge_idx, &(v1, v2)) in new_edges.iter().enumerate() {
+            let edge_length = (new_vertices[v1] - new_vertices[v2]).magnitude();
+            if edge_length < target_edge_length * 0.5 {
+                edges_to_collapse.push(edge_idx);
+                // Map v2 to v1
+                vertex_map.insert(v2, v1);
+            }
+        }
+
+        // Update vertices, edges, and faces after collapse
+        let mut collapsed_vertices = new_vertices.clone();
+        let mut collapsed_edges = Vec::new();
+        let mut collapsed_faces = Vec::new();
+
+        // Update edges
+        for (i, &(v1, v2)) in new_edges.iter().enumerate() {
+            if !edges_to_collapse.contains(&i) {
+                let new_v1 = *vertex_map.get(&v1).unwrap_or(&v1);
+                let new_v2 = *vertex_map.get(&v2).unwrap_or(&v2);
+                if new_v1 != new_v2 {
+                    collapsed_edges.push((new_v1, new_v2));
+                }
+            }
+        }
+
+        // Update faces
+        for face in new_faces {
+            let mut new_face = Vec::new();
+            let mut seen = HashSet::new();
+            for &vid in &face {
+                let new_vid = *vertex_map.get(&vid).unwrap_or(&vid);
+                if seen.insert(new_vid) {
+                    new_face.push(new_vid);
+                }
+            }
+            if new_face.len() >= 3 {
+                collapsed_faces.push(new_face);
+            }
+        }
+
+        // Step 3: Optimize face quality
+        self.optimize_face_quality(&mut collapsed_vertices, &mut collapsed_faces, target_edge_length);
+
+        // Update surface
+        self.vertices = collapsed_vertices;
+        self.edges = collapsed_edges;
+        self.faces = collapsed_faces;
 
         // Update normals and quality metrics
         self.update_normals();
         self.quality_metrics = Self::compute_quality_metrics(&self.vertices, &self.faces);
+    }
+    
+    /// Optimize face quality by adjusting vertex positions
+    fn optimize_face_quality(&self, vertices: &mut Vec<Point>, faces: &mut Vec<Vec<usize>>, _target_edge_length: StandardReal) {
+        // Simple Laplacian smoothing to improve face quality
+        let mut new_vertices = vertices.clone();
+        
+        for (vertex_idx, _) in vertices.iter().enumerate() {
+            // Find adjacent vertices
+            let mut adjacent_vertices = Vec::new();
+            
+            for face in faces.iter() {
+                if face.contains(&vertex_idx) {
+                    for vid in face {
+                        if *vid != vertex_idx {
+                            adjacent_vertices.push(*vid);
+                        }
+                    }
+                }
+            }
+            
+            if !adjacent_vertices.is_empty() {
+                // Compute average position
+                let mut avg_position = Point::new(0.0, 0.0, 0.0);
+                for &adj_idx in &adjacent_vertices {
+                    avg_position += vertices[adj_idx];
+                }
+                avg_position.x /= adjacent_vertices.len() as StandardReal;
+                avg_position.y /= adjacent_vertices.len() as StandardReal;
+                avg_position.z /= adjacent_vertices.len() as StandardReal;
+                
+                // Move vertex towards average with a small factor
+                let current = vertices[vertex_idx];
+                let displacement = avg_position - current;
+                new_vertices[vertex_idx] = current + displacement * 0.1;
+            }
+        }
+        
+        *vertices = new_vertices;
     }
 
     /// Merge close vertices

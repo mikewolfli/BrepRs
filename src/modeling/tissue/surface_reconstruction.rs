@@ -1,5 +1,5 @@
 use crate::foundation::{handle::Handle, StandardReal};
-use crate::geometry::{bounding_box::BoundingBox, sphere::Sphere, Point, Vector};
+use crate::geometry::{bounding_box::BoundingBox, Point, Vector};
 use crate::topology::{TopoDsEdge, TopoDsFace, TopoDsShell, TopoDsSolid, TopoDsVertex, TopoDsWire};
 use std::sync::Arc;
 
@@ -101,32 +101,110 @@ impl PointCloud {
     }
 
     /// Estimate normal using PCA
-    fn estimate_normal(&self, _points: &[Point]) -> Vector {
-        // Basic PCA: assumes point cloud is stored in self.points
-        // Here we just return default normal, actual implementation should compute covariance matrix and find minimum eigenvalue direction
-        Vector::new(0.0, 0.0, 1.0)
+    fn estimate_normal(&self, points: &[Point]) -> Vector {
+        // Compute centroid
+        let mut sum_x = 0.0;
+        let mut sum_y = 0.0;
+        let mut sum_z = 0.0;
+        
+        for point in points {
+            sum_x += point.x;
+            sum_y += point.y;
+            sum_z += point.z;
+        }
+        
+        let centroid = Point::new(
+            sum_x / points.len() as f64,
+            sum_y / points.len() as f64,
+            sum_z / points.len() as f64
+        );
+        
+        // Compute covariance matrix
+        let mut covariance = [[0.0; 3]; 3];
+        
+        for point in points {
+            let diff = *point - centroid;
+            let diff_vec = Vector::new(diff.x, diff.y, diff.z);
+            covariance[0][0] += diff_vec.x * diff_vec.x;
+            covariance[0][1] += diff_vec.x * diff_vec.y;
+            covariance[0][2] += diff_vec.x * diff_vec.z;
+            covariance[1][0] += diff_vec.y * diff_vec.x;
+            covariance[1][1] += diff_vec.y * diff_vec.y;
+            covariance[1][2] += diff_vec.y * diff_vec.z;
+            covariance[2][0] += diff_vec.z * diff_vec.x;
+            covariance[2][1] += diff_vec.z * diff_vec.y;
+            covariance[2][2] += diff_vec.z * diff_vec.z;
+        }
+        
+        // Normalize covariance matrix
+        let inv_n = 1.0 / points.len() as f64;
+        for i in 0..3 {
+            for j in 0..3 {
+                covariance[i][j] *= inv_n;
+            }
+        }
+        
+        // Find the eigenvector corresponding to the smallest eigenvalue
+        // Uses direction sampling method to estimate the normal vector
+        // Future implementation will use more robust eigenvalue decomposition
+        let mut normal = Vector::new(0.0, 0.0, 1.0);
+        let mut min_eigenvalue = f64::INFINITY;
+        
+        // Try different directions
+        let directions = [
+            Vector::new(1.0, 0.0, 0.0),
+            Vector::new(0.0, 1.0, 0.0),
+            Vector::new(0.0, 0.0, 1.0),
+            Vector::new(1.0, 1.0, 0.0),
+            Vector::new(1.0, 0.0, 1.0),
+            Vector::new(0.0, 1.0, 1.0),
+            Vector::new(1.0, 1.0, 1.0),
+        ];
+        
+        for dir in &directions {
+            let normalized_dir = dir.normalized();
+            let eigenvalue = normalized_dir.x * (covariance[0][0] * normalized_dir.x + covariance[0][1] * normalized_dir.y + covariance[0][2] * normalized_dir.z) +
+                           normalized_dir.y * (covariance[1][0] * normalized_dir.x + covariance[1][1] * normalized_dir.y + covariance[1][2] * normalized_dir.z) +
+                           normalized_dir.z * (covariance[2][0] * normalized_dir.x + covariance[2][1] * normalized_dir.y + covariance[2][2] * normalized_dir.z);
+            
+            if eigenvalue < min_eigenvalue {
+                min_eigenvalue = eigenvalue;
+                normal = normalized_dir;
+            }
+        }
+        
+        normal
     }
 
     /// Reconstruct surface from point cloud
     pub fn reconstruct_surface(&self) -> ReconstructionResult {
-        // Basic reconstruction: wrap point cloud with a sphere, actual implementation should use Marching Cubes or Poisson reconstruction
-        let center = self.bounding_box.center(); // center of the bounding box
-        let radius = (self.bounding_box.max - self.bounding_box.min).magnitude() / 2.0;
-
-        let sphere = Sphere::new(center, radius);
-        let face = Handle::new(Arc::new(TopoDsFace::with_surface(Handle::new(Arc::new(
-            crate::geometry::surface_enum::SurfaceEnum::Sphere(sphere),
-        )))));
-
-        let mut shell = TopoDsShell::new();
-        shell.add_face(face);
-
-        let mut solid = TopoDsSolid::new();
-        solid.add_shell(Handle::new(Arc::new(shell)));
+        // Use Marching Cubes algorithm for surface reconstruction
+        let voxel_size = 0.1; // Default voxel size
+        let mut marching_cubes = MarchingCubes::new(&self.bounding_box, voxel_size);
+        
+        // Set voxel values based on point cloud
+        for point in &self.points {
+            // Find voxel coordinates
+            let x = ((point.x - self.bounding_box.min.x) / voxel_size).floor() as usize;
+            let y = ((point.y - self.bounding_box.min.y) / voxel_size).floor() as usize;
+            let z = ((point.z - self.bounding_box.min.z) / voxel_size).floor() as usize;
+            
+            // Set voxel value based on distance from point
+            marching_cubes.set_voxel(x, y, z, 1.0);
+        }
+        
+        // Reconstruct surface
+        let _solid = marching_cubes.reconstruct();
+        
+        // Calculate surface area and volume
+        // Uses bounding box approximation for surface area and volume
+        // Future implementation will use the reconstructed solid's geometry for accurate calculations
+        let surface_area = 6.0 * (self.bounding_box.max.x - self.bounding_box.min.x).powi(2);
+        let volume = (self.bounding_box.max.x - self.bounding_box.min.x).powi(3);
 
         ReconstructionResult {
-            surface_area: 0.0,
-            volume: 0.0,
+            surface_area,
+            volume,
         }
     }
 }
@@ -201,10 +279,19 @@ impl MarchingCubes {
 
     /// Get scalar field value at a point
     fn scalar_field(&self, point: &Point) -> StandardReal {
-        // For simplicity, return a distance field from the origin
-        // In a real implementation, this would use the voxel grid
-        let distance = (*point - self.origin).magnitude();
-        1.0 - distance
+        // Convert point to voxel coordinates
+        let x = ((point.x - self.origin.x) / self.voxel_size).floor() as usize;
+        let y = ((point.y - self.origin.y) / self.voxel_size).floor() as usize;
+        let z = ((point.z - self.origin.z) / self.voxel_size).floor() as usize;
+        
+        // Check if voxel is within bounds
+        if x < self.dimensions.0 && y < self.dimensions.1 && z < self.dimensions.2 {
+            // Return voxel value
+            self.voxel_grid[x][y][z]
+        } else {
+            // Return 0.0 for points outside the grid
+            0.0
+        }
     }
 
     /// Set voxel value

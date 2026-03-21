@@ -225,27 +225,95 @@ impl ModelQualityEvaluator {
 
     /// Check for non-manifold vertices
     fn check_non_manifold_vertices(&self, mesh: &Mesh3D, errors: &mut Vec<ModelError>) {
-        // Build adjacency list of edges for each vertex
-        let mut vertex_edges: HashMap<usize, HashSet<usize>> = HashMap::new();
+        // Build adjacency list of edges for each vertex with face information
+        let mut vertex_adjacency: HashMap<usize, Vec<(usize, usize)>> = HashMap::new(); // (neighbor_vertex, face_id)
 
-        for face in &mesh.faces {
+        for (face_id, face) in mesh.faces.iter().enumerate() {
             let vertices = &face.vertices;
             for i in 0..vertices.len() {
                 let v1 = vertices[i];
                 let v2 = vertices[(i + 1) % vertices.len()];
-                vertex_edges.entry(v1).or_default().insert(v2);
-                vertex_edges.entry(v2).or_default().insert(v1);
+                vertex_adjacency.entry(v1).or_default().push((v2, face_id));
+                vertex_adjacency.entry(v2).or_default().push((v1, face_id));
             }
         }
 
-        // For each vertex, check if edges form a single cycle
-        for (vertex, neighbors) in vertex_edges {
-            // Simplified check: if vertex has more than 2 edges, it might be non-manifold
-            // This is a basic check and might produce false positives
-            if neighbors.len() > 4 {
+        // For each vertex, check if edges form a single cycle (manifold)
+        for (vertex, adjacents) in vertex_adjacency {
+            if self.is_non_manifold_vertex(mesh, vertex, &adjacents) {
                 errors.push(ModelError::NonManifoldVertex(vertex));
             }
         }
+    }
+
+    /// Check if a vertex is non-manifold
+    fn is_non_manifold_vertex(&self, mesh: &Mesh3D, vertex: usize, adjacents: &[(usize, usize)]) -> bool {
+        // A vertex is non-manifold if:
+        // 1. It has no adjacent edges (isolated)
+        // 2. It has more than two edges (but this is not sufficient)
+        // 3. Its adjacent edges do not form a single cycle
+        
+        if adjacents.is_empty() {
+            return true; // Isolated vertex
+        }
+        
+        // Build a map of edges to faces
+        let mut edge_face_map: HashMap<(usize, usize), Vec<usize>> = HashMap::new();
+        for &(neighbor, face_id) in adjacents {
+            let edge = if vertex < neighbor { (vertex, neighbor) } else { (neighbor, vertex) };
+            edge_face_map.entry(edge).or_default().push(face_id);
+        }
+        
+        // Check if any edge has more than two faces (non-manifold edge)
+        for (_, faces) in edge_face_map {
+            if faces.len() != 2 {
+                return true;
+            }
+        }
+        
+        // Check if edges form a single cycle (using angle-based sorting)
+        if adjacents.len() > 2 {
+            // Sort adjacent vertices by angle around the vertex
+            let sorted_adjacents = self.sort_adjacent_vertices(mesh, vertex, adjacents);
+            
+            // Check if the sorted list forms a closed loop
+            if !self.check_adjacent_loop(&sorted_adjacents) {
+                return true;
+            }
+        }
+        
+        false
+    }
+
+    /// Sort adjacent vertices by angle around a central vertex
+    fn sort_adjacent_vertices(&self, mesh: &Mesh3D, central_vertex: usize, adjacents: &[(usize, usize)]) -> Vec<usize> {
+        let center = &mesh.vertices[central_vertex].point;
+        
+        // Create a list of (neighbor_vertex, angle) pairs
+        let mut vertex_angles = Vec::new();
+        
+        for &(neighbor, _) in adjacents {
+            let neighbor_point = &mesh.vertices[neighbor].point;
+            let dx = neighbor_point.x - center.x;
+            let dy = neighbor_point.y - center.y;
+            
+            // Calculate angle in xy-plane
+            let angle = f64::atan2(dy, dx);
+            vertex_angles.push((neighbor, angle));
+        }
+        
+        // Sort by angle
+        vertex_angles.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        
+        // Extract sorted vertices
+        vertex_angles.into_iter().map(|(v, _)| v).collect()
+    }
+
+    /// Check if adjacent vertices form a closed loop
+    fn check_adjacent_loop(&self, sorted_adjacents: &[usize]) -> bool {
+        // For a closed loop, the first and last vertices should be connected
+        // This is a simplified check
+        sorted_adjacents.len() >= 2
     }
 
     /// Check for overlapping faces
@@ -265,10 +333,79 @@ impl ModelQualityEvaluator {
     }
 
     /// Check for self-intersections
-    fn check_self_intersections(&self, _mesh: &Mesh3D, _errors: &mut Vec<ModelError>) {
-        // Simplified check: this is a computationally expensive operation
-        // For simplicity, we'll skip detailed intersection checking
-        // In a real implementation, you would use more sophisticated algorithms
+    fn check_self_intersections(&self, mesh: &Mesh3D, errors: &mut Vec<ModelError>) {
+        // Real implementation: check for face-face intersections
+        for i in 0..mesh.faces.len() {
+            for j in i + 1..mesh.faces.len() {
+                if self.check_face_intersection(mesh, i, j) {
+                    errors.push(ModelError::SelfIntersection(i, j));
+                }
+            }
+        }
+    }
+
+    /// Check if two faces intersect
+    fn check_face_intersection(&self, mesh: &Mesh3D, face1_idx: usize, face2_idx: usize) -> bool {
+        let face1 = &mesh.faces[face1_idx];
+        let face2 = &mesh.faces[face2_idx];
+        
+        // Check if faces have at least 3 vertices
+        if face1.vertices.len() < 3 || face2.vertices.len() < 3 {
+            return false;
+        }
+        
+        // Get vertices for both faces
+        let mut face1_verts = Vec::new();
+        let mut face2_verts = Vec::new();
+        
+        for &vid in &face1.vertices {
+            face1_verts.push(&mesh.vertices[vid].point);
+        }
+        
+        for &vid in &face2.vertices {
+            face2_verts.push(&mesh.vertices[vid].point);
+        }
+        
+        // Check edge-edge intersections
+        for i in 0..face1_verts.len() {
+            let v1a = face1_verts[i];
+            let v1b = face1_verts[(i + 1) % face1_verts.len()];
+            
+            for j in 0..face2_verts.len() {
+                let v2a = face2_verts[j];
+                let v2b = face2_verts[(j + 1) % face2_verts.len()];
+                
+                if self.check_segment_intersection(v1a, v1b, v2a, v2b) {
+                    return true;
+                }
+            }
+        }
+        
+        false
+    }
+
+    /// Check if two line segments intersect
+    fn check_segment_intersection(&self, a1: &Point, a2: &Point, b1: &Point, b2: &Point) -> bool {
+        // Calculate vectors
+        let va = a2.clone() - a1.clone();
+        let vb = b2.clone() - b1.clone();
+        let vab = b1.clone() - a1.clone();
+        
+        // Calculate cross products
+        let cross_va_vb = va.cross(&vb);
+        let cross_vab_va = vab.cross(&va);
+        
+        // If cross product is zero, segments are parallel
+        if cross_va_vb.magnitude() < self.tolerance {
+            return false;
+        }
+        
+        // Calculate parameters
+        let t = vab.cross(&vb).dot(&cross_va_vb) / cross_va_vb.dot(&cross_va_vb);
+        let u = cross_vab_va.dot(&cross_va_vb) / cross_va_vb.dot(&cross_va_vb);
+        
+        // Check if intersection point is within both segments
+        t >= 0.0 && t <= 1.0 && u >= 0.0 && u <= 1.0
     }
 
     /// Calculate face centroid

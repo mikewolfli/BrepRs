@@ -1,6 +1,4 @@
 use crate::foundation::types::StandardReal;
-#[cfg(test)]
-use crate::foundation::types::STANDARD_REAL_EPSILON;
 use crate::geometry::{Point, Vector};
 use serde::{Deserialize, Serialize};
 
@@ -233,6 +231,7 @@ impl BezierCurve3D {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::foundation::types::STANDARD_REAL_EPSILON;
 
     #[test]
     fn test_bezier_curve3d_creation() {

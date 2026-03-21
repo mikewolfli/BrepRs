@@ -535,15 +535,15 @@ impl AssemblyBuilder {
 
     /// Combine all shapes into a compound
     pub fn build(self) -> ChainableBuilder {
-        let mut compound_builder = ChainableBuilder::new();
+        let mut compound = TopoDsCompound::new();
 
         for shape_builder in self.shapes {
             if let Some(shape) = shape_builder.build() {
-                // In a real implementation, we would combine these into a compound
+                compound.add_shape(shape);
             }
         }
 
-        compound_builder
+        ChainableBuilder::from_shape(Handle::new(std::sync::Arc::new(compound.shape().clone())))
     }
 }
 

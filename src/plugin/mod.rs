@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::error::Error;
-use std::ffi::OsStr;
 use std::fmt;
 use std::fs;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
+use libloading::{Library, Symbol};
 
 /// Plugin error type
 #[derive(Debug)]
@@ -127,59 +127,23 @@ impl PluginManager {
 
     /// Load a single plugin
     fn load_plugin(&mut self, path: &Path) -> Result<(), PluginError> {
-        // In a real implementation, this would use libloading to load the dynamic library
-        // For now, we'll just simulate loading
-        let plugin_name = path
-            .file_stem()
-            .unwrap_or_else(|| OsStr::new("unknown"))
-            .to_str()
-            .unwrap_or("unknown");
-
-        // Create a dummy plugin for demonstration
-        struct DummyPlugin {
-            name: String,
-            version: String,
-            description: String,
-            initialized: bool,
+        // Real implementation: Load dynamic library using libloading
+        unsafe {
+            let library = Library::new(path).map_err(|e| PluginError::LoadError(e.to_string()))?;
+            
+            // Try to find and call the register_plugin function
+            // Define the type of the register_plugin function
+            type RegisterPluginFn = unsafe extern "C" fn(&mut PluginManager);
+            
+            // Get the symbol for register_plugin
+            let register_plugin: Symbol<RegisterPluginFn> = library.get(b"register_plugin").map_err(|e| {
+                PluginError::InvalidFormat(format!("Missing register_plugin function: {}", e))
+            })?;
+            
+            // Call the register_plugin function
+            register_plugin(self);
         }
-
-        impl Plugin for DummyPlugin {
-            fn name(&self) -> &str {
-                &self.name
-            }
-
-            fn version(&self) -> &str {
-                &self.version
-            }
-
-            fn description(&self) -> &str {
-                &self.description
-            }
-
-            fn initialize(&mut self) -> Result<(), PluginError> {
-                self.initialized = true;
-                Ok(())
-            }
-
-            fn shutdown(&mut self) -> Result<(), PluginError> {
-                self.initialized = false;
-                Ok(())
-            }
-
-            fn is_initialized(&self) -> bool {
-                self.initialized
-            }
-        }
-
-        let dummy_plugin = DummyPlugin {
-            name: plugin_name.to_string(),
-            version: "1.0.0".to_string(),
-            description: format!("Dummy plugin for {}", plugin_name),
-            initialized: false,
-        };
-
-        self.plugins
-            .insert(plugin_name.to_string(), Arc::new(Mutex::new(dummy_plugin)));
+        
         Ok(())
     }
 
@@ -248,11 +212,11 @@ pub trait PluginRegistry {
 macro_rules! register_plugin {
     ($plugin:ty) => {
         #[no_mangle]
-        pub fn register_plugin(manager: &mut $crate::plugin::PluginManager) {
-            let plugin = Box::new(<$plugin as Default>::default());
+        pub unsafe extern "C" fn register_plugin(manager: &mut $crate::plugin::PluginManager) {
+            let plugin = <$plugin as Default>::default();
             manager
                 .plugins
-                .insert(plugin.name().to_string(), std::sync::Arc::new(plugin));
+                .insert(plugin.name().to_string(), std::sync::Arc::new(std::sync::Mutex::new(plugin)));
         }
     };
 }

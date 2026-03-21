@@ -184,28 +184,23 @@ impl AiModelManager {
             )),
         )?;
 
-        // Simple JSON serialization (in a real implementation, use serde)
+        // Simplified implementation: return model metadata as JSON
         let json = format!(
             r#"{{
                 "name": "{}",
-                "description": "{}",
-                "type": "{}"
+                "description": "{}"
             }}"#,
             model.name(),
-            model.description(),
-            std::any::type_name::<dyn AiModel>()
+            model.description()
         );
-
         Ok(json)
     }
 
     /// Deserialize model from JSON
     pub fn deserialize_model(&mut self, _json: &str, name: &str) -> AiResult<()> {
-        // Simple JSON deserialization (in a real implementation, use serde)
-        // For now, we'll just create a new FeatureRecognitionModel
+        // Simplified implementation: create a default model
         let model = Box::new(FeatureRecognitionModel::new());
         self.models.insert(name.to_string(), model);
-
         Ok(())
     }
 }

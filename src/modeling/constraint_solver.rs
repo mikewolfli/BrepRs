@@ -4,11 +4,10 @@
 //! can handle various types of geometric constraints and solve them efficiently.
 
 use crate::foundation::handle::Handle;
-use crate::geometry::{Circle, Direction, Ellipse, Line, Plane, Point, Vector};
+use crate::geometry::{Circle, Ellipse, Line, Plane, Point};
 use crate::modeling::parametric::{Constraint, ParamType, ParametricModel};
 use crate::topology::{TopoDsEdge, TopoDsFace, TopoDsShape, TopoDsVertex};
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::sync::Arc;
 
 // ============================================================================
 // Constraint Solver
@@ -858,6 +857,7 @@ impl ConstraintSolver {
 /// by identifying independent constraint groups.
 #[derive(Debug, Clone)]
 pub struct GraphConstraintSolver {
+    #[allow(dead_code)]
     solver: ConstraintSolver,
     constraint_graph: ConstraintGraph,
 }

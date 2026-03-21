@@ -428,9 +428,25 @@ impl AdaptiveMeshGenerator {
     }
 
     fn estimate_complexity(&self, _shape: &Handle<TopoDsShape>) -> f64 {
-        // Simplified complexity estimation
-        // In a real implementation, this would analyze the shape's geometric complexity
-        1.0
+        // Real complexity estimation
+        if let Some(shape) = _shape.as_ref() {
+            // 1. Face count
+            let face_count = shape.faces().len() as f64;
+            // 2. Bounding box volume
+            let (min, max) = shape.bounding_box();
+            let volume = (max.x - min.x).abs() * (max.y - min.y).abs() * (max.z - min.z).abs();
+            // 3. Average curvature (simplified - use face count as proxy)
+            let avg_curvature = face_count * 0.1;
+            // Combine metrics
+            let complexity = face_count + avg_curvature;
+            if volume > 0.0 {
+                complexity / volume
+            } else {
+                complexity
+            }
+        } else {
+            1.0
+        }
     }
 
     fn compute_parameters(&self, complexity: f64) -> (f64, f64) {

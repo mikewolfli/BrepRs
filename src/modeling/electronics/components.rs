@@ -1,4 +1,4 @@
-use crate::geometry::{Cylinder, Direction, Point, Sphere, Vector};
+use crate::geometry::{Point, Vector};
 use crate::modeling::electronics::pcb::{PadShape, PcbComponentFootprint, PcbLayerType, PcbPad};
 use crate::topology::TopoDsSolid;
 

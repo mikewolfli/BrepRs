@@ -236,15 +236,32 @@ impl AdaptiveLodShape {
     }
 
     /// Calculate distance to camera
-    fn calculate_distance_to_camera(&self, _camera_position: &Point) -> f64 {
-        // Implementation to calculate distance from shape to camera
-        10.0 // Placeholder
+    fn calculate_distance_to_camera(&self, camera_position: &Point) -> f64 {
+        let (min_point, max_point) = self.original_shape.bounding_box();
+        let center = Point::new(
+            (min_point.x + max_point.x) / 2.0,
+            (min_point.y + max_point.y) / 2.0,
+            (min_point.z + max_point.z) / 2.0,
+        );
+        let dx = center.x - camera_position.x;
+        let dy = center.y - camera_position.y;
+        let dz = center.z - camera_position.z;
+        (dx * dx + dy * dy + dz * dz).sqrt()
     }
 
     /// Calculate shape complexity
     fn calculate_complexity(&self) -> f64 {
-        // Implementation to calculate shape complexity
-        50000.0 // Placeholder
+        if let Some(mesh) = &self.original_mesh {
+            let triangle_count = mesh.faces.len() as f64;
+            let vertex_count = mesh.vertices.len() as f64;
+            triangle_count * 0.7 + vertex_count * 0.3
+        } else {
+            let (min_point, max_point) = self.original_shape.bounding_box();
+            let volume = (max_point.x - min_point.x)
+                * (max_point.y - min_point.y)
+                * (max_point.z - min_point.z);
+            volume * 1000.0
+        }
     }
 
     /// Calculate distance-based quality

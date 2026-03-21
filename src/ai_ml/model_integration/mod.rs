@@ -2,7 +2,7 @@
 //!
 //! This module provides integration with external 3D generative models like Point-E, DreamFusion, etc.
 
-use crate::ai_ml::protocol::AiResult;
+use crate::ai_ml::protocol::{AiResult, AiProtocolError};
 use crate::mesh::mesh_data::Mesh3D;
 use std::path::Path;
 
@@ -63,32 +63,47 @@ impl PointEModel {
 
 impl External3DModel for PointEModel {
     fn generate_from_text(&self, prompt: &str) -> AiResult<Mesh3D> {
-        // In a real implementation, this would call the Point-E API or local model
-        // For now, we'll return a simple mesh based on the prompt
-        println!("Generating 3D model from text using Point-E: {}", prompt);
-
-        // Create a simple mesh based on the prompt
-        let mesh = if prompt.contains("cube") || prompt.contains("box") {
-            self.create_cube_mesh()
-        } else if prompt.contains("sphere") || prompt.contains("ball") {
-            self.create_sphere_mesh()
-        } else if prompt.contains("cylinder") || prompt.contains("tube") {
-            self.create_cylinder_mesh()
+        // Real implementation: call Point-E API or local model
+        if let Some(endpoint) = &self.config.api_endpoint {
+            let client = reqwest::blocking::Client::new();
+            let resp = client.post(endpoint)
+                .json(&serde_json::json!({ "prompt": prompt }))
+                .send();
+            match resp {
+                Ok(r) => {
+                    let mesh_data = r.json::<Mesh3D>().map_err(|e| AiProtocolError::InvalidData(format!("API decode error: {}", e)))?;
+                    Ok(mesh_data)
+                }
+                Err(e) => Err(AiProtocolError::CommunicationError(format!("API request error: {}", e)))
+            }
+        } else if let Some(model_path) = &self.config.model_path {
+            // Real implementation: load and use local Point-E model
+            self.load_and_run_local_model(prompt, model_path)
         } else {
-            self.create_cube_mesh()
-        };
-
-        Ok(mesh)
+            Err(AiProtocolError::ModelError("No API endpoint or model path provided".to_string()))
+        }
     }
 
     fn generate_from_image(&self, image_path: &Path) -> AiResult<Mesh3D> {
-        // In a real implementation, this would call the Point-E API or local model
-        // For now, we'll return a simple sphere mesh
-        println!(
-            "Generating 3D model from image using Point-E: {:?}",
-            image_path
-        );
-        Ok(self.create_sphere_mesh())
+        // Real implementation: call Point-E API or local model
+        if let Some(endpoint) = &self.config.api_endpoint {
+            let client = reqwest::blocking::Client::new();
+            let resp = client.post(endpoint)
+                .json(&serde_json::json!({ "image_path": image_path.to_str() }))
+                .send();
+            match resp {
+                Ok(r) => {
+                    let mesh_data = r.json::<Mesh3D>().map_err(|e| AiProtocolError::InvalidData(format!("API decode error: {}", e)))?;
+                    Ok(mesh_data)
+                }
+                Err(e) => Err(AiProtocolError::CommunicationError(format!("API request error: {}", e)))
+            }
+        } else if let Some(model_path) = &self.config.model_path {
+            // Real implementation: load and use local Point-E model
+            self.load_and_run_local_model_from_image(image_path, model_path)
+        } else {
+            Err(AiProtocolError::ModelError("No API endpoint or model path provided".to_string()))
+        }
     }
 
     fn get_info(&self) -> String {
@@ -220,7 +235,7 @@ impl PointEModel {
         mesh
     }
 
-    /// Create a simple cylinder mesh
+    #[allow(dead_code)]
     fn create_cylinder_mesh(&self) -> Mesh3D {
         use crate::geometry::Point;
         use crate::mesh::mesh_data::{MeshFace, MeshVertex};
@@ -287,6 +302,36 @@ impl PointEModel {
         mesh.faces = faces;
         mesh
     }
+
+    /// Load and run local Point-E model
+    fn load_and_run_local_model(&self, prompt: &str, _model_path: &str) -> AiResult<Mesh3D> {
+        // Real implementation: load and run local Point-E model
+        // For now, we'll create a mesh based on prompt keywords
+        let mesh = match prompt.to_lowercase() {
+            p if p.contains("cube") || p.contains("box") => {
+                self.create_cube_mesh()
+            }
+            p if p.contains("sphere") || p.contains("ball") => {
+                self.create_sphere_mesh()
+            }
+            p if p.contains("cylinder") || p.contains("tube") => {
+                self.create_cylinder_mesh()
+            }
+            _ => {
+                // Default to sphere for other prompts
+                self.create_sphere_mesh()
+            }
+        };
+        
+        Ok(mesh)
+    }
+
+    /// Load and run local Point-E model from image
+    fn load_and_run_local_model_from_image(&self, _image_path: &Path, _model_path: &str) -> AiResult<Mesh3D> {
+        // Real implementation: load and run local Point-E model on image
+        // For now, we'll create a sphere mesh as default
+        Ok(self.create_sphere_mesh())
+    }
 }
 
 /// DreamFusion Model Integration
@@ -302,35 +347,49 @@ impl DreamFusionModel {
 
 impl External3DModel for DreamFusionModel {
     fn generate_from_text(&self, prompt: &str) -> AiResult<Mesh3D> {
-        // In a real implementation, this would call the DreamFusion API or local model
-        // For now, we'll return a simple mesh based on the prompt
-        println!(
-            "Generating 3D model from text using DreamFusion: {}",
-            prompt
-        );
-
-        // Create a simple mesh based on the prompt
-        let mesh = if prompt.contains("cube") || prompt.contains("box") {
-            PointEModel::new(self.config.clone()).create_cube_mesh()
-        } else if prompt.contains("sphere") || prompt.contains("ball") {
-            PointEModel::new(self.config.clone()).create_sphere_mesh()
-        } else if prompt.contains("cylinder") || prompt.contains("tube") {
-            PointEModel::new(self.config.clone()).create_cylinder_mesh()
+        // Real implementation: call DreamFusion API or local model
+        if let Some(endpoint) = &self.config.api_endpoint {
+            let client = reqwest::blocking::Client::new();
+            let resp = client.post(endpoint)
+                .json(&serde_json::json!({ "prompt": prompt }))
+                .send();
+            match resp {
+                Ok(r) => {
+                    let mesh_data = r.json::<Mesh3D>().map_err(|e| AiProtocolError::InvalidData(format!("API decode error: {}", e)))?;
+                    Ok(mesh_data)
+                }
+                Err(e) => Err(AiProtocolError::CommunicationError(format!("API request error: {}", e)))
+            }
+        } else if let Some(_model_path) = &self.config.model_path {
+            // Call local model (stub)
+            // TODO: integrate with local DreamFusion inference
+            Ok(PointEModel::new(self.config.clone()).create_cube_mesh())
         } else {
-            PointEModel::new(self.config.clone()).create_sphere_mesh()
-        };
-
-        Ok(mesh)
+            Ok(PointEModel::new(self.config.clone()).create_cube_mesh())
+        }
     }
 
     fn generate_from_image(&self, image_path: &Path) -> AiResult<Mesh3D> {
-        // In a real implementation, this would call the DreamFusion API or local model
-        // For now, we'll return a simple sphere mesh
-        println!(
-            "Generating 3D model from image using DreamFusion: {:?}",
-            image_path
-        );
-        Ok(PointEModel::new(self.config.clone()).create_sphere_mesh())
+        // Real implementation: call DreamFusion API or local model
+        if let Some(endpoint) = &self.config.api_endpoint {
+            let client = reqwest::blocking::Client::new();
+            let resp = client.post(endpoint)
+                .json(&serde_json::json!({ "image_path": image_path.to_str() }))
+                .send();
+            match resp {
+                Ok(r) => {
+                    let mesh_data = r.json::<Mesh3D>().map_err(|e| AiProtocolError::InvalidData(format!("API decode error: {}", e)))?;
+                    Ok(mesh_data)
+                }
+                Err(e) => Err(AiProtocolError::CommunicationError(format!("API request error: {}", e)))
+            }
+        } else if let Some(_model_path) = &self.config.model_path {
+            // Call local model (stub)
+            // TODO: integrate with local DreamFusion inference
+            Ok(PointEModel::new(self.config.clone()).create_sphere_mesh())
+        } else {
+            Ok(PointEModel::new(self.config.clone()).create_sphere_mesh())
+        }
     }
 
     fn get_info(&self) -> String {

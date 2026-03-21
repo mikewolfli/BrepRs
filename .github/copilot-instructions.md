@@ -1,49 +1,98 @@
+
+
 # Project Code Review Mandatory Standards
 
-Please strictly adhere to the following standards when reviewing any code in this project:
+**This document defines the mandatory standards for code review, automation, and AI code generation in this project. All developers and AI assistants must strictly follow these rules to ensure code quality and consistency.**
+
+
 
 ## 1. Empty Implementations and Placeholders
-- Identify all empty functions, methods, and conditional branches that contain only `TODO` / `FIXME` comments.
-- If an empty implementation is detected, prompt the developer to complete the logic. If sufficient context exists, directly generate a complete, reasonable implementation as a suggestion.
+- **Empty functions, methods, or branches containing only `TODO` / `FIXME` are strictly forbidden.**
+- If an empty implementation is detected, prompt the developer to complete the logic; if enough context exists, generate a reasonable implementation directly.
+**Example:**
+```rust
+// Incorrect
+fn foo() { /* TODO: implement */ }
+// Correct
+fn foo() { println!("Hello"); }
+```
+
+
 
 ## 2. Infinite Loops and Logical Errors
-- Analyze all `for` and `while` loops to check for unreachable exit conditions.
-- Examine recursive functions to ensure there is a proper base case that can terminate the recursion.
-- Review conditional logic (`if/else`, `switch`) to identify conditions that are always true or always false, as well as logical contradictions that could lead to incorrect program flow.
+- Check all `for`/`while` loops to ensure there is a reachable exit condition.
+- Recursive functions must have a termination condition.
+- Review conditional branches to avoid always-true/false or contradictory logic.
+**Example:**
+```rust
+// Incorrect
+while true { /* ... */ }
+// Correct
+while !done { /* ... */ }
+```
+
+
 
 ## 3. Cross‑Calls and Circular Dependencies
-- Review calling relationships between modules, classes, and functions; flag any potential circular dependency risks.
-- If a complex situation is found where A calls B and B calls back to A, analyze and suggest refactoring approaches to break the cycle.
+- Check call relationships between modules, classes, and functions; flag any risk of circular dependencies.
+- If A calls B and B calls back to A, analyze and suggest refactoring.
+**Recommended practice:**
+Prefer decoupling with interfaces/traits, or split modules if necessary.
+
+
 
 ## 4. Unused Code
-- Mark all defined functions, variables, classes, or imports that are never referenced anywhere.
-- For unused code, recommend deletion or request a justification for keeping it.
+- Mark all unused functions, variables, classes, or imports.
+- Recommend deleting unused code or require justification for keeping it.
+**Example:**
+```rust
+// Incorrect
+let unused = 42;
+// Correct
+// Remove unused variable, or add a comment explaining its purpose
+```
+
+
 
 ## 5. Function Completeness and Limitations
-- Strictly examine function input parameters, processing logic, and return values.
-- **Edge Cases**: Assess whether the function properly handles null values, out‑of‑bounds conditions, unexpected data types, etc.
-- **Error Handling**: Identify uncaught potential exceptions (e.g., file read/write failures, network timeouts) and suggest adding `try-catch` or error‑return checks.
-- **Feature Completeness**: Based on the function name and context, determine whether the implementation is complete. For example, if a function named `saveUser` updates the database but does not log the action, suggest completing it.
-- **Limitations**: If a function has obvious constraints (e.g., supports only a specific format) while the context suggests it should be more general, point out those limitations and propose enhancement options.
+- Strictly check function parameters, logic, and return values.
+- **Edge cases:** Handle null, out-of-bounds, and unexpected types.
+- **Error handling:** Add error handling for potential exceptions (e.g., file/network errors).
+- **Feature completeness:** If a function name is `saveUser` but does not log the action, complete the implementation.
+- **Limitations:** If only a specific format is supported, point it out and suggest generalization.
+**Recommended practice:**
+Prefer using `Result`/`Option`, and validate all input types and ranges.
+
+
 
 # GitHub Copilot Component Instructions
 # STRICTLY ENFORCED FOR ALL CODE EDITS, GENERATION, AND REFACTORING
 
+
+
 ## FORBIDDEN ACTIONS
-- DO NOT delete code without validating and balancing all symbols: `{}`, `()`, `[]`, `<>`
-- DO NOT leave unclosed braces, parentheses, or brackets
-- DO NOT perform bulk deletions that break syntax structure
-- DO NOT use auto-fix tools without full syntax and symbol validation
-- DO NOT generate partial, incomplete, or placeholder implementations
-- DO NOT use: `todo!()`, `unimplemented!()`, empty blocks `{}`, `simple_impl`, `stub`, `placeholder`
-- DO NOT guess crate features or functions that do not exist
-- DO NOT modify or delete unrelated code
+- **Strictly forbidden** to delete code without validating all symbol pairs: `{}`, `()`, `[]`, `<>`
+- Do not leave unclosed braces, parentheses, brackets, or angle brackets
+- Do not perform bulk deletions that break syntax structure
+- Do not use auto-fix tools without checking symbol integrity
+- Do not generate partial, placeholder, or incomplete implementations
+- Do not use: `todo!()`, `unimplemented!()`, empty blocks `{}`, `simple_impl`, `stub`, `placeholder`
+- Do not guess crate features or functions that do not exist
+- Do not modify or delete unrelated code
+
+
 
 ## MANDATORY BEHAVIOR
-1. Always validate symbol pairs before and after every edit.
-2. Ensure all blocks are properly closed and balanced.
-3. Only generate complete, valid, ready-to-compile Rust code.
+1. **Validate all symbol pairs before and after every edit.**
+2. Ensure all code blocks are closed and structurally complete.
+3. Only generate complete, compilable Rust code.
 4. Check for syntax errors before outputting any change.
-5. Preserve existing code structure and logic unless explicitly instructed.
-6. When modifying functions or blocks, maintain full structural integrity.
-7. Fix all unbalanced symbols and syntax issues BEFORE finalizing the output.
+5. Unless explicitly instructed, preserve the original structure and logic.
+6. When modifying functions or code blocks, maintain full structure.
+7. If unbalanced symbols or syntax issues are found, **fix them first**.
+
+---
+**Recommended practice:**
+- Run `cargo check` locally before committing code.
+- Prioritize edge cases and error handling during review.
+- Fully leverage Rust's type system and error handling mechanisms.

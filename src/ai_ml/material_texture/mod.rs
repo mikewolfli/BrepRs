@@ -97,51 +97,117 @@ pub struct MaterialGenerationResult {
     pub quality_score: f64,   // 0.0 to 1.0
 }
 
+/// Perlin Noise Generator for Procedural Textures
+struct PerlinNoise {
+    seed: u64,
+}
+
+impl PerlinNoise {
+    fn new(seed: u64) -> Self {
+        Self { seed }
+    }
+
+    fn noise(&self, x: f64, y: f64) -> f64 {
+        let i = x.floor() as i32;
+        let j = y.floor() as i32;
+        let xf = x - i as f64;
+        let yf = y - j as f64;
+
+        let n00 = self.grad(i, j, xf, yf);
+        let n10 = self.grad(i + 1, j, xf - 1.0, yf);
+        let n01 = self.grad(i, j + 1, xf, yf - 1.0);
+        let n11 = self.grad(i + 1, j + 1, xf - 1.0, yf - 1.0);
+
+        let u = self.fade(xf);
+        let v = self.fade(yf);
+
+        let nx0 = self.lerp(n00, n10, u);
+        let nx1 = self.lerp(n01, n11, u);
+
+        self.lerp(nx0, nx1, v)
+    }
+
+    fn fbm(&self, x: f64, y: f64, octaves: u32) -> f64 {
+        let mut value = 0.0;
+        let mut amplitude = 1.0;
+        let mut frequency = 1.0;
+        let mut max_value = 0.0;
+
+        for _ in 0..octaves {
+            value += amplitude * self.noise(x * frequency, y * frequency);
+            max_value += amplitude;
+            amplitude *= 0.5;
+            frequency *= 2.0;
+        }
+
+        value / max_value
+    }
+
+    fn grad(&self, i: i32, j: i32, xf: f64, yf: f64) -> f64 {
+        let hash = self.hash(i, j);
+        let h = hash & 3;
+        let u = if h < 2 { xf } else { yf };
+        let v = if h < 2 { yf } else { xf };
+        (if h & 1 == 0 { u } else { -u }) + (if h & 2 == 0 { v } else { -v })
+    }
+
+    fn hash(&self, i: i32, j: i32) -> u32 {
+        let mut h = (self.seed as u32).wrapping_add(i as u32);
+        h = h.wrapping_mul(374761393);
+        h = h.wrapping_add(j as u32);
+        h = h.wrapping_mul(668265263);
+        h ^ h >> 13
+    }
+
+    fn fade(&self, t: f64) -> f64 {
+        t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
+    }
+
+    fn lerp(&self, a: f64, b: f64, t: f64) -> f64 {
+        a + t * (b - a)
+    }
+}
+
 /// Material and Texture Generator
 pub struct MaterialTextureGenerator {
     settings: MaterialGenerationSettings,
-    // In a real implementation, this would include AI models and other dependencies
+    perlin: PerlinNoise,
 }
 
 impl MaterialTextureGenerator {
     pub fn new() -> Self {
         Self {
             settings: MaterialGenerationSettings::default(),
+            perlin: PerlinNoise::new(42),
         }
     }
 
     pub fn with_settings(mut self, settings: MaterialGenerationSettings) -> Self {
+        let seed = settings.seed.unwrap_or(42);
         self.settings = settings;
+        self.perlin = PerlinNoise::new(seed);
         self
     }
 
     /// Generate material from text description
     pub fn generate_material(&self, description: &str) -> AiResult<MaterialGenerationResult> {
-        // Start timing
         let start_time = std::time::Instant::now();
 
-        // Process text description
         let processed_description = self.process_description(description)?;
 
-        // Extract features from description
         let features = self.extract_features(&processed_description)?;
 
-        // Generate material properties
         let properties = self.generate_material_properties(&features)?;
 
-        // Generate textures
         let textures = self.generate_textures(&features)?;
 
-        // Create material
         let material = Material {
             properties,
             textures,
         };
 
-        // Calculate generation time
         let generation_time = start_time.elapsed().as_secs_f64();
 
-        // Calculate quality score
         let quality_score = self.calculate_quality_score(&material, description);
 
         Ok(MaterialGenerationResult {
@@ -153,17 +219,21 @@ impl MaterialTextureGenerator {
         })
     }
 
-    /// Apply material to mesh
+    /// Apply material to mesh with UV mapping
     pub fn apply_material(&self, mesh: &Mesh3D, _material: &Material) -> AiResult<Mesh3D> {
-        // In a real implementation, this would include texture mapping and UV unwrapping
-        // For now, we'll just return a copy of the mesh
-        Ok(mesh.clone())
+        let mut result_mesh = mesh.clone();
+
+        for vertex in &mut result_mesh.vertices {
+            if vertex.uv.is_none() {
+                vertex.uv = Some([vertex.point.x % 1.0, vertex.point.y % 1.0]);
+            }
+        }
+
+        Ok(result_mesh)
     }
 
     /// Process text description
     fn process_description(&self, description: &str) -> AiResult<String> {
-        // In a real implementation, this would include NLP processing
-        // For now, we'll just return a cleaned version of the description
         let processed = description
             .trim()
             .to_lowercase()
@@ -182,7 +252,6 @@ impl MaterialTextureGenerator {
     fn extract_features(&self, description: &str) -> AiResult<HashMap<String, String>> {
         let mut features = HashMap::new();
 
-        // Extract material type
         if description.contains("wood") {
             features.insert("type".to_string(), "wood".to_string());
         } else if description.contains("metal") {
@@ -197,11 +266,14 @@ impl MaterialTextureGenerator {
             features.insert("type".to_string(), "stone".to_string());
         } else if description.contains("ceramic") {
             features.insert("type".to_string(), "ceramic".to_string());
+        } else if description.contains("leather") {
+            features.insert("type".to_string(), "leather".to_string());
+        } else if description.contains("concrete") {
+            features.insert("type".to_string(), "concrete".to_string());
         } else {
             features.insert("type".to_string(), "generic".to_string());
         }
 
-        // Extract color information
         if description.contains("red") {
             features.insert("color".to_string(), "red".to_string());
         } else if description.contains("blue") {
@@ -222,11 +294,14 @@ impl MaterialTextureGenerator {
             features.insert("color".to_string(), "gold".to_string());
         } else if description.contains("silver") {
             features.insert("color".to_string(), "silver".to_string());
+        } else if description.contains("orange") {
+            features.insert("color".to_string(), "orange".to_string());
+        } else if description.contains("purple") {
+            features.insert("color".to_string(), "purple".to_string());
         } else {
             features.insert("color".to_string(), "default".to_string());
         }
 
-        // Extract finish information
         if description.contains("shiny") || description.contains("glossy") {
             features.insert("finish".to_string(), "shiny".to_string());
         } else if description.contains("matte") || description.contains("dull") {
@@ -254,7 +329,6 @@ impl MaterialTextureGenerator {
         let mut properties = MaterialProperties::default();
         properties.name = format!("{}_{}_{}", material_type, color, finish);
 
-        // Set color based on description
         match color.as_str() {
             "red" => properties.diffuse_color = (1.0, 0.0, 0.0),
             "blue" => properties.diffuse_color = (0.0, 0.0, 1.0),
@@ -266,10 +340,11 @@ impl MaterialTextureGenerator {
             "brown" => properties.diffuse_color = (0.5, 0.35, 0.15),
             "gold" => properties.diffuse_color = (1.0, 0.84, 0.0),
             "silver" => properties.diffuse_color = (0.75, 0.75, 0.75),
+            "orange" => properties.diffuse_color = (1.0, 0.5, 0.0),
+            "purple" => properties.diffuse_color = (0.5, 0.0, 0.5),
             _ => {}
         }
 
-        // Set properties based on material type
         match material_type.as_str() {
             "wood" => {
                 properties.roughness = 0.7;
@@ -307,10 +382,19 @@ impl MaterialTextureGenerator {
                 properties.metallic = 0.0;
                 properties.shininess = 70.0;
             }
+            "leather" => {
+                properties.roughness = 0.85;
+                properties.metallic = 0.0;
+                properties.shininess = 8.0;
+            }
+            "concrete" => {
+                properties.roughness = 0.9;
+                properties.metallic = 0.0;
+                properties.shininess = 5.0;
+            }
             _ => {}
         }
 
-        // Set properties based on finish
         match finish.as_str() {
             "shiny" => {
                 properties.roughness = properties.roughness * 0.5;
@@ -327,7 +411,6 @@ impl MaterialTextureGenerator {
             _ => {}
         }
 
-        // Apply user-specified color if provided
         if let Some(color) = self.settings.color {
             properties.diffuse_color = color;
         }
@@ -345,7 +428,6 @@ impl MaterialTextureGenerator {
         let material_type = features.get("type").unwrap_or(&generic_str);
         let (width, height) = self.settings.texture_resolution;
 
-        // Generate diffuse texture
         let diffuse_texture = self.generate_texture(
             &format!("{}_diffuse", material_type),
             width,
@@ -356,7 +438,6 @@ impl MaterialTextureGenerator {
         )?;
         textures.insert(TextureType::Diffuse, diffuse_texture);
 
-        // Generate normal texture
         let normal_texture = self.generate_texture(
             &format!("{}_normal", material_type),
             width,
@@ -367,7 +448,6 @@ impl MaterialTextureGenerator {
         )?;
         textures.insert(TextureType::Normal, normal_texture);
 
-        // Generate roughness texture
         let roughness_texture = self.generate_texture(
             &format!("{}_roughness", material_type),
             width,
@@ -378,10 +458,20 @@ impl MaterialTextureGenerator {
         )?;
         textures.insert(TextureType::Roughness, roughness_texture);
 
+        let ao_texture = self.generate_texture(
+            &format!("{}_ao", material_type),
+            width,
+            height,
+            1,
+            TextureType::AmbientOcclusion,
+            features,
+        )?;
+        textures.insert(TextureType::AmbientOcclusion, ao_texture);
+
         Ok(textures)
     }
 
-    /// Generate a single texture
+    /// Generate a single texture with procedural patterns
     fn generate_texture(
         &self,
         name: &str,
@@ -391,57 +481,28 @@ impl MaterialTextureGenerator {
         texture_type: TextureType,
         features: &HashMap<String, String>,
     ) -> AiResult<TextureProperties> {
-        // In a real implementation, this would generate actual texture data
-        // For now, we'll generate a simple placeholder texture
         let data_size = (width * height * channels) as usize;
         let mut data = vec![0u8; data_size];
+        let generic_str = "generic".to_string();
+        let material_type = features.get("type").unwrap_or(&generic_str);
 
-        // Generate simple pattern based on texture type
         match texture_type {
             TextureType::Diffuse => {
-                // Generate a simple gradient
-                for y in 0..height {
-                    for x in 0..width {
-                        let index = (y * width + x) as usize * channels as usize;
-                        let value = ((x + y) % 256) as u8;
-                        for c in 0..channels {
-                            data[index + c as usize] = value;
-                        }
-                    }
-                }
+                self.generate_diffuse_texture(&mut data, width, height, channels, material_type);
             }
             TextureType::Normal => {
-                // Generate a flat normal map (all normals pointing up)
-                for y in 0..height {
-                    for x in 0..width {
-                        let index = (y * width + x) as usize * 3;
-                        data[index] = 128; // x = 0
-                        data[index + 1] = 255; // y = 1
-                        data[index + 2] = 128; // z = 0
-                    }
-                }
+                self.generate_normal_texture(&mut data, width, height, channels, material_type);
             }
             TextureType::Roughness => {
-                // Generate a simple roughness map
-                let generic_str = "generic".to_string();
-                let material_type = features.get("type").unwrap_or(&generic_str);
-                let roughness_value = match material_type.as_str() {
-                    "wood" => 178,    // 0.7 * 255
-                    "metal" => 51,    // 0.2 * 255
-                    "plastic" => 102, // 0.4 * 255
-                    "fabric" => 230,  // 0.9 * 255
-                    "glass" => 0,     // 0.0 * 255
-                    "stone" => 204,   // 0.8 * 255
-                    "ceramic" => 77,  // 0.3 * 255
-                    _ => 128,         // 0.5 * 255
-                };
-
-                for i in 0..data_size {
-                    data[i] = roughness_value;
-                }
+                self.generate_roughness_texture(&mut data, width, height, channels, material_type);
+            }
+            TextureType::AmbientOcclusion => {
+                self.generate_ao_texture(&mut data, width, height, channels, material_type);
+            }
+            TextureType::Specular => {
+                self.generate_specular_texture(&mut data, width, height, channels, material_type);
             }
             _ => {
-                // Generate a default texture
                 for i in 0..data_size {
                     data[i] = 128;
                 }
@@ -458,23 +519,248 @@ impl MaterialTextureGenerator {
         })
     }
 
-    /// Calculate quality score for the generated material
-    fn calculate_quality_score(&self, material: &Material, _description: &str) -> f64 {
-        // In a real implementation, this would include more sophisticated metrics
-        // For now, we'll just return a score based on texture count and material properties
-        let texture_count = material.textures.len() as f64;
-        let property_score = 0.5; // Placeholder
+    /// Generate diffuse texture with material-specific patterns
+    fn generate_diffuse_texture(
+        &self,
+        data: &mut [u8],
+        width: u32,
+        height: u32,
+        channels: u32,
+        material_type: &str,
+    ) {
+        let scale = 0.02;
+        let detail = self.settings.detail_level as u32 + 1;
 
-        (texture_count / 5.0 + property_score) / 2.0
+        for y in 0..height {
+            for x in 0..width {
+                let index = (y * width + x) as usize * channels as usize;
+                let nx = x as f64 * scale;
+                let ny = y as f64 * scale;
+
+                let (r, g, b) = match material_type {
+                    "wood" => {
+                        let grain = self.perlin.fbm(nx * 4.0, ny * 4.0, detail);
+                        let base = 139;
+                        let variation = (grain * 30.0) as u8;
+                        let r = (base + variation).min(255);
+                        let g = (base + variation - 20).max(0).min(255) as u8;
+                        let b = (base + variation - 40).max(0).min(255) as u8;
+                        (r, g, b)
+                    }
+                    "metal" => {
+                        let noise = self.perlin.fbm(nx * 8.0, ny * 8.0, detail);
+                        let value = (128.0 + noise * 40.0) as u8;
+                        (value, value, value)
+                    }
+                    "stone" => {
+                        let noise = self.perlin.fbm(nx * 2.0, ny * 2.0, detail);
+                        let value = (128.0 + noise * 60.0) as u8;
+                        (value, value, value)
+                    }
+                    "fabric" => {
+                        let pattern = ((x as i32 / 4 + y as i32 / 4) % 2) as f64;
+                        let noise = self.perlin.noise(nx * 10.0, ny * 10.0);
+                        let value = (180.0 + pattern * 40.0 + noise * 20.0) as u8;
+                        (value, value, value)
+                    }
+                    "leather" => {
+                        let noise = self.perlin.fbm(nx * 6.0, ny * 6.0, detail);
+                        let value = (120.0 + noise * 50.0) as u8;
+                        (value, value, value)
+                    }
+                    "concrete" => {
+                        let noise = self.perlin.fbm(nx * 3.0, ny * 3.0, detail);
+                        let value = (150.0 + noise * 70.0) as u8;
+                        (value, value, value)
+                    }
+                    _ => {
+                        let noise = self.perlin.noise(nx, ny);
+                        let value = (128.0 + noise * 64.0) as u8;
+                        (value, value, value)
+                    }
+                };
+
+                for c in 0..channels {
+                    data[index + c as usize] = match c {
+                        0 => r,
+                        1 => g,
+                        2 => b,
+                        _ => 255,
+                    };
+                }
+            }
+        }
+    }
+
+    /// Generate normal texture
+    fn generate_normal_texture(
+        &self,
+        data: &mut [u8],
+        width: u32,
+        height: u32,
+        channels: u32,
+        material_type: &str,
+    ) {
+        let scale = 0.02;
+        let strength = match material_type {
+            "stone" | "concrete" => 2.0,
+            "wood" | "leather" => 1.5,
+            "fabric" => 0.8,
+            _ => 1.0,
+        };
+
+        for y in 0..height {
+            for x in 0..width {
+                let index = (y * width + x) as usize * channels as usize;
+                let nx = x as f64 * scale;
+                let ny = y as f64 * scale;
+
+                let dx = self.perlin.fbm((nx + 0.01) * 2.0, ny * 2.0, 3) 
+                       - self.perlin.fbm((nx - 0.01) * 2.0, ny * 2.0, 3);
+                let dy = self.perlin.fbm(nx * 2.0, (ny + 0.01) * 2.0, 3) 
+                       - self.perlin.fbm(nx * 2.0, (ny - 0.01) * 2.0, 3);
+
+                let normal_x = (dx * strength * 127.0 + 128.0) as u8;
+                let normal_y = (dy * strength * 127.0 + 128.0) as u8;
+                let normal_z = 255;
+
+                for c in 0..channels {
+                    data[index + c as usize] = match c {
+                        0 => normal_x,
+                        1 => normal_y,
+                        2 => normal_z,
+                        _ => 255,
+                    };
+                }
+            }
+        }
+    }
+
+    /// Generate roughness texture
+    fn generate_roughness_texture(
+        &self,
+        data: &mut [u8],
+        width: u32,
+        height: u32,
+        channels: u32,
+        material_type: &str,
+    ) {
+        let base_roughness = match material_type {
+            "wood" => 0.7,
+            "metal" => 0.2,
+            "plastic" => 0.4,
+            "fabric" => 0.9,
+            "glass" => 0.0,
+            "stone" => 0.8,
+            "ceramic" => 0.3,
+            "leather" => 0.85,
+            "concrete" => 0.9,
+            _ => 0.5,
+        };
+
+        let scale = 0.03;
+        for y in 0..height {
+            for x in 0..width {
+                let index = (y * width + x) as usize * channels as usize;
+                let nx = x as f64 * scale;
+                let ny = y as f64 * scale;
+
+                let variation = self.perlin.noise(nx, ny) * 0.2;
+                let roughness = (base_roughness + variation).max(0.0).min(1.0);
+                let value = (roughness * 255.0) as u8;
+
+                for c in 0..channels {
+                    data[index + c as usize] = value;
+                }
+            }
+        }
+    }
+
+    /// Generate ambient occlusion texture
+    fn generate_ao_texture(
+        &self,
+        data: &mut [u8],
+        width: u32,
+        height: u32,
+        channels: u32,
+        _material_type: &str,
+    ) {
+        let scale = 0.04;
+        for y in 0..height {
+            for x in 0..width {
+                let index = (y * width + x) as usize * channels as usize;
+                let nx = x as f64 * scale;
+                let ny = y as f64 * scale;
+
+                let ao = self.perlin.fbm(nx, ny, 4);
+                let value = (255.0 - ao * 100.0).max(0.0) as u8;
+
+                for c in 0..channels {
+                    data[index + c as usize] = value;
+                }
+            }
+        }
+    }
+
+    /// Generate specular texture
+    fn generate_specular_texture(
+        &self,
+        data: &mut [u8],
+        width: u32,
+        height: u32,
+        channels: u32,
+        material_type: &str,
+    ) {
+        let base_specular = match material_type {
+            "metal" => 0.9,
+            "glass" => 1.0,
+            "ceramic" => 0.8,
+            "plastic" => 0.6,
+            "wood" => 0.2,
+            "fabric" => 0.1,
+            "stone" => 0.3,
+            "leather" => 0.15,
+            "concrete" => 0.1,
+            _ => 0.5,
+        };
+
+        let scale = 0.02;
+        for y in 0..height {
+            for x in 0..width {
+                let index = (y * width + x) as usize * channels as usize;
+                let nx = x as f64 * scale;
+                let ny = y as f64 * scale;
+
+                let variation = self.perlin.noise(nx, ny) * 0.1;
+                let specular = (base_specular + variation).max(0.0).min(1.0);
+                let value = (specular * 255.0) as u8;
+
+                for c in 0..channels {
+                    data[index + c as usize] = value;
+                }
+            }
+        }
+    }
+
+    /// Calculate quality score for generated material
+    fn calculate_quality_score(&self, material: &Material, _description: &str) -> f64 {
+        let texture_count = material.textures.len() as f64;
+        
+        let roughness_score = 1.0 - material.properties.roughness;
+        let metallic_score = material.properties.metallic;
+        let shininess_score = material.properties.shininess / 100.0;
+        let opacity_score = material.properties.opacity;
+        
+        let property_score = (roughness_score + metallic_score + shininess_score + opacity_score) / 4.0;
+        
+        (texture_count / 5.0 + property_score as f64) / 2.0
     }
 }
 
 /// Extension methods for Mesh3D
 pub trait MaterialTextureExt {
-    /// Apply material to mesh
     fn apply_material(&self, material: &Material) -> AiResult<Mesh3D>;
 
-    /// Generate and apply material from text description
     fn apply_material_from_text(
         &self,
         description: &str,

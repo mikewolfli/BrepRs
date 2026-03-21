@@ -7,11 +7,13 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
 
-use chrono;
+use chrono::{DateTime, Utc};
 use serde_json;
+use uuid;
 
+use crate::foundation::handle::Handle;
 use crate::geometry::{Plane, Point, Vector};
-use crate::mesh::mesh_data::{Mesh3D, MeshFace, MeshVertex};
+use crate::mesh::mesh_data::{Mesh3D, MeshFace, MeshVertex, MeshEdge};
 use crate::topology::topods_shape::TopoDsShape;
 
 /// AI Protocol Error
@@ -62,8 +64,25 @@ pub struct AiMessage {
     pub id: String,
     pub role: String, // "user", "assistant", "system"
     pub content: AiDataType,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    pub timestamp: DateTime<Utc>,
     pub metadata: HashMap<String, String>,
+}
+
+impl AiMessage {
+    pub fn new(role: &str, content: AiDataType) -> Self {
+        Self {
+            id: uuid::Uuid::new_v4().to_string(),
+            role: role.to_string(),
+            content,
+            timestamp: Utc::now(),
+            metadata: HashMap::new(),
+        }
+    }
+
+    pub fn with_metadata(mut self, key: &str, value: &str) -> Self {
+        self.metadata.insert(key.to_string(), value.to_string());
+        self
+    }
 }
 
 /// AI Request
@@ -206,15 +225,53 @@ impl AiProtocol for DefaultAiProtocol {
                 }))
             }
             AiDataType::Shape(_shape) => {
-                // Convert shape to mesh first, then to AI format
-                // This is a placeholder implementation
-                // In a real implementation, you would extract geometry from the shape
-                let mesh = Mesh3D::default();
-                let mesh_data = AiDataType::Mesh(mesh);
+                // Real implementation: extract geometry from shape
+                use crate::mesh::MeshGenerator;
+                use std::sync::Arc;
+                
+                let mesh_generator = MeshGenerator::new();
+                let shape_handle = Handle::new(Arc::new(_shape.clone()));
+                let mesh_2d = mesh_generator.generate(&shape_handle, 0.1, 0.5);
+                
+                // Convert Mesh2D to Mesh3D
+                let mesh_3d = Mesh3D {
+                    vertices: mesh_2d.vertices.into_iter().map(|v| MeshVertex {
+                        id: v.id,
+                        point: v.point,
+                        normal: v.normal,
+                        uv: v.uv,
+                        color: v.color,
+                        field_values: v.field_values,
+                        brep_vertex_id: v.brep_vertex_id,
+                        brep_face_id: v.brep_face_id,
+                    }).collect(),
+                    faces: mesh_2d.faces.into_iter().map(|f| MeshFace {
+                        id: f.id,
+                        vertices: f.vertices,
+                        edges: vec![],
+                        normal: None,
+                        material_id: None,
+                        data: std::collections::HashMap::new(),
+                        brep_face_id: None,
+                    }).collect(),
+                    edges: mesh_2d.edges.into_iter().map(|e| MeshEdge {
+                        id: e.id,
+                        vertices: e.vertices,
+                        data: e.data,
+                    }).collect(),
+                    tetrahedrons: vec![],
+                    hexahedrons: vec![],
+                    prisms: vec![],
+                    bbox: mesh_2d.bbox,
+                    quality: mesh_2d.quality,
+                    metadata: std::collections::HashMap::new(),
+                };
+                
+                let mesh_data = AiDataType::Mesh(mesh_3d);
                 let mut mesh_json = self.to_ai_format(&mesh_data)?;
                 if let Some(mesh_obj) = mesh_json.as_object_mut() {
                     mesh_obj.insert("type".to_string(), serde_json::json!("shape"));
-                    mesh_obj.insert("shape_type".to_string(), serde_json::json!("unknown"));
+                    mesh_obj.insert("shape_type".to_string(), serde_json::json!(format!("{:?}", _shape.shape_type())));
                 }
                 Ok(mesh_json)
             }

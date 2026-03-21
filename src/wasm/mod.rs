@@ -45,8 +45,8 @@ pub fn version() -> String {
 /// Set global tolerance
 #[wasm_bindgen(js_name = setTolerance)]
 pub fn set_tolerance(tol: f64) {
-    // In a real implementation, this would set a global tolerance
-    let _ = tol;
+    // Set global tolerance using the foundation module
+    crate::foundation::tolerance::set_global_tolerance(tol);
 }
 
 /// Get global tolerance

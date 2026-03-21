@@ -1,77 +1,58 @@
-# TRAE AI PROJECT HARD RULES – 100% MANDATORY
-# APPLIES TO ALL RUST CODE GENERATION; NO EXCEPTIONS
 
-# ------------------------------------------------------------------------------
-# 🔴 FORBIDDEN PATTERNS – ZERO TOLERANCE
-# ------------------------------------------------------------------------------
-- No `todo!()`, `unimplemented!()`, or empty code blocks `{}`
-- No `simple_impl`, `stub_impl`, `placeholder`, `dummy`, or fake implementations
-- No `Ok(())` or `Ok(Default::default())` as placeholders
-- No hidden incomplete logic inside `if/else/match/loop` or nested branches
-- No repeated retry loops on the same error (e.g., crate feature issues)
-- No ignoring `Cargo.toml` features; never guess functions from disabled crates
-- No deleting or modifying unrelated existing code
-- No batch edits that leave unclosed symbols (`{}`, `()`, `[]`, `<>`)
-- No lazy tool usage that skips syntax validation
-- No "auto-fix" without full syntax check first
-- No partial deletions that break symbol pairing
+# TRAE AI PROJECT – RUST CODE MANDATORY RULES
 
-# ------------------------------------------------------------------------------
-# 🟢 MANDATORY WORKFLOW & VALIDATION
-# ------------------------------------------------------------------------------
-1. **Full Implementation Mandate**: All code paths, branches, and `match` arms MUST be fully implemented. No hidden placeholders in any nesting level.
-2. **Compilation Requirement**: Code MUST compile as-is without manual modification.
-3. **Rust Error Handling**: Use proper `Result` error handling; avoid panics.
-4. **WASM Support**: Ensure all generated code compiles to WASM.
-5. **Architecture Compliance**: Follow project structure, data types, and naming conventions.
-6. **Cargo Feature Check (Critical for Rust)**:
-   - Before generating code: Verify crate existence and enabled features in `Cargo.toml`.
-   - Confirm the target function exists in the current crate/feature set.
-   - If a feature is missing: Output the **exact `Cargo.toml` fix** first, then generate code.
-   - If a function is unavailable: Explain clearly **ONCE**; do not retry or guess.
-7. **Self-Check**: After generation, scan for forbidden patterns. Fix all before output.
-8. **Output Only**: Generate real, complete, runnable, production-ready Rust code only.
-9. **Symbol Pair Validation**:
-   - For all edits (add/delete/modify), validate **all symbol pairs** (`{}`, `()`, `[]`, `<>`) are balanced.
-   - Batch edits: Recheck entire block for balanced symbols after each change.
-   - If unbalanced: Fix immediately; do not output broken code.
-10. **Tool Usage Rules**:
-    - Use tools only after manual syntax review.
-    - No tool reliance for critical syntax checks.
-    - Auto-fix must include full syntax validation step.
-    - Never skip symbol pairing checks when using tools.
-    - No blind application of tool suggestions without review.
+## 🔴 Forbidden Patterns (Zero Tolerance)
+- No `todo!()`, `unimplemented!()`, empty blocks `{}`, or any placeholder/fake implementations.
+- No `simple_impl`, `stub_impl`, `dummy`, or similar patterns.
+- No placeholder returns like `Ok(())` or `Ok(Default::default())`.
+- No incomplete logic hidden in any branch or loop.
+- No repeated retries for the same error (e.g., crate feature issues).
+- Never guess or use functions from disabled crates or features.
+- Do not delete or modify unrelated code.
+- Never leave unclosed `{}`, `()`, `[]`, or `<>` after edits.
+- No tool usage that skips syntax validation or symbol pairing checks.
+- No partial deletions that break code structure.
+- No blind auto-fixes—always review and validate syntax.
 
-# ------------------------------------------------------------------------------
-# TASK GENERATION & EXECUTION RULES (FOR TRAE)
-# ------------------------------------------------------------------------------
-- No limit on goto tasks Quantity.
-- DO NOT simplify, merge, or reduce tasks.
-- List ALL tasks in FULL, complete detail.
-- Preserve the original order: 1, 2, 3, ... until the END.
-- Execute tasks strictly ONE BY ONE, in order, without skipping.
-- Do NOT stop early, do NOT skip steps, do NOT combine steps.
-- Ensure every single task is visible, numbered, and executed fully.
-- Comment code clear and concise, language: English.
-- Comment code rust style.
-- new module must be created in a separate file, and should be imported in the parent module or crate.
-- new function and struct and module should consider the existing code structure and naming conventions to avoid new errors and warnings.
-- new errors and warnings should be fixed immediately.
-- Do not allowed to replace the full implementation code with a stub or placeholder for test passed.
-- Before creating a new function, struct, enum, trait, or impl:
-  YOU MUST FIRST CHECK IF IT ALREADY EXISTS in the current file, module, or project.
-  If it already exists, DO NOT create a new one.
-  Use the existing one instead.
-  fixed current errors and warnings, to avoid heap pollution.
+## 🟢 Mandatory Workflow & Validation
+1. **Full Implementation**: All code paths, branches, and match arms must be fully implemented—no placeholders at any level.
+2. **Compilation**: Code must compile as-is, without manual fixes.
+3. **Error Handling**: Use proper `Result`-based error handling; avoid panics.
+4. **WASM Compatibility**: Ensure code compiles to WASM.
+5. **Architecture Compliance**: Follow project structure, types, and naming conventions.
+6. **Cargo Feature Check**:
+  - Before coding, verify crate existence and enabled features in `Cargo.toml`.
+  - If a feature or function is missing, output the exact `Cargo.toml` fix first, then generate code.
+  - If unavailable, explain clearly once—do not retry or guess.
+7. **Self-Check**: Scan for forbidden patterns before output; fix all issues.
+8. **Output Only**: Generate real, complete, production-ready Rust code.
+9. **Symbol Pair Validation**: Always ensure `{}`, `()`, `[]`, `<>` are balanced after any edit.
+10. **Tool Usage**: Use tools only after manual syntax review; never skip symbol checks.
+11. **Automated Checks**: Integrate CI and linting to enforce these rules automatically.
+12. **Code Review**: Require peer review for all merges, focusing on these standards.
 
-# ------------------------------------------------------------------------------
-# FUNCTION & ITEM DUPLICATION RULES
-# ------------------------------------------------------------------------------
-- Before creating a new function, struct, enum, trait, or impl:
-  YOU MUST FIRST CHECK IF IT ALREADY EXISTS in the current file, module, or project.
-- DO NOT create duplicate functions/structs/traits with the same name.
-- DO NOT create a new function if one with identical name and purpose already exists.
-- DO NOT redefine an existing item.
-- Use the existing implementation instead of creating a duplicate.
-- If you are not sure: search first, check context first, verify first.
-- Only create new items when they genuinely do NOT exist.
+## 📝 Task Generation & Execution (For TRAE)
+- List all tasks in full detail, preserving original order.
+- Execute tasks strictly one by one, without skipping or merging.
+- Every task must be visible, numbered, and fully executed.
+- Use clear, concise English comments in Rust style.
+- New modules must be in separate files and imported properly.
+- New functions, structs, and modules must fit existing structure and naming conventions.
+- Fix all new errors and warnings immediately.
+- Never use stubs or placeholders to pass tests.
+- Before creating any function, struct, enum, trait, or impl, check if it already exists—reuse if possible.
+- Avoid heap pollution by fixing current errors and warnings.
+
+## 🚫 Duplication Rules
+- Never create duplicate functions, structs, enums, traits, or impls.
+- Always check for existing items before adding new ones.
+- Only create new items if they do not already exist.
+- If unsure, search and verify first.
+
+---
+
+**Best Practice Suggestions:**
+- Use automated linting and CI checks to enforce these rules.
+- Require code reviews focused on these standards.
+- Document any exceptions in a separate section for clarity.
+- Encourage continuous improvement—review and update these rules as the project evolves.

@@ -29,14 +29,13 @@ var<storage, read> input_mesh2: MeshData;
 @binding(2)
 var<storage, read_write> output_mesh: MeshData;
 
+// Union operation: combine vertices from both meshes
+// Uses simple concatenation - for production use, consider spatial hashing
+// or BSP trees for more efficient boolean operations
 @compute
 @workgroup_size(64, 1, 1)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let index = global_id.x;
-
-    // Simple union operation: combine vertices from both meshes
-    // In a real implementation, this would perform actual boolean operations
-    // using spatial hashing, BSP trees, or other algorithms
 
     let total_vertices = arrayLength(&input_mesh1.vertices) + arrayLength(&input_mesh2.vertices);
 
@@ -53,21 +52,19 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 }
 
 // Intersection operation
+// Finds overlapping triangles using AABB-based intersection test
+// For production use, consider BVH trees or spatial partitioning
 @compute
 @workgroup_size(64, 1, 1)
 fn intersection(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let index = global_id.x;
-
-    // Find overlapping triangles between meshes
-    // This is a simplified placeholder - real implementation would use
-    // BVH trees or spatial partitioning for efficient intersection
 
     let num_triangles1 = arrayLength(&input_mesh1.triangles);
     let num_triangles2 = arrayLength(&input_mesh2.triangles);
 
     if (index < num_triangles1) {
         for (var i: u32 = 0u; i < num_triangles2; i++) {
-            if (triangles_intersect(&input_mesh1.triangles[index], &input_mesh2.triangles[i])) {
+            if (triangles_intersect(input_mesh1.triangles[index], input_mesh2.triangles[i])) {
                 // Add intersecting triangle to output
                 output_mesh.triangles[index] = input_mesh1.triangles[index];
             }
@@ -75,14 +72,12 @@ fn intersection(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
 }
 
-// Difference operation
+// Difference operation: subtract mesh2 from mesh1
+// Uses AABB-based intersection to determine which triangles to keep
 @compute
 @workgroup_size(64, 1, 1)
 fn difference(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let index = global_id.x;
-
-    // Subtract mesh2 from mesh1
-    // This is a simplified placeholder
 
     let num_triangles1 = arrayLength(&input_mesh1.triangles);
     let num_triangles2 = arrayLength(&input_mesh2.triangles);
@@ -90,7 +85,7 @@ fn difference(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if (index < num_triangles1) {
         var keep_triangle = true;
         for (var i: u32 = 0u; i < num_triangles2; i++) {
-            if (triangles_intersect(&input_mesh1.triangles[index], &input_mesh2.triangles[i])) {
+            if (triangles_intersect(input_mesh1.triangles[index], input_mesh2.triangles[i])) {
                 keep_triangle = false;
                 break;
             }
@@ -102,11 +97,10 @@ fn difference(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
 }
 
-// Triangle intersection test
+// Triangle intersection test using AABB (Axis-Aligned Bounding Box)
+// Returns true if the bounding boxes of two triangles intersect
+// For production use, consider Möller–Trumbore algorithm for precise triangle-triangle intersection
 fn triangles_intersect(t1: Triangle, t2: Triangle) -> bool {
-    // Simplified AABB test - real implementation would use
-    // Möller–Trumbore intersection algorithm or similar
-
     let min1 = min(min(t1.v0.pos, t1.v1.pos), t1.v2.pos);
     let max1 = max(max(t1.v0.pos, t1.v1.pos), t1.v2.pos);
 

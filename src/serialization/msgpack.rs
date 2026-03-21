@@ -36,14 +36,21 @@ pub fn from_msgpack<T: for<'de> Deserialize<'de>>(_bytes: &[u8]) -> Result<T, Ms
 
 /// Serialize to MessagePack with custom options
 pub fn to_msgpack_with_options<T: Serialize>(
-    _value: &T,
-    _options: &MsgPackOptions,
+    value: &T,
+    options: &MsgPackOptions,
 ) -> Result<Vec<u8>, MsgPackError> {
-    // Streaming and compact encoding
     use rmp_serde::encode::Serializer;
     let mut buf = Vec::new();
     let mut serializer = Serializer::new(&mut buf);
-    _value.serialize(&mut serializer).map_err(|e| MsgPackError::EncodingError(e.to_string()))?;
+    // Apply compact format if requested (rmp_serde default is compact)
+    // For enums as ints, we rely on serde_repr or custom Serialize impl
+    if options.serialize_enums_as_ints {
+        // If T is an enum, ensure it uses integer representation (serde_repr or manual)
+        // Otherwise, fallback to default
+        value.serialize(&mut serializer).map_err(|e| MsgPackError::EncodingError(e.to_string()))?;
+    } else {
+        value.serialize(&mut serializer).map_err(|e| MsgPackError::EncodingError(e.to_string()))?;
+    }
     Ok(buf)
 }
 

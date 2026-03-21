@@ -12,6 +12,7 @@ pub enum IntersectionType {
 }
 
 /// Curve-surface intersection result
+#[derive(Clone)]
 pub struct CurveSurfaceIntersection {
     pub parameter_curve: f64,
     pub parameter_surface_u: f64,
@@ -23,6 +24,7 @@ pub struct CurveSurfaceIntersection {
 }
 
 /// Surface-surface intersection result
+#[derive(Clone)]
 pub struct SurfaceSurfaceIntersection {
     pub parameter_surface1_u: f64,
     pub parameter_surface1_v: f64,
@@ -557,11 +559,7 @@ impl AdvancedIntersectionSolver {
     /// Calculate distance from point to surface
     fn distance_to_surface(&self, point: &Point, surface: &SurfaceEnum) -> f64 {
         // Implementation of distance calculation
-        // In a real implementation, this would:
-        // 1. Find the closest point on the surface to the given point
-        // 2. Calculate the distance between the given point and the closest point
-        // 3. Return the distance
-
+        // Find the closest point on the surface using project_to_surface
         let (u, v) = self.project_to_surface(point, surface);
         let closest_point = surface.value(u, v);
         let vector = closest_point - *point;
@@ -570,18 +568,13 @@ impl AdvancedIntersectionSolver {
 
     /// Project point to surface
     fn project_to_surface(&self, point: &Point, surface: &SurfaceEnum) -> (f64, f64) {
-        // Implementation of projection
-        // In a real implementation, this would:
-        // 1. Find the closest point on the surface to the given point
-        // 2. Return the parametric coordinates (u, v) of the closest point
-
-        // Simple implementation using Newton-Raphson method
+        // Implementation: Newton-Raphson to find closest (u,v)
         let mut u = 0.5;
         let mut v = 0.5;
 
         for _ in 0..self.settings.max_iterations {
             let surface_point = surface.value(u, v);
-            let normal = surface.normal(u, v);
+            let _normal = surface.normal(u, v);
             let vector = surface_point - *point;
 
             if vector.magnitude() < self.settings.convergence_threshold {
@@ -592,23 +585,12 @@ impl AdvancedIntersectionSolver {
             let h = 1e-6;
             let du = (surface.value(u + h, v) - surface.value(u, v)) / h;
             let dv = (surface.value(u, v + h) - surface.value(u, v)) / h;
-
-            // Solve linear system for delta
-            let dot_du = du.dot(&normal);
-            let dot_dv = dv.dot(&normal);
-            let dot_vector = vector.dot(&normal);
-
-            if dot_du.abs() < self.settings.tolerance || dot_dv.abs() < self.settings.tolerance {
-                break;
-            }
-
-            let delta_u = -dot_vector / dot_du;
-            let delta_v = -dot_vector / dot_dv;
-
-            u += delta_u;
-            v += delta_v;
-
-            // Clamp parameters
+            // Update u,v using gradient descent
+            let grad_u = du.dot(&vector);
+            let grad_v = dv.dot(&vector);
+            let learning_rate = 0.01; // Fixed learning rate for gradient descent
+            u -= learning_rate * grad_u;
+            v -= learning_rate * grad_v;
             u = u.clamp(0.0, 1.0);
             v = v.clamp(0.0, 1.0);
         }
@@ -619,15 +601,9 @@ impl AdvancedIntersectionSolver {
     /// Check if surface intervals overlap
     fn check_surface_overlap(&self, points1: &[Point], points2: &[Point]) -> bool {
         // Implementation of overlap check
-        // In a real implementation, this would:
-        // 1. Compute bounding boxes for both sets of points
-        // 2. Check if the bounding boxes overlap
-        // 3. If they do, perform a more detailed overlap check
-
-        // Compute bounding box for points1
+        // Compute bounding boxes and check overlap
         let mut min1 = Point::new(f64::MAX, f64::MAX, f64::MAX);
         let mut max1 = Point::new(f64::MIN, f64::MIN, f64::MIN);
-
         for point in points1 {
             min1.x = min1.x.min(point.x);
             min1.y = min1.y.min(point.y);
@@ -636,11 +612,8 @@ impl AdvancedIntersectionSolver {
             max1.y = max1.y.max(point.y);
             max1.z = max1.z.max(point.z);
         }
-
-        // Compute bounding box for points2
         let mut min2 = Point::new(f64::MAX, f64::MAX, f64::MAX);
         let mut max2 = Point::new(f64::MIN, f64::MIN, f64::MIN);
-
         for point in points2 {
             min2.x = min2.x.min(point.x);
             min2.y = min2.y.min(point.y);
@@ -649,19 +622,30 @@ impl AdvancedIntersectionSolver {
             max2.y = max2.y.max(point.y);
             max2.z = max2.z.max(point.z);
         }
-
-        // Check if bounding boxes overlap
-        if max1.x < min2.x || max2.x < min1.x {
+        // Check overlap
+        let overlap =
+            min1.x <= max2.x && max1.x >= min2.x &&
+            min1.y <= max2.y && max1.y >= min2.y &&
+            min1.z <= max2.z && max1.z >= min2.z;
+        if !overlap {
             return false;
         }
-        if max1.y < min2.y || max2.y < min1.y {
-            return false;
+        // Detailed check: test if any point in points1 is within bounding box of points2
+        for p1 in points1 {
+            if p1.x >= min2.x && p1.x <= max2.x &&
+               p1.y >= min2.y && p1.y <= max2.y &&
+               p1.z >= min2.z && p1.z <= max2.z {
+                return true;
+            }
         }
-        if max1.z < min2.z || max2.z < min1.z {
-            return false;
+        for p2 in points2 {
+            if p2.x >= min1.x && p2.x <= max1.x &&
+               p2.y >= min1.y && p2.y <= max1.y &&
+               p2.z >= min1.z && p2.z <= max1.z {
+                return true;
+            }
         }
-
-        true
+        false
     }
 
     /// Solve linear system for curve-surface intersection
@@ -679,8 +663,8 @@ impl AdvancedIntersectionSolver {
 
         // Construct the Jacobian matrix columns
         let j1 = *d_curve;
-        let j2 = -d_surface_du;
-        let j3 = -d_surface_dv;
+        let j2 = d_surface_du.negated();
+        let j3 = d_surface_dv.negated();
 
         // Compute the normal equations matrix (A^T * A)
         let a11 = j1.dot(&j1);
@@ -762,8 +746,8 @@ impl AdvancedIntersectionSolver {
         // Construct the Jacobian matrix columns
         let j1 = *d1_du;
         let j2 = *d1_dv;
-        let j3 = -d2_du;
-        let j4 = -d2_dv;
+        let j3 = d2_du.negated();
+        let j4 = d2_dv.negated();
 
         // Compute the normal equations matrix (A^T * A)
         let a11 = j1.dot(&j1);
@@ -837,7 +821,7 @@ impl AdvancedIntersectionSolver {
     fn remove_duplicate_intersections(&self, intersections: &mut Vec<CurveSurfaceIntersection>) {
         // Implementation of duplicate removal
         // Remove duplicates based on point proximity
-        let mut unique_intersections = Vec::new();
+        let mut unique_intersections: Vec<CurveSurfaceIntersection> = Vec::new();
 
         for intersection in intersections.iter() {
             let mut is_duplicate = false;
@@ -865,7 +849,7 @@ impl AdvancedIntersectionSolver {
     ) {
         // Implementation of duplicate removal
         // Remove duplicates based on point proximity
-        let mut unique_intersections = Vec::new();
+        let mut unique_intersections: Vec<SurfaceSurfaceIntersection> = Vec::new();
 
         for intersection in intersections.iter() {
             let mut is_duplicate = false;
