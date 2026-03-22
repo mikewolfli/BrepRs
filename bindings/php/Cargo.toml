@@ -1,0 +1,19 @@
+[package]
+name = "breprs-php"
+version = "0.6.0-alpha"
+edition = "2021"
+publish = false
+
+[lib]
+name = "breprs_php"
+crate-type = ["cdylib"]
+
+[dependencies]
+ext-php-rs = "0.12"
+breprs = { path = "../../" }
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"

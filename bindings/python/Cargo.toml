@@ -1,0 +1,17 @@
+[package]
+name = "breprs-python"
+version = "0.6.0-alpha"
+edition = "2021"
+publish = false
+
+[lib]
+name = "breprs_python"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.22", features = ["extension-module"] }
+breprs = { path = "../../" }
+
+[features]
+default = ["python3"]
+python3 = ["pyo3/python3"]

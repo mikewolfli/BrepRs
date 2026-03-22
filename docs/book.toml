@@ -1,0 +1,19 @@
+[book]
+title = "BrepRs Documentation"
+author = "BrepRs Team"
+description = "Comprehensive documentation for BrepRs boundary representation library"
+
+[output.html]
+collapse-section = true
+highlight = "ayu"
+
+[preprocessor.i18n]
+command = "mdbook-i18n"
+
+[preprocessor.i18n.languages]
+en = "English"
+zh-CN = "简体中文"
+zh-TW = "繁體中文"
+fr = "Français"
+de = "Deutsch"
+ru = "Русский"

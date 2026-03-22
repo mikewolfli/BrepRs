@@ -20,8 +20,8 @@ pub use crate::ai_ml::{
     utils::AiMlUtils as ML_Utils,
 };
 
-// Re-export PyTorch integration if feature is enabled
-#[cfg(feature = "pytorch")]
+// Re-export PyTorch integration if feature is enabled (using tch crate)
+#[cfg(feature = "tch")]
 pub use crate::ai_ml::frameworks::pytorch as ML_PyTorch;
 
 // Re-export TensorFlow integration if feature is enabled

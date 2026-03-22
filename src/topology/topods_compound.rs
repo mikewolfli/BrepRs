@@ -97,6 +97,11 @@ impl TopoDsCompound {
         self.shape.set_mutable(mutable);
     }
 
+    /// Convert the compound into a shape
+    pub fn into_shape(self) -> TopoDsShape {
+        self.shape
+    }
+
     /// Check if the compound contains a specific component
     pub fn contains(&self, component: &Handle<TopoDsShape>) -> bool {
         self.components.contains(component)

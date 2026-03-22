@@ -1,6 +1,6 @@
 [package]
 name = "breprs"
-version = "0.1.0"
+version = "0.6.0-alpha"
 edition = "2021"
 description = "Rust implementation of boundary representation (BRep) with API compatibility for CAD/CAE/CAM applications"
 license = "MIT OR Apache-2.0"
@@ -18,7 +18,28 @@ serde = ["dep:serde", "dep:serde_json", "dep:bincode"]
 wasm = ["dep:wasm-bindgen", "dep:js-sys", "dep:web-sys"]
 rayon = ["dep:rayon"]
 
+# Language bindings
+python = ["dep:pyo3"]
+cpp = ["dep:cbindgen"]
+java = ["dep:jni"]
+nodejs = ["dep:napi", "dep:napi-derive"]
+php = ["dep:ext-php-rs"]
+
+# AI/ML features
 onnxruntime = ["dep:onnxruntime"]
+tch = ["dep:tch"]
+tensorflow = ["dep:tensorflow"]
+pytorch = ["tch"]  # Alias for backward compatibility
+nlp = []
+sketch2mesh = []
+imageproc = []
+
+# Cloud features
+websocket = []
+
+# GPU features
+gpu = ["dep:wgpu", "dep:pollster"]
+wgpu = ["dep:wgpu"]
 
 [dependencies]
 thiserror = "1.0"
@@ -46,6 +67,15 @@ rayon = { version = "1.8", optional = true }
 # GPU support
 wgpu = { version = "28.0.0", optional = true }
 pollster = { version = "0.3", optional = true }
+
+# Language bindings
+pyo3 = { version = "0.22", features = ["extension-module"], optional = true }
+cbindgen = { version = "0.27", optional = true }
+jni = { version = "0.22", optional = true }
+napi = { version = "3", features = ["full"], optional = true, default-features = false }
+napi-derive = { version = "3", optional = true }
+ext-php-rs = { version = "0.12", optional = true }
+
 console_error_panic_hook = "0.1.7"
 console_log = "1.0.0"
 tokio = { version = "1.50.0", features = ["time", "rt"] }

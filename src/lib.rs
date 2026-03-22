@@ -23,6 +23,28 @@
 //!
 //! Use the native API for new Rust projects, and the compatibility API for
 //! migrating existing OpenCASCADE code.
+//!
+//! # Internationalization (i18n)
+//!
+//! BrepRs supports multiple languages for error messages and UI strings:
+//!
+//! ```rust
+//! use breprs::i18n::{I18n, Language, MessageKey};
+//!
+//! // Initialize with automatic system language detection
+//! I18n::init();
+//!
+//! // Or set a specific language
+//! I18n::set_language(Language::SimplifiedChinese);
+//!
+//! // Translate a message
+//! let msg = I18n::tr(MessageKey::ErrorInvalidShape);
+//! println!("{}", msg); // 输出: 无效的形状
+//!
+//! // Format a message with parameters
+//! let msg = I18n::tr_one(MessageKey::ErrorFileNotFound, "model.step");
+//! println!("{}", msg); // 输出: 文件未找到: model.step
+//! ```
 
 pub mod ai_ml;
 pub mod api;
@@ -36,6 +58,7 @@ pub mod data_exchange;
 pub mod foundation;
 pub mod geometry;
 pub mod gpu;
+pub mod i18n;
 pub mod mesh;
 pub mod modeling;
 pub mod plugin;

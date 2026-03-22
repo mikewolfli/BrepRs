@@ -1,0 +1,17 @@
+[package]
+name = "breprs-nodejs"
+version = "0.6.0-alpha"
+edition = "2021"
+publish = false
+
+[lib]
+name = "breprs_nodejs"
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "3", features = ["full"], default-features = false }
+napi-derive = "3"
+breprs = { path = "../../" }
+
+[build-dependencies]
+napi-build = "2"
