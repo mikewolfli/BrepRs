@@ -242,24 +242,24 @@ impl ParallelMeshGenerator {
         let total_vertices: usize = if meshes.len() >= self.config.min_parallel_size {
             meshes
                 .par_iter()
-                .map(|m: &crate::mesh::mesh_data::Mesh2D| m.vertex_count())
+                .map(|m| m.vertex_count())
                 .sum()
         } else {
             meshes
                 .iter()
-                .map(|m: &crate::mesh::mesh_data::Mesh2D| m.vertex_count())
+                .map(|m| m.vertex_count())
                 .sum()
         };
 
         let total_triangles: usize = if meshes.len() >= self.config.min_parallel_size {
             meshes
                 .par_iter()
-                .map(|m: &crate::mesh::mesh_data::Mesh2D| m.triangle_count())
+                .map(|m| m.triangle_count())
                 .sum()
         } else {
             meshes
                 .iter()
-                .map(|m: &crate::mesh::mesh_data::Mesh2D| m.triangle_count())
+                .map(|m| m.triangle_count())
                 .sum()
         };
 

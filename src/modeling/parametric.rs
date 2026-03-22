@@ -59,8 +59,7 @@ pub struct NumericParam {
     description: String,
     min_value: Option<f64>,
     max_value: Option<f64>,
-    #[allow(dead_code)]
-    step: Option<f64>,
+    _step: Option<f64>,
 }
 
 impl NumericParam {
@@ -72,7 +71,7 @@ impl NumericParam {
             description: description.to_string(),
             min_value: None,
             max_value: None,
-            step: None,
+            _step: None,
         }
     }
 
@@ -95,7 +94,7 @@ impl NumericParam {
     /// Set step value
     pub fn with_step(self, step: f64) -> Self {
         Self {
-            step: Some(step),
+            _step: Some(step),
             ..self
         }
     }
@@ -1359,6 +1358,7 @@ impl ParametricSphereBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
 
     #[test]
     fn test_parametric_box() {

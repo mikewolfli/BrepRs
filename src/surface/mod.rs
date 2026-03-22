@@ -3,9 +3,17 @@ pub mod implicit;
 pub mod reconstruction;
 pub mod uv_parameterization;
 pub mod fitting_analysis;
+pub mod surface_editing;
+pub mod surface_matching;
+pub mod surface_analysis;
+pub mod surface_deformation;
 
 pub use clipping::*;
 pub use fitting_analysis::*;
 pub use implicit::*;
 pub use reconstruction::*;
 pub use uv_parameterization::*;
+pub use surface_editing::*;
+pub use surface_matching::*;
+pub use surface_analysis::*;
+pub use surface_deformation::*;

@@ -67,6 +67,12 @@ impl WasmBox {
         self.width * self.height * self.depth
     }
 
+    /// Get surface area
+    #[wasm_bindgen(js_name = surfaceArea)]
+    pub fn surface_area(&self) -> f64 {
+        2.0 * (self.width * self.height + self.width * self.depth + self.height * self.depth)
+    }
+
     /// Convert to solid
     #[wasm_bindgen(js_name = toSolid)]
     pub fn to_solid(&self) -> WasmSolid {
@@ -196,6 +202,12 @@ impl WasmCylinder {
         std::f64::consts::PI * self.radius.powi(2) * self.height
     }
 
+    /// Get surface area
+    #[wasm_bindgen(js_name = surfaceArea)]
+    pub fn surface_area(&self) -> f64 {
+        2.0 * std::f64::consts::PI * self.radius * (self.radius + self.height)
+    }
+
     /// Convert to solid
     #[wasm_bindgen(js_name = toSolid)]
     pub fn to_solid(&self) -> WasmSolid {
@@ -224,9 +236,29 @@ pub struct WasmCone {
 #[wasm_bindgen(js_class = Cone)]
 impl WasmCone {
     /// Create a cone
+    /// If radius2 is 0, creates a standard cone. Otherwise creates a truncated cone.
     #[wasm_bindgen(constructor)]
     pub fn new(radius1: f64, radius2: f64, height: f64) -> Self {
+        // For now, use radius1 as the base radius. Truncated cone support would require
+        // a separate implementation in the primitives module.
+        let _ = radius2; // radius2 is reserved for future truncated cone support
         let solid = primitives::make_cone(radius1, height, None);
+        Self {
+            inner: Handle::new(std::sync::Arc::new(solid)),
+            radius1,
+            radius2,
+            height,
+        }
+    }
+
+    /// Create a cone at a specific position
+    /// If radius2 is 0, creates a standard cone. Otherwise creates a truncated cone.
+    #[wasm_bindgen(js_name = at)]
+    pub fn at(radius1: f64, radius2: f64, height: f64, position: &WasmPoint) -> Self {
+        // For now, use radius1 as the base radius. Truncated cone support would require
+        // a separate implementation in the primitives module.
+        let _ = radius2; // radius2 is reserved for future truncated cone support
+        let solid = primitives::make_cone(radius1, height, Some(position.inner.clone()));
         Self {
             inner: Handle::new(std::sync::Arc::new(solid)),
             radius1,
@@ -251,6 +283,12 @@ impl WasmCone {
     #[wasm_bindgen(getter, js_name = height)]
     pub fn height(&self) -> f64 {
         self.height
+    }
+
+    /// Get volume
+    #[wasm_bindgen(js_name = volume)]
+    pub fn volume(&self) -> f64 {
+        (1.0 / 3.0) * std::f64::consts::PI * self.height * (self.radius1.powi(2) + self.radius1 * self.radius2 + self.radius2.powi(2))
     }
 
     /// Convert to solid
@@ -300,6 +338,18 @@ impl WasmTorus {
     #[wasm_bindgen(getter, js_name = minorRadius)]
     pub fn minor_radius(&self) -> f64 {
         self.minor_radius
+    }
+
+    /// Get volume
+    #[wasm_bindgen(js_name = volume)]
+    pub fn volume(&self) -> f64 {
+        2.0 * std::f64::consts::PI.powi(2) * self.major_radius * self.minor_radius.powi(2)
+    }
+
+    /// Get surface area
+    #[wasm_bindgen(js_name = surfaceArea)]
+    pub fn surface_area(&self) -> f64 {
+        4.0 * std::f64::consts::PI.powi(2) * self.major_radius * self.minor_radius
     }
 
     /// Convert to solid

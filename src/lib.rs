@@ -27,6 +27,7 @@
 pub mod ai_ml;
 pub mod api;
 pub mod application;
+pub mod assembly;
 pub mod benchmarking;
 pub mod build;
 pub mod cloud;

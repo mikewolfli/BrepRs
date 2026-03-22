@@ -857,8 +857,7 @@ impl ConstraintSolver {
 /// by identifying independent constraint groups.
 #[derive(Debug, Clone)]
 pub struct GraphConstraintSolver {
-    #[allow(dead_code)]
-    solver: ConstraintSolver,
+    _solver: ConstraintSolver,
     constraint_graph: ConstraintGraph,
 }
 
@@ -867,7 +866,7 @@ impl GraphConstraintSolver {
     pub fn new(model: ParametricModel) -> Self {
         let constraint_graph = ConstraintGraph::from_model(&model);
         Self {
-            solver: ConstraintSolver::new(model),
+            _solver: ConstraintSolver::new(model),
             constraint_graph,
         }
     }

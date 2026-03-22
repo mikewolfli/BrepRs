@@ -239,6 +239,30 @@ impl TopoDsShape {
         Vec::new()
     }
 
+    /// Get vertices of the shape
+    ///
+    /// Default implementation returns empty vector
+    /// Subclasses should override this with proper implementation
+    pub fn vertices(&self) -> Vec<crate::topology::topods_vertex::TopoDsVertex> {
+        Vec::new()
+    }
+
+    /// Get edges of the shape
+    ///
+    /// Default implementation returns empty vector
+    /// Subclasses should override this with proper implementation
+    pub fn edges(&self) -> Vec<crate::topology::topods_edge::TopoDsEdge> {
+        Vec::new()
+    }
+
+    /// Get solids of the shape
+    ///
+    /// Default implementation returns empty vector
+    /// Subclasses should override this with proper implementation
+    pub fn solids(&self) -> Vec<crate::topology::topods_solid::TopoDsSolid> {
+        Vec::new()
+    }
+
     /// Try to cast to face reference
     ///
     /// Returns None if this shape is not a face

@@ -16,7 +16,9 @@ pub mod offset_operations;
 pub mod parametric;
 pub mod post_processing;
 pub mod primitives;
+pub mod feature_history;
 pub mod shape_repair;
+pub mod sketch;
 pub mod solid_decomposition;
 pub mod tissue;
 pub use advanced_boolean::AdvancedBooleanOperations;
@@ -37,6 +39,8 @@ pub use post_processing::{
     BooleanOperation, MeshDecimator, MeshSubdivider, PostProcessing, SubdivisionScheme,
 };
 pub use primitives::*;
+pub use feature_history::*;
 pub use shape_repair::*;
+pub use sketch::*;
 pub use solid_decomposition::*;
 pub use tissue::*;

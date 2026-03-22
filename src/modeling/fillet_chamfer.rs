@@ -583,14 +583,23 @@ impl FilletChamfer {
             
             // Check if faces are not coplanar
             if let (Some(face1), Some(face2)) = (adjacent_faces[0].get(), adjacent_faces[1].get()) {
-                // Try to get normals from surfaces if available
-                if let (Some(surface1), Some(surface2)) = (face1.surface(), face2.surface()) {
-                    // For plane surfaces, u and v don't matter; for others, use (0,0)
-                    let normal1 = surface1.normal(0.0, 0.0);
-                    let normal2 = surface2.normal(0.0, 0.0);
-                    
-                    // Check if normals are not parallel (faces not coplanar)
-                    let dot_product = normal1.x * normal2.x + normal1.y * normal2.y + normal1.z * normal2.z;
+                // Get surface normals at parameter (0.5, 0.5) - center of surface
+                let normal1 = face1.surface().and_then(|s| {
+                    let ((u_min, u_max), (v_min, v_max)) = s.parameter_range();
+                    let u = (u_min + u_max) / 2.0;
+                    let v = (v_min + v_max) / 2.0;
+                    Some(s.normal(u, v))
+                });
+                let normal2 = face2.surface().and_then(|s| {
+                    let ((u_min, u_max), (v_min, v_max)) = s.parameter_range();
+                    let u = (u_min + u_max) / 2.0;
+                    let v = (v_min + v_max) / 2.0;
+                    Some(s.normal(u, v))
+                });
+                
+                // Check if normals are not parallel (faces not coplanar)
+                if let (Some(n1), Some(n2)) = (normal1, normal2) {
+                    let dot_product = n1.x * n2.x + n1.y * n2.y + n1.z * n2.z;
                     if dot_product.abs() > 1.0 - 1e-6 {
                         return false;
                     }
@@ -636,8 +645,12 @@ impl FilletChamfer {
                 return false;
             }
             
-            // Face must not be degenerate
-            !face_ref.is_degenerate()
+            // Face must not be degenerate (check if it has valid geometry)
+            // A face is degenerate if it has no valid surface and no valid wires
+            let has_valid_surface = face_ref.surface().is_some();
+            let has_valid_wires = face_ref.num_wires() > 0;
+            
+            has_valid_surface && has_valid_wires
         } else {
             false
         }

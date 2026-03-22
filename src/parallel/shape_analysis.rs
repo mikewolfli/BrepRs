@@ -165,7 +165,7 @@ impl ParallelShapeAnalyzer {
     pub fn count_sub_shapes(
         &self,
         shapes: &[Handle<TopoDsShape>],
-        _shape_type: ShapeType,
+        shape_type: ShapeType,
     ) -> ParallelResult<Vec<usize>> {
         use std::time::Instant;
 
@@ -174,12 +174,32 @@ impl ParallelShapeAnalyzer {
         let results: Vec<usize> = if shapes.len() >= self.config.min_parallel_size {
             shapes
                 .par_iter()
-                .map(|shape| shape.as_ref().map_or(0, |_s| 0))
+                .map(|shape| {
+                    shape.as_ref().map_or(0, |s| {
+                        match shape_type {
+                            ShapeType::Vertex => s.vertices().len(),
+                            ShapeType::Edge => s.edges().len(),
+                            ShapeType::Face => s.faces().len(),
+                            ShapeType::Solid => s.solids().len(),
+                            _ => 0,
+                        }
+                    })
+                })
                 .collect()
         } else {
             shapes
                 .iter()
-                .map(|shape| shape.as_ref().map_or(0, |_s| 0))
+                .map(|shape| {
+                    shape.as_ref().map_or(0, |s| {
+                        match shape_type {
+                            ShapeType::Vertex => s.vertices().len(),
+                            ShapeType::Edge => s.edges().len(),
+                            ShapeType::Face => s.faces().len(),
+                            ShapeType::Solid => s.solids().len(),
+                            _ => 0,
+                        }
+                    })
+                })
                 .collect()
         };
 
@@ -462,7 +482,20 @@ impl BatchShapeAnalysis {
                     result.volumes = Some(analyzer.compute_volumes(&solids).data);
                 }
                 AnalysisOperation::SurfaceArea => {
-                    // Similar to volume extraction
+                    // Extract faces from shapes
+                    let faces: Vec<Handle<TopoDsFace>> = self
+                        .shapes
+                        .iter()
+                        .flat_map(|s| {
+                            s.as_ref().map(|shape| {
+                                shape.faces().into_iter().map(|face| {
+                                    Handle::new(std::sync::Arc::new(face))
+                                }).collect::<Vec<_>>()
+                            })
+                        })
+                        .flatten()
+                        .collect();
+                    result.surface_areas = Some(analyzer.compute_surface_areas(&faces).data);
                 }
                 AnalysisOperation::Validation => {
                     result.validation = Some(analyzer.validate_shapes(&self.shapes).data);

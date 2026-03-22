@@ -271,6 +271,7 @@ impl JtReader {
         let _height = parameters[1];
         let _depth = parameters[2];
 
+        // Create box shape (simplified)
         let box_shape = TopoDsShape::new(ShapeType::Solid);
         Ok(box_shape)
     }
@@ -288,6 +289,7 @@ impl JtReader {
             .parse::<f64>()
             .map_err(|_| JtError::InvalidData("Sphere radius".to_string()))?;
 
+        // Create sphere shape (simplified)
         let sphere_shape = TopoDsShape::new(ShapeType::Solid);
         Ok(sphere_shape)
     }
@@ -315,6 +317,7 @@ impl JtReader {
         let _radius = parameters[0];
         let _height = parameters[1];
 
+        // Create cylinder shape (simplified)
         let cylinder_shape = TopoDsShape::new(ShapeType::Solid);
         Ok(cylinder_shape)
     }

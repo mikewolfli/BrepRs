@@ -246,6 +246,32 @@ impl OffsetOperations {
         result
     }
 
+    /// Offset a solid by a specified distance
+    ///
+    /// # Parameters
+    /// - `solid`: The solid to offset
+    /// - `distance`: The offset distance (positive for outward, negative for inward)
+    ///
+    /// # Returns
+    /// A new solid that is the offset of the input solid
+    pub fn offset_solid(&self, solid: &TopoDsSolid, distance: f64) -> TopoDsSolid {
+        // Create a new solid
+        let mut result = TopoDsSolid::new();
+
+        // Offset each shell in the solid
+        for shell in solid.shells() {
+            if let Some(shell_ref) = shell.get() {
+                // Offset the shell
+                let offset_shell = self.offset_shell(shell_ref, distance);
+
+                // Add the offset shell to the new solid
+                result.add_shell(Handle::new(std::sync::Arc::new(offset_shell)));
+            }
+        }
+
+        result
+    }
+
     // =========================================================================
     // Thick Solid Creation
     // =========================================================================

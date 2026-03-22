@@ -122,7 +122,6 @@ pub trait AiProtocol {
 /// Default AI Protocol Implementation
 #[derive(Clone)]
 pub struct DefaultAiProtocol {
-    #[allow(dead_code)]
     base_url: String,
     api_key: Option<String>,
     timeout: u64,
@@ -145,6 +144,11 @@ impl DefaultAiProtocol {
     pub fn with_timeout(mut self, timeout: u64) -> Self {
         self.timeout = timeout;
         self
+    }
+
+    /// Get the base URL
+    pub fn base_url(&self) -> &str {
+        &self.base_url
     }
 }
 

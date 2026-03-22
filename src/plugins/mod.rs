@@ -117,11 +117,11 @@ impl PluginManager {
 
         // Add the plugin to the map
         let plugin_name = plugin.name().to_string();
-        // Convert Box<dyn Plugin + Send + Sync> to Arc<dyn Plugin + Send + Sync>
+        // Convert Box<dyn Plugin> to Arc<dyn Plugin> by leaking the Box first
+        // This is necessary because Box<dyn Trait> cannot be directly converted to Arc<dyn Trait>
         let plugin_arc: Arc<dyn Plugin + Send + Sync> = {
-            let leaked: &'static mut (dyn Plugin + Send + Sync) = Box::leak(plugin);
-            let ptr = leaked as *const (dyn Plugin + Send + Sync);
-            unsafe { Arc::from_raw(ptr) }
+            let raw = Box::into_raw(plugin);
+            unsafe { Arc::from_raw(raw) }
         };
         self.plugins.insert(plugin_name.clone(), plugin_arc);
 

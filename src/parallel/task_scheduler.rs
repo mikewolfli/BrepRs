@@ -1,3 +1,8 @@
+//! Task Scheduler Module
+//! 
+//! This module provides a comprehensive task scheduling system for parallel computation,
+//! including work stealing, load balancing, and priority-based task execution.
+
 /// Trait for parallel tasks
 pub trait ParallelTask: Send + Sync {
     type Output: Send + Sync;
@@ -19,10 +24,6 @@ impl<T: ParallelTask> TaskWrapper<T> {
         Self { task, id, priority }
     }
 }
-/// Task Scheduler Module
-// This module provides a comprehensive task scheduling system for parallel computation,
-///
-/// including work stealing, load balancing, and priority-based task execution.
 use rayon::prelude::*;
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicUsize, Ordering};

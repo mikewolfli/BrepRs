@@ -2,6 +2,8 @@
 //!
 //! This module provides parallel implementations of geometry algorithms.
 
+use rayon::prelude::*;
+
 use crate::foundation::handle::Handle;
 use crate::geometry::Point;
 use crate::topology::topods_shape::TopoDsShape;
@@ -27,7 +29,7 @@ impl ParallelGeometryResult {
 
 /// Parallel distance calculation
 pub fn parallel_distance_calculations(points: &[Point], reference: &Point) -> Vec<f64> {
-    points.iter().map(|p| p.distance(reference)).collect()
+    points.par_iter().map(|p| p.distance(reference)).collect()
 }
 
 /// Parallel bounding box calculation
@@ -36,12 +38,20 @@ pub fn parallel_bounding_box(shapes: &[Handle<TopoDsShape>]) -> Option<(Point, P
         return None;
     }
 
+    // Calculate individual bounding boxes in parallel
+    let bboxes: Vec<Option<(Point, Point)>> = shapes
+        .par_iter()
+        .map(|shape| {
+            shape.as_ref().map(|s| s.bounding_box())
+        })
+        .collect();
+
+    // Combine all bounding boxes
     let mut min = Point::new(f64::MAX, f64::MAX, f64::MAX);
     let mut max = Point::new(f64::MIN, f64::MIN, f64::MIN);
 
-    for shape in shapes {
-        if let Some(s) = shape.as_ref() {
-            let (bbox_min, bbox_max) = s.bounding_box();
+    for bbox in bboxes {
+        if let Some((bbox_min, bbox_max)) = bbox {
             min.x = min.x.min(bbox_min.x);
             min.y = min.y.min(bbox_min.y);
             min.z = min.z.min(bbox_min.z);

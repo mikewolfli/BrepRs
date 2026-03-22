@@ -527,13 +527,14 @@ impl SoftwareRenderer {
 }
 
 impl Renderer for SoftwareRenderer {
-        fn stats(&self) -> RenderStats {
-            self.stats
-        }
+    fn stats(&self) -> RenderStats {
+        self.stats
+    }
 
-        fn is_initialized(&self) -> bool {
-            self.initialized
-        }
+    fn is_initialized(&self) -> bool {
+        self.initialized
+    }
+
     fn initialize(&mut self, target: &RenderTarget) -> Result<(), RenderError> {
         self.target = *target;
         let pixel_count = (target.width * target.height) as usize;
@@ -684,7 +685,6 @@ impl SoftwareRenderer {
             }
         }
     }
-    // (removed duplicate stats and is_initialized)
 }
 
 /// Helper function to transform a point by a 4x4 matrix

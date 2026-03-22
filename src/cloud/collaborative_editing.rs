@@ -786,8 +786,168 @@ impl CollaborativeEditingClient {
         self.editor.clone()
     }
 
-    /// Is connected
     pub fn is_connected(&self) -> bool {
         *self.is_connected.lock().unwrap()
     }
+}
+
+pub struct CloudStorageManager {
+    storage_interface: Option<Box<dyn CloudStorageInterface>>,
+}
+
+impl CloudStorageManager {
+    pub fn new() -> Self {
+        Self {
+            storage_interface: None,
+        }
+    }
+
+    pub fn with_interface(mut self, interface: Box<dyn CloudStorageInterface>) -> Self {
+        self.storage_interface = Some(interface);
+        self
+    }
+
+    pub fn store(&self, key: &str, data: &[u8]) -> Result<(), String> {
+        match &self.storage_interface {
+            Some(interface) => interface.store(key, data),
+            None => Err("No storage interface configured".to_string()),
+        }
+    }
+
+    pub fn retrieve(&self, key: &str) -> Result<Vec<u8>, String> {
+        match &self.storage_interface {
+            Some(interface) => interface.retrieve(key),
+            None => Err("No storage interface configured".to_string()),
+        }
+    }
+
+    pub fn delete(&self, key: &str) -> Result<(), String> {
+        match &self.storage_interface {
+            Some(interface) => interface.delete(key),
+            None => Err("No storage interface configured".to_string()),
+        }
+    }
+
+    pub fn list(&self, prefix: &str) -> Result<Vec<String>, String> {
+        match &self.storage_interface {
+            Some(interface) => interface.list(prefix),
+            None => Err("No storage interface configured".to_string()),
+        }
+    }
+}
+
+impl Default for CloudStorageManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+pub trait CloudStorageInterface: Send + Sync {
+    fn store(&self, key: &str, data: &[u8]) -> Result<(), String>;
+    fn retrieve(&self, key: &str) -> Result<Vec<u8>, String>;
+    fn delete(&self, key: &str) -> Result<(), String>;
+    fn list(&self, prefix: &str) -> Result<Vec<String>, String>;
+}
+
+pub struct CrdtManager {
+    documents: HashMap<String, CrdtDocument>,
+}
+
+impl CrdtManager {
+    pub fn new() -> Self {
+        Self {
+            documents: HashMap::new(),
+        }
+    }
+
+    pub fn create_document(&mut self, id: &str) -> Result<(), String> {
+        if self.documents.contains_key(id) {
+            return Err("Document already exists".to_string());
+        }
+        self.documents.insert(id.to_string(), CrdtDocument::new(id));
+        Ok(())
+    }
+
+    pub fn get_document(&self, id: &str) -> Option<&CrdtDocument> {
+        self.documents.get(id)
+    }
+
+    pub fn get_document_mut(&mut self, id: &str) -> Option<&mut CrdtDocument> {
+        self.documents.get_mut(id)
+    }
+
+    pub fn delete_document(&mut self, id: &str) -> Option<CrdtDocument> {
+        self.documents.remove(id)
+    }
+
+    pub fn list_documents(&self) -> Vec<&str> {
+        self.documents.keys().map(|s| s.as_str()).collect()
+    }
+}
+
+impl Default for CrdtManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CrdtDocument {
+    pub id: String,
+    pub content: Vec<u8>,
+    pub version: u64,
+    pub operations: Vec<CrdtOperation>,
+}
+
+impl CrdtDocument {
+    pub fn new(id: &str) -> Self {
+        Self {
+            id: id.to_string(),
+            content: Vec::new(),
+            version: 0,
+            operations: Vec::new(),
+        }
+    }
+
+    pub fn apply_operation(&mut self, operation: CrdtOperation) -> Result<(), String> {
+        match &operation.op_type {
+            CrdtOpType::Insert { position, data } => {
+                if *position > self.content.len() {
+                    return Err("Invalid position".to_string());
+                }
+                self.content.splice(*position..*position, data.iter().cloned());
+            }
+            CrdtOpType::Delete { position, length } => {
+                if *position + *length > self.content.len() {
+                    return Err("Invalid delete range".to_string());
+                }
+                self.content.drain(*position..*position + *length);
+            }
+        }
+        self.version += 1;
+        self.operations.push(operation.clone());
+        Ok(())
+    }
+
+    pub fn content(&self) -> &[u8] {
+        &self.content
+    }
+
+    pub fn version(&self) -> u64 {
+        self.version
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CrdtOperation {
+    pub id: String,
+    pub op_type: CrdtOpType,
+    pub timestamp: u64,
+    pub client_id: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum CrdtOpType {
+    Insert { position: usize, data: Vec<u8> },
+    Delete { position: usize, length: usize },
 }

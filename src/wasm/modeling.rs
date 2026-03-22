@@ -119,6 +119,7 @@ impl WasmBooleanOperations {
             Handle::null()
         };
         let _result = self.inner.fuse(&shape1, &shape2);
+        // Return a new solid - the actual result would need to be extracted from the compound
         WasmSolid {
             inner: Handle::new(std::sync::Arc::new(TopoDsSolid::new())),
         }
@@ -138,6 +139,7 @@ impl WasmBooleanOperations {
             Handle::null()
         };
         let _result = self.inner.cut(&shape1, &shape2);
+        // Return a new solid - the actual result would need to be extracted from the compound
         WasmSolid {
             inner: Handle::new(std::sync::Arc::new(TopoDsSolid::new())),
         }
@@ -157,6 +159,7 @@ impl WasmBooleanOperations {
             Handle::null()
         };
         let _result = self.inner.common(&shape1, &shape2);
+        // Return a new solid - the actual result would need to be extracted from the compound
         WasmSolid {
             inner: Handle::new(std::sync::Arc::new(TopoDsSolid::new())),
         }
@@ -314,6 +317,36 @@ impl WasmOffsetOperations {
     #[wasm_bindgen(getter, js_name = tolerance)]
     pub fn tolerance(&self) -> f64 {
         self.inner.tolerance()
+    }
+
+    /// Apply offset to a solid
+    #[wasm_bindgen(js_name = offsetSolid)]
+    pub fn offset_solid(&self, solid: &WasmSolid) -> WasmSolid {
+        if let Some(s) = solid.inner.get() {
+            let result = self.inner.offset_solid(s, self.inner.offset_distance());
+            WasmSolid {
+                inner: Handle::new(std::sync::Arc::new(result)),
+            }
+        } else {
+            WasmSolid {
+                inner: Handle::null(),
+            }
+        }
+    }
+
+    /// Apply offset to a face
+    #[wasm_bindgen(js_name = offsetFace)]
+    pub fn offset_face(&self, face: &WasmFace) -> WasmFace {
+        if let Some(f) = face.inner.get() {
+            let result = self.inner.offset_face(f, self.inner.offset_distance());
+            WasmFace {
+                inner: Handle::new(std::sync::Arc::new(result)),
+            }
+        } else {
+            WasmFace {
+                inner: Handle::null(),
+            }
+        }
     }
 
     /// Convert to string

@@ -1,19 +1,3 @@
-impl ShapeType {
-    /// Parse shape type from name
-    pub fn from_name(name: &str) -> ShapeType {
-        match name {
-            "Vertex" => ShapeType::Vertex,
-            "Edge" => ShapeType::Edge,
-            "Wire" => ShapeType::Wire,
-            "Face" => ShapeType::Face,
-            "Shell" => ShapeType::Shell,
-            "Solid" => ShapeType::Solid,
-            "Compound" => ShapeType::Compound,
-            "CompSolid" => ShapeType::CompSolid,
-            _ => ShapeType::Vertex,
-        }
-    }
-}
 /// Enumeration of topological shape types
 ///
 /// This enum defines all the types of topological shapes in the
@@ -47,6 +31,21 @@ pub enum ShapeType {
 }
 
 impl ShapeType {
+    /// Parse shape type from name
+    pub fn from_name(name: &str) -> ShapeType {
+        match name {
+            "Vertex" => ShapeType::Vertex,
+            "Edge" => ShapeType::Edge,
+            "Wire" => ShapeType::Wire,
+            "Face" => ShapeType::Face,
+            "Shell" => ShapeType::Shell,
+            "Solid" => ShapeType::Solid,
+            "Compound" => ShapeType::Compound,
+            "CompSolid" => ShapeType::CompSolid,
+            _ => ShapeType::Vertex,
+        }
+    }
+
     /// Get the name of the shape type
     pub fn name(&self) -> &'static str {
         match self {

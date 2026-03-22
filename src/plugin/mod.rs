@@ -1,3 +1,8 @@
+//! Plugin System
+//! 
+//! This module provides a plugin system for BrepRs, allowing dynamic loading of plugins
+//! from shared libraries and static plugin registration.
+
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
@@ -53,6 +58,7 @@ pub trait Plugin: Send + Sync {
 /// Plugin manager
 pub struct PluginManager {
     plugins: HashMap<String, Arc<Mutex<dyn Plugin + Send + Sync>>>,
+    libraries: HashMap<String, Library>,
     plugin_paths: Vec<String>,
     initialized: bool,
 }
@@ -62,6 +68,7 @@ impl PluginManager {
     pub fn new() -> Self {
         Self {
             plugins: HashMap::new(),
+            libraries: HashMap::new(),
             plugin_paths: Vec::new(),
             initialized: false,
         }
@@ -142,6 +149,10 @@ impl PluginManager {
             
             // Call the register_plugin function
             register_plugin(self);
+            
+            // Store the library to keep it loaded
+            let plugin_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+            self.libraries.insert(plugin_name, library);
         }
         
         Ok(())
@@ -175,6 +186,7 @@ impl PluginManager {
         }
 
         self.plugins.clear();
+        self.libraries.clear();
         self.initialized = false;
         Ok(())
     }

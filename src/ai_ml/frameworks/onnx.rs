@@ -185,14 +185,14 @@ impl OnnxModelCache {
     }
 
     /// Get or load model
-    pub fn get_or_load(&mut self, path: &Path) -> AiResult<&Box<dyn AiModel>> {
+    pub fn get_or_load(&mut self, path: &Path) -> AiResult<&dyn AiModel> {
         let path_str = path.to_str().unwrap_or("").to_string();
 
         // Check if model is in cache
         if self.models.contains_key(&path_str) {
             // Update last used time
             self.last_used.insert(path_str.clone(), std::time::Instant::now());
-            return Ok(self.models.get(&path_str).unwrap());
+            return Ok(self.models.get(&path_str).unwrap().as_ref());
         }
 
         // Load model
@@ -216,7 +216,7 @@ impl OnnxModelCache {
         self.models.insert(path_str.clone(), model);
         self.last_used.insert(path_str.clone(), std::time::Instant::now());
 
-        Ok(self.models.get(&path_str).unwrap())
+        Ok(self.models.get(&path_str).unwrap().as_ref())
     }
 }
 
@@ -225,6 +225,12 @@ pub struct OnnxRuntime {
     runtime_path: Option<String>,
     #[allow(dead_code)]
     model_cache: OnnxModelCache,
+}
+
+impl Default for OnnxRuntime {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl OnnxRuntime {

@@ -296,6 +296,7 @@ impl ModelQualityEvaluator {
             let neighbor_point = &mesh.vertices[neighbor].point;
             let dx = neighbor_point.x - center.x;
             let dy = neighbor_point.y - center.y;
+            let _dz = neighbor_point.z - center.z;
             
             // Calculate angle in xy-plane
             let angle = f64::atan2(dy, dx);

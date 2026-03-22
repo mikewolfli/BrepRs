@@ -78,12 +78,14 @@ impl TransferLearningModel {
             total_loss += batch_loss;
 
             if batch_idx % 10 == 0 {
+                let num_batches = dataset.samples.len().div_ceil(batch_size);
                 println!("Fine-tuning batch {}/{}: Loss = {:.4}", 
-                    batch_idx + 1, (dataset.samples.len() + batch_size - 1) / batch_size, batch_loss);
+                    batch_idx + 1, num_batches, batch_loss);
             }
         }
 
-        let avg_loss = total_loss / ((dataset.samples.len() + batch_size - 1) / batch_size) as f32;
+        let num_batches = dataset.samples.len().div_ceil(batch_size);
+        let avg_loss = total_loss / num_batches as f32;
         println!("Fine-tuning completed. Average loss: {:.4}", avg_loss);
 
         self.fine_tuned = true;
@@ -91,8 +93,8 @@ impl TransferLearningModel {
     }
 
     /// Get base model
-    pub fn base_model(&self) -> &Box<dyn AiModel> {
-        &self.base_model
+    pub fn base_model(&self) -> &dyn AiModel {
+        self.base_model.as_ref()
     }
 
     /// Check if model is fine-tuned
@@ -256,13 +258,15 @@ impl FederatedLearningClient {
                 epoch_loss += batch_loss;
 
                 if epoch % 10 == 0 && batch_idx % 5 == 0 {
+                    let num_batches = self.training_data.samples.len().div_ceil(batch_size);
                     println!("Client {} - Epoch {}/{} Batch {}/{}: Loss = {:.4}", 
                         self.client_id, epoch + 1, epochs, batch_idx + 1, 
-                        (self.training_data.samples.len() + batch_size - 1) / batch_size, batch_loss);
+                        num_batches, batch_loss);
                 }
             }
 
-            epoch_loss /= ((self.training_data.samples.len() + batch_size - 1) / batch_size) as f32;
+            let num_batches = self.training_data.samples.len().div_ceil(batch_size);
+            epoch_loss /= num_batches as f32;
             epoch_losses.push(epoch_loss);
 
             if epoch % 10 == 0 {
@@ -370,8 +374,8 @@ impl FederatedLearningClient {
     }
 
     /// Get local model
-    pub fn local_model(&self) -> &Box<dyn AiModel> {
-        &self.local_model
+    pub fn local_model(&self) -> &dyn AiModel {
+        self.local_model.as_ref()
     }
 }
 
@@ -524,8 +528,8 @@ impl FederatedLearningServer {
     }
 
     /// Get global model
-    pub fn global_model(&self) -> &Box<dyn AiModel> {
-        &self.global_model
+    pub fn global_model(&self) -> &dyn AiModel {
+        self.global_model.as_ref()
     }
 
     /// Get number of rounds
@@ -896,12 +900,9 @@ impl ReinforcementLearningAgent {
                 let target_vertices = (state.vertices.len() * 7 / 10).max(4);
                 if new_state.vertices.len() > target_vertices {
                     new_state.vertices.truncate(target_vertices);
-                    new_state.faces = new_state.faces
-                        .into_iter()
-                        .filter(|face| {
-                            face.vertices.iter().all(|&v| v < target_vertices)
-                        })
-                        .collect();
+                    new_state.faces.retain(|face| {
+                        face.vertices.iter().all(|&v| v < target_vertices)
+                    });
                 }
             }
             "refine" => {
@@ -970,8 +971,8 @@ impl ReinforcementLearningAgent {
     }
 
     /// Get model
-    pub fn model(&self) -> &Box<dyn AiModel> {
-        &self.model
+    pub fn model(&self) -> &dyn AiModel {
+        self.model.as_ref()
     }
 
     /// Get replay buffer size
