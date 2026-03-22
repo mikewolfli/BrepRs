@@ -377,26 +377,186 @@ impl IncrementalCompiler {
     }
 
     /// Extract dependencies from source
-    fn extract_dependencies(&self, _path: &Path, source: &str) -> HashSet<PathBuf> {
+    fn extract_dependencies(&self, path: &Path, source: &str) -> HashSet<PathBuf> {
         let mut dependencies = HashSet::new();
 
-        // Simplified dependency extraction
-        // In a real system, this would parse the actual import statements
+        // Get the directory of the current file for relative imports
+        let current_dir = path.parent().unwrap_or(&self.source_dir);
+
+        // Parse Rust use statements
         for line in source.lines() {
-            if line.starts_with("use ") || line.starts_with("import ") {
-                // Extract dependency path
-                let parts: Vec<&str> = line.split_whitespace().collect();
-                if parts.len() > 1 {
-                    let dep_path = parts[1].replace("::", "/") + ".rs";
-                    let full_path = self.source_dir.join(dep_path);
-                    if full_path.exists() {
-                        dependencies.insert(full_path);
-                    }
+            let trimmed = line.trim();
+            
+            // Skip comments
+            if trimmed.starts_with("//") || trimmed.starts_with("/*") {
+                continue;
+            }
+
+            // Handle `use` statements
+            if trimmed.starts_with("use ") {
+                // Extract the module path from use statement
+                // Examples: use crate::module; use super::module; use self::module; use module;
+                if let Some(module_path) = self.parse_use_statement(trimmed, current_dir) {
+                    dependencies.insert(module_path);
+                }
+            }
+
+            // Handle `mod` declarations
+            if trimmed.starts_with("mod ") {
+                // Extract module name and look for corresponding file
+                if let Some(module_path) = self.parse_mod_declaration(trimmed, current_dir) {
+                    dependencies.insert(module_path);
+                }
+            }
+
+            // Handle `include!` macro
+            if trimmed.starts_with("include!") {
+                if let Some(include_path) = self.parse_include_macro(trimmed, current_dir) {
+                    dependencies.insert(include_path);
+                }
+            }
+
+            // Handle `#[path = "..."]` attributes
+            if trimmed.starts_with("#[path") {
+                if let Some(path_attr) = self.parse_path_attribute(trimmed, current_dir) {
+                    dependencies.insert(path_attr);
                 }
             }
         }
 
+        // Also check for common dependency patterns in the file
+        self.extract_implicit_dependencies(source, &mut dependencies);
+
         dependencies
+    }
+
+    /// Parse a use statement and return the corresponding file path
+    fn parse_use_statement(&self, line: &str, current_dir: &Path) -> Option<PathBuf> {
+        // Remove 'use ' prefix and trailing semicolon
+        let use_content = line.strip_prefix("use ")?.trim_end_matches(';').trim();
+        
+        // Handle different use patterns
+        let module_path = if use_content.starts_with("crate::") {
+            // Absolute path from crate root
+            let relative = use_content.strip_prefix("crate::")?;
+            self.source_dir.join(relative.replace("::", "/") + ".rs")
+        } else if use_content.starts_with("super::") {
+            // Parent module
+            let relative = use_content.strip_prefix("super::")?;
+            let parent_dir = current_dir.parent().unwrap_or(&self.source_dir);
+            parent_dir.join(relative.replace("::", "/") + ".rs")
+        } else if use_content.starts_with("self::") {
+            // Current module
+            let relative = use_content.strip_prefix("self::")?;
+            current_dir.join(relative.replace("::", "/") + ".rs")
+        } else {
+            // External crate or relative path
+            // Check if it's a local module first
+            let parts: Vec<&str> = use_content.split("::").collect();
+            if !parts.is_empty() {
+                let first_part = parts[0];
+                // Check for local module file
+                let local_mod = current_dir.join(format!("{}.rs", first_part));
+                if local_mod.exists() {
+                    return Some(local_mod);
+                }
+                // Check for local module directory
+                let local_mod_dir = current_dir.join(first_part).join("mod.rs");
+                if local_mod_dir.exists() {
+                    return Some(local_mod_dir);
+                }
+            }
+            return None;
+        };
+
+        // Check if the resolved path exists
+        if module_path.exists() {
+            Some(module_path)
+        } else {
+            // Try with mod.rs for directories
+            let mod_path = module_path.parent()?.join(module_path.file_stem()?).join("mod.rs");
+            if mod_path.exists() {
+                Some(mod_path)
+            } else {
+                None
+            }
+        }
+    }
+
+    /// Parse a mod declaration and return the corresponding file path
+    fn parse_mod_declaration(&self, line: &str, current_dir: &Path) -> Option<PathBuf> {
+        // Extract module name from 'mod name;'
+        let mod_content = line.strip_prefix("mod ")?.trim_end_matches(';').trim();
+        let module_name = mod_content.split_whitespace().next()?;
+        
+        // Check for module file (name.rs)
+        let mod_file = current_dir.join(format!("{}.rs", module_name));
+        if mod_file.exists() {
+            return Some(mod_file);
+        }
+
+        // Check for module directory (name/mod.rs)
+        let mod_dir_file = current_dir.join(module_name).join("mod.rs");
+        if mod_dir_file.exists() {
+            return Some(mod_dir_file);
+        }
+
+        None
+    }
+
+    /// Parse an include! macro and return the file path
+    fn parse_include_macro(&self, line: &str, current_dir: &Path) -> Option<PathBuf> {
+        // Extract path from include!("path")
+        let start = line.find('"')? + 1;
+        let end = line[start..].find('"')? + start;
+        let include_path = &line[start..end];
+        
+        let full_path = current_dir.join(include_path);
+        if full_path.exists() {
+            Some(full_path)
+        } else {
+            None
+        }
+    }
+
+    /// Parse a #[path = "..."] attribute and return the file path
+    fn parse_path_attribute(&self, line: &str, current_dir: &Path) -> Option<PathBuf> {
+        // Extract path from #[path = "..."]
+        let start = line.find('"')? + 1;
+        let end = line[start..].find('"')? + start;
+        let attr_path = &line[start..end];
+        
+        let full_path = current_dir.join(attr_path);
+        if full_path.exists() {
+            Some(full_path)
+        } else {
+            None
+        }
+    }
+
+    /// Extract implicit dependencies from source content
+    fn extract_implicit_dependencies(&self, source: &str, dependencies: &mut HashSet<PathBuf>) {
+        // Look for common patterns that indicate dependencies
+        let patterns = [
+            "derive(",
+            "derive_macro",
+            "proc_macro",
+        ];
+
+        for pattern in &patterns {
+            if source.contains(pattern) {
+                // These might indicate proc-macro dependencies
+                // In a real system, we'd resolve these properly
+            }
+        }
+
+        // Check for build script dependencies
+        if source.contains("build.rs") {
+            let build_script = self.source_dir.join("build.rs");
+            if build_script.exists() {
+                dependencies.insert(build_script);
+            }
+        }
     }
 
     /// Compile all files

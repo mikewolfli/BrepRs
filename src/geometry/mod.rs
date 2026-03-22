@@ -1,3 +1,26 @@
+//! Geometry module
+//!
+//! This module provides fundamental geometric primitives and operations for 3D modeling.
+//! It includes points, vectors, directions, curves, surfaces, and transformations
+//! that form the foundation of the BrepRs CAD kernel.
+//!
+//! # Main Components
+//!
+//! - **Primitives**: Point, Vector, Direction, Axis, Plane, Sphere, Cylinder, Cone, Torus, etc.
+//! - **Curves**: Line, Circle, Ellipse, Bezier curves, NURBS curves, Spiral, etc.
+//! - **Surfaces**: Plane, Cylinder, Sphere, Cone, Torus, Bezier surfaces, NURBS surfaces, etc.
+//! - **Transformations**: Translation, rotation, scaling, and matrix operations
+//! - **Operations**: Intersections, projections, distance calculations, etc.
+//!
+//! # Example
+//!
+//! ```rust
+//! use breprs::geometry::{Point, Vector, Sphere};
+//!
+//! let center = Point::new(0.0, 0.0, 0.0);
+//! let sphere = Sphere::new(center, 5.0);
+//! ```
+
 pub mod advanced_intersection;
 pub mod ax2;
 pub mod axis;

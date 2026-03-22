@@ -816,6 +816,105 @@ pub fn make_torus(major_radius: f64, minor_radius: f64, center: Option<Point>) -
     (*solid_arc).clone()
 }
 
+/// Create a wedge solid
+pub fn make_wedge(dx: f64, dy: f64, dz: f64, ltx: f64, _center: Option<Point>) -> TopoDsSolid {
+    let half_dx = dx / 2.0;
+    let half_dy = dy / 2.0;
+    let half_dz = dz / 2.0;
+
+    let vertices = vec![
+        Point::new(-half_dx, -half_dy, -half_dz),
+        Point::new(half_dx, -half_dy, -half_dz),
+        Point::new(half_dx, half_dy, -half_dz),
+        Point::new(-half_dx, half_dy, -half_dz),
+        Point::new(-half_dx + ltx / 2.0, -half_dy, half_dz),
+        Point::new(half_dx - ltx / 2.0, -half_dy, half_dz),
+        Point::new(half_dx - ltx / 2.0, half_dy, half_dz),
+        Point::new(-half_dx + ltx / 2.0, half_dy, half_dz),
+    ];
+
+    let faces = vec![
+        vec![0, 1, 2, 3],
+        vec![4, 5, 6, 7],
+        vec![0, 1, 5, 4],
+        vec![2, 3, 7, 6],
+        vec![0, 3, 7, 4],
+        vec![1, 2, 6, 5],
+    ];
+
+    let polyhedron = Polyhedron::new(vertices, faces).unwrap();
+    let solid_arc = polyhedron.build();
+    (*solid_arc).clone()
+}
+
+/// Create a prism solid with regular polygon base
+pub fn make_prism(radius: f64, height: f64, sides: u32, _center: Option<Point>) -> TopoDsSolid {
+    let sides = sides.max(3);
+    let half_height = height / 2.0;
+    let mut vertices = Vec::new();
+
+    for i in 0..sides {
+        let angle = 2.0 * std::f64::consts::PI * i as f64 / sides as f64;
+        let x = radius * angle.cos();
+        let y = radius * angle.sin();
+        vertices.push(Point::new(x, y, -half_height));
+    }
+
+    for i in 0..sides {
+        let angle = 2.0 * std::f64::consts::PI * i as f64 / sides as f64;
+        let x = radius * angle.cos();
+        let y = radius * angle.sin();
+        vertices.push(Point::new(x, y, half_height));
+    }
+
+    let mut faces = Vec::new();
+
+    let bottom_face: Vec<usize> = (0..sides as usize).collect();
+    faces.push(bottom_face);
+
+    let top_face: Vec<usize> = (sides as usize..(2 * sides) as usize).collect();
+    faces.push(top_face);
+
+    for i in 0..sides as usize {
+        let next = (i + 1) % sides as usize;
+        faces.push(vec![i, next, next + sides as usize, i + sides as usize]);
+    }
+
+    let polyhedron = Polyhedron::new(vertices, faces).unwrap();
+    let solid_arc = polyhedron.build();
+    (*solid_arc).clone()
+}
+
+/// Create a pyramid solid with regular polygon base
+pub fn make_pyramid(radius: f64, height: f64, sides: u32, _center: Option<Point>) -> TopoDsSolid {
+    let sides = sides.max(3);
+    let mut vertices = Vec::new();
+
+    let apex_idx = vertices.len();
+    vertices.push(Point::new(0.0, 0.0, height));
+
+    for i in 0..sides {
+        let angle = 2.0 * std::f64::consts::PI * i as f64 / sides as f64;
+        let x = radius * angle.cos();
+        let y = radius * angle.sin();
+        vertices.push(Point::new(x, y, 0.0));
+    }
+
+    let mut faces = Vec::new();
+
+    let bottom_face: Vec<usize> = (1..=sides as usize).collect();
+    faces.push(bottom_face);
+
+    for i in 0..sides as usize {
+        let next = 1 + (i + 1) % sides as usize;
+        faces.push(vec![apex_idx, 1 + i, next]);
+    }
+
+    let polyhedron = Polyhedron::new(vertices, faces).unwrap();
+    let solid_arc = polyhedron.build();
+    (*solid_arc).clone()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

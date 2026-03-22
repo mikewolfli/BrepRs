@@ -1,4 +1,17 @@
 use crate::geometry::traits::{GetCoord, SetCoord};
+use crate::foundation::types::StandardReal;
+use crate::geometry::{Direction, Point};
+
+/// 3D axis defined by a location point and a direction vector
+///
+/// An axis represents an infinite line in 3D space passing through a point
+/// in a given direction. It is used to define orientations and reference lines.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Axis {
+    pub location: Point,
+    pub direction: Direction,
+}
+
 impl GetCoord for Axis {
     fn coord(&self) -> (f64, f64, f64) {
         self.location.coord()
@@ -9,14 +22,6 @@ impl SetCoord for Axis {
     fn set_coord(&mut self, x: f64, y: f64, z: f64) {
         self.location.set_coord(x, y, z);
     }
-}
-use crate::foundation::types::StandardReal;
-use crate::geometry::{Direction, Point};
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Axis {
-    pub location: Point,
-    pub direction: Direction,
 }
 
 impl Axis {

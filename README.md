@@ -104,7 +104,7 @@ Add BrepRs to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-breprs = "0.6.0-alpha"
+breprs = "0.6.1-alpha"
 ```
 
 ### Basic Usage

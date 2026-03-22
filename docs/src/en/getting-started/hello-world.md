@@ -18,7 +18,7 @@ Edit `Cargo.toml` to add BrepRs:
 
 ```toml
 [dependencies]
-breprs = "0.6.0-alpha"
+breprs = "0.1.0"
 ```
 
 ### Step 3: Write Your First Program

@@ -42,6 +42,7 @@
 - Never use stubs or placeholders to pass tests.
 - Before creating any function, struct, enum, trait, or impl, check if it already exists—reuse if possible.
 - Avoid heap pollution by fixing current errors and warnings.
+- new code must with english comments.
 
 ## 🚫 Duplication Rules
 - Never create duplicate functions, structs, enums, traits, or impls.

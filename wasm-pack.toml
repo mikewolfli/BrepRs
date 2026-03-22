@@ -1,6 +1,6 @@
 [package]
 name = "breprs-wasm"
-version = "0.6.0-alpha"
+version = "0.1.0"
 edition = "2021"
 authors = ["BrepRs Contributors"]
 description = "WebAssembly bindings for BrepRs CAD kernel"

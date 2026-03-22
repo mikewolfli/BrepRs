@@ -34,6 +34,24 @@ impl WasmVertex {
         }
     }
 
+    /// Get tolerance
+    #[wasm_bindgen(js_name = tolerance)]
+    pub fn tolerance(&self) -> f64 {
+        self.inner.tolerance()
+    }
+
+    /// Set tolerance
+    #[wasm_bindgen(js_name = setTolerance)]
+    pub fn set_tolerance(&mut self, tolerance: f64) {
+        self.inner.set_tolerance(tolerance);
+    }
+
+    /// Check if vertex is null
+    #[wasm_bindgen(js_name = isNull)]
+    pub fn is_null(&self) -> bool {
+        self.inner.is_null()
+    }
+
     /// Convert to string
     #[wasm_bindgen(js_name = toString)]
     pub fn to_string(&self) -> String {
@@ -67,6 +85,40 @@ impl WasmEdge {
         self.inner.is_degenerate()
     }
 
+    /// Get tolerance
+    #[wasm_bindgen(js_name = tolerance)]
+    pub fn tolerance(&self) -> f64 {
+        self.inner.tolerance()
+    }
+
+    /// Set tolerance
+    #[wasm_bindgen(js_name = setTolerance)]
+    pub fn set_tolerance(&mut self, tolerance: f64) {
+        self.inner.set_tolerance(tolerance);
+    }
+
+    /// Check if edge is null
+    #[wasm_bindgen(js_name = isNull)]
+    pub fn is_null(&self) -> bool {
+        self.inner.is_null()
+    }
+
+    /// Get first vertex
+    #[wasm_bindgen(js_name = firstVertex)]
+    pub fn first_vertex(&self) -> WasmVertex {
+        WasmVertex {
+            inner: self.inner.start_vertex().clone(),
+        }
+    }
+
+    /// Get last vertex
+    #[wasm_bindgen(js_name = lastVertex)]
+    pub fn last_vertex(&self) -> WasmVertex {
+        WasmVertex {
+            inner: self.inner.end_vertex().clone(),
+        }
+    }
+
     /// Convert to string
     #[wasm_bindgen(js_name = toString)]
     pub fn to_string(&self) -> String {
@@ -97,16 +149,56 @@ impl WasmWire {
         self.inner.add_edge(edge.inner.clone());
     }
 
+    /// Remove an edge from this wire
+    #[wasm_bindgen(js_name = removeEdge)]
+    pub fn remove_edge(&mut self, edge: &WasmEdge) {
+        self.inner.remove_edge(&edge.inner);
+    }
+
+    /// Get number of edges
+    #[wasm_bindgen(js_name = edgeCount)]
+    pub fn edge_count(&self) -> usize {
+        self.inner.num_edges()
+    }
+
+    /// Get edges
+    #[wasm_bindgen(js_name = edges)]
+    pub fn edges(&self) -> Vec<WasmEdge> {
+        self.inner
+            .edges()
+            .iter()
+            .map(|e| WasmEdge { inner: e.clone() })
+            .collect()
+    }
+
     /// Check if this wire is closed
     #[wasm_bindgen(js_name = isClosed)]
     pub fn is_closed(&self) -> bool {
         self.inner.is_closed()
     }
 
+    /// Check if wire is null
+    #[wasm_bindgen(js_name = isNull)]
+    pub fn is_null(&self) -> bool {
+        self.inner.is_null()
+    }
+
+    /// Get tolerance
+    #[wasm_bindgen(js_name = tolerance)]
+    pub fn tolerance(&self) -> f64 {
+        self.inner.tolerance()
+    }
+
+    /// Set tolerance
+    #[wasm_bindgen(js_name = setTolerance)]
+    pub fn set_tolerance(&mut self, tolerance: f64) {
+        self.inner.set_tolerance(tolerance);
+    }
+
     /// Convert to string
     #[wasm_bindgen(js_name = toString)]
     pub fn to_string(&self) -> String {
-        "Wire".to_string()
+        format!("Wire(edges={}, closed={})", self.edge_count(), self.is_closed())
     }
 }
 
@@ -133,10 +225,42 @@ impl WasmFace {
         }
     }
 
+    /// Create a face from a wire
+    #[wasm_bindgen(js_name = fromWire)]
+    pub fn from_wire(wire: &WasmWire) -> Self {
+        Self {
+            inner: Handle::new(std::sync::Arc::new(TopoDsFace::with_outer_wire((*wire.inner).clone()))),
+        }
+    }
+
+    /// Get tolerance
+    #[wasm_bindgen(js_name = tolerance)]
+    pub fn tolerance(&self) -> f64 {
+        self.inner.tolerance()
+    }
+
+    /// Set tolerance
+    #[wasm_bindgen(js_name = setTolerance)]
+    pub fn set_tolerance(&mut self, tolerance: f64) {
+        self.inner.set_tolerance(tolerance);
+    }
+
+    /// Check if face is null
+    #[wasm_bindgen(js_name = isNull)]
+    pub fn is_null(&self) -> bool {
+        self.inner.is_null()
+    }
+
+    /// Get area
+    #[wasm_bindgen(js_name = area)]
+    pub fn area(&self) -> f64 {
+        self.inner.area()
+    }
+
     /// Convert to string
     #[wasm_bindgen(js_name = toString)]
     pub fn to_string(&self) -> String {
-        "Face".to_string()
+        format!("Face(area={})", self.area())
     }
 }
 
@@ -169,16 +293,62 @@ impl WasmShell {
         self.inner.add_face(face.inner.clone());
     }
 
+    /// Remove a face from this shell
+    #[wasm_bindgen(js_name = removeFace)]
+    pub fn remove_face(&mut self, face: &WasmFace) {
+        self.inner.remove_face(&face.inner);
+    }
+
+    /// Get number of faces
+    #[wasm_bindgen(js_name = faceCount)]
+    pub fn face_count(&self) -> usize {
+        self.inner.num_faces()
+    }
+
+    /// Get faces
+    #[wasm_bindgen(js_name = faces)]
+    pub fn faces(&self) -> Vec<WasmFace> {
+        self.inner
+            .faces()
+            .iter()
+            .map(|f| WasmFace { inner: f.clone() })
+            .collect()
+    }
+
     /// Check if this shell is closed
     #[wasm_bindgen(js_name = isClosed)]
     pub fn is_closed(&self) -> bool {
         self.inner.is_closed()
     }
 
+    /// Check if shell is null
+    #[wasm_bindgen(js_name = isNull)]
+    pub fn is_null(&self) -> bool {
+        self.inner.is_null()
+    }
+
+    /// Get tolerance
+    #[wasm_bindgen(js_name = tolerance)]
+    pub fn tolerance(&self) -> f64 {
+        self.inner.tolerance()
+    }
+
+    /// Set tolerance
+    #[wasm_bindgen(js_name = setTolerance)]
+    pub fn set_tolerance(&mut self, tolerance: f64) {
+        self.inner.set_tolerance(tolerance);
+    }
+
+    /// Get area
+    #[wasm_bindgen(js_name = area)]
+    pub fn area(&self) -> f64 {
+        self.inner.area()
+    }
+
     /// Convert to string
     #[wasm_bindgen(js_name = toString)]
     pub fn to_string(&self) -> String {
-        "Shell".to_string()
+        format!("Shell(faces={}, closed={}, area={})", self.face_count(), self.is_closed(), self.area())
     }
 }
 
@@ -205,10 +375,66 @@ impl WasmSolid {
         }
     }
 
+    /// Create a solid from a shell
+    #[wasm_bindgen(js_name = fromShell)]
+    pub fn from_shell(shell: &WasmShell) -> Self {
+        let mut solid = TopoDsSolid::new();
+        solid.set_outer_shell(shell.inner.clone());
+        Self {
+            inner: Handle::new(std::sync::Arc::new(solid)),
+        }
+    }
+
+    /// Get tolerance
+    #[wasm_bindgen(js_name = tolerance)]
+    pub fn tolerance(&self) -> f64 {
+        self.inner.tolerance()
+    }
+
+    /// Set tolerance
+    #[wasm_bindgen(js_name = setTolerance)]
+    pub fn set_tolerance(&mut self, tolerance: f64) {
+        self.inner.set_tolerance(tolerance);
+    }
+
+    /// Check if solid is null
+    #[wasm_bindgen(js_name = isNull)]
+    pub fn is_null(&self) -> bool {
+        self.inner.is_null()
+    }
+
+    /// Get volume
+    #[wasm_bindgen(js_name = volume)]
+    pub fn volume(&self) -> f64 {
+        self.inner.volume()
+    }
+
+    /// Get area
+    #[wasm_bindgen(js_name = area)]
+    pub fn area(&self) -> f64 {
+        self.inner.area()
+    }
+
+    /// Get shells
+    #[wasm_bindgen(js_name = shells)]
+    pub fn shells(&self) -> Vec<WasmShell> {
+        self.inner
+            .shells()
+            .iter()
+            .map(|s| WasmShell { inner: s.clone() })
+            .collect()
+    }
+
+    /// Get number of shells
+    #[wasm_bindgen(js_name = shellCount)]
+    pub fn shell_count(&self) -> usize {
+        self.inner.num_shells()
+    }
+
     /// Convert to string
     #[wasm_bindgen(js_name = toString)]
     pub fn to_string(&self) -> String {
-        "Solid".to_string()
+        format!("Solid(shells={}, volume={}, area={})", self.shell_count(), self.volume(), self.area())
     }
 }
 

@@ -4,7 +4,7 @@
 //! including connectivity analysis, neighborhood analysis, and more.
 
 use super::PointCloud;
-use crate::geometry::{Point, Vector};
+use crate::geometry::Point;
 
 /// K-nearest neighbors
 pub struct KNearestNeighbors {
@@ -136,13 +136,14 @@ impl VoronoiDiagram {
 
         // Add point events
         for (i, point) in sorted_points.iter().enumerate() {
-            events.push((-point.y, i, point.clone()));
+            let event = VoronoiEvent::new(-point.y, i, point.clone());
+            events.push(event);
         }
 
         // Process events
-        while let Some((_, index, point)) = events.pop() {
+        while let Some(event) = events.pop() {
             // Process point event
-            self.process_point_event(&point, &mut beachline, &mut events, &mut result);
+            self.process_point_event(&event.point, &mut beachline, &mut events, &mut result);
         }
 
         // Finalize Voronoi cells
@@ -156,7 +157,7 @@ impl VoronoiDiagram {
         &self,
         point: &Point,
         beachline: &mut Vec<Parabola>,
-        events: &mut std::collections::BinaryHeap<(f64, usize, Point)>,
+        events: &mut std::collections::BinaryHeap<VoronoiEvent>,
         result: &mut VoronoiResult,
     ) {
         if beachline.is_empty() {
@@ -213,7 +214,7 @@ impl VoronoiDiagram {
         index: usize,
         point: &Point,
         beachline: &mut Vec<Parabola>,
-        events: &mut std::collections::BinaryHeap<(f64, usize, Point)>,
+        events: &mut std::collections::BinaryHeap<VoronoiEvent>,
         result: &mut VoronoiResult,
     ) {
         // Store the original arc
@@ -239,8 +240,8 @@ impl VoronoiDiagram {
         &self,
         start_idx: usize,
         beachline: &[Parabola],
-        events: &mut std::collections::BinaryHeap<(f64, usize, Point)>,
-        result: &mut VoronoiResult,
+        events: &mut std::collections::BinaryHeap<VoronoiEvent>,
+        _result: &mut VoronoiResult,
     ) {
         // Check triplets of consecutive arcs for circle events
         for i in
@@ -258,7 +259,7 @@ impl VoronoiDiagram {
                     let event_y = circumcenter.y - radius;
 
                     // Add circle event
-                    events.push((event_y, i, circumcenter));
+                    events.push(VoronoiEvent::new(event_y, i, circumcenter));
                 }
             }
         }
@@ -352,6 +353,7 @@ impl VoronoiDiagram {
 }
 
 /// Parabola arc for Fortune's algorithm
+#[derive(Clone)]
 struct Parabola {
     focus: Point,
 }
@@ -359,6 +361,41 @@ struct Parabola {
 impl Parabola {
     fn new(focus: Point) -> Self {
         Self { focus }
+    }
+}
+
+/// Event for Fortune's algorithm
+#[derive(Clone, Debug)]
+struct VoronoiEvent {
+    y: f64,
+    index: usize,
+    point: Point,
+}
+
+impl VoronoiEvent {
+    fn new(y: f64, index: usize, point: Point) -> Self {
+        Self { y, index, point }
+    }
+}
+
+impl PartialEq for VoronoiEvent {
+    fn eq(&self, other: &Self) -> bool {
+        self.y == other.y && self.index == other.index
+    }
+}
+
+impl Eq for VoronoiEvent {}
+
+impl PartialOrd for VoronoiEvent {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for VoronoiEvent {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // BinaryHeap is a max-heap, so we reverse the ordering
+        self.y.partial_cmp(&other.y).unwrap_or(std::cmp::Ordering::Equal).reverse()
     }
 }
 
@@ -497,10 +534,10 @@ impl DelaunayTriangulation {
         let margin = dx.max(dy) * 10.0;
 
         // Add super triangle vertices
-        let super_vertices = [
-            Point::new(min_x - margin, max_y + margin),
-            Point::new(max_x + margin, max_y + margin),
-            Point::new((min_x + max_x) / 2.0, min_y - margin),
+        let _super_vertices = [
+            Point::new(min_x - margin, max_y + margin, 0.0),
+            Point::new(max_x + margin, max_y + margin, 0.0),
+            Point::new((min_x + max_x) / 2.0, min_y - margin, 0.0),
         ];
 
         // Add super vertices to the result
@@ -516,9 +553,9 @@ impl DelaunayTriangulation {
             // Super triangle vertex
             let base_index = self.points.len();
             match triangle.0 - base_index {
-                0 => &Point::new(-1e6, 1e6),
-                1 => &Point::new(1e6, 1e6),
-                2 => &Point::new(0.0, -1e6),
+                0 => &Point::new(-1e6, 1e6, 0.0),
+                1 => &Point::new(1e6, 1e6, 0.0),
+                2 => &Point::new(0.0, -1e6, 0.0),
                 _ => unreachable!(),
             }
         };
@@ -528,9 +565,9 @@ impl DelaunayTriangulation {
         } else {
             let base_index = self.points.len();
             match triangle.1 - base_index {
-                0 => &Point::new(-1e6, 1e6),
-                1 => &Point::new(1e6, 1e6),
-                2 => &Point::new(0.0, -1e6),
+                0 => &Point::new(-1e6, 1e6, 0.0),
+                1 => &Point::new(1e6, 1e6, 0.0),
+                2 => &Point::new(0.0, -1e6, 0.0),
                 _ => unreachable!(),
             }
         };
@@ -540,9 +577,9 @@ impl DelaunayTriangulation {
         } else {
             let base_index = self.points.len();
             match triangle.2 - base_index {
-                0 => &Point::new(-1e6, 1e6),
-                1 => &Point::new(1e6, 1e6),
-                2 => &Point::new(0.0, -1e6),
+                0 => &Point::new(-1e6, 1e6, 0.0),
+                1 => &Point::new(1e6, 1e6, 0.0),
+                2 => &Point::new(0.0, -1e6, 0.0),
                 _ => unreachable!(),
             }
         };

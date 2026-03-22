@@ -138,7 +138,7 @@ impl BRepAlgoAPI_Fuse {
     pub fn Shape(&self) -> Handle<TopoDS_Shape> {
         // Return as shape handle - compound is a type of shape
         self.result.as_ref().map(|c| {
-            Handle::new(std::sync::Arc::new(c.clone().into_shape()))
+            Handle::new(std::sync::Arc::new(c.clone().shape().clone()))
         }).unwrap_or_else(|| Handle::new(std::sync::Arc::new(TopoDS_Shape::new(crate::topology::ShapeType::Compound))))
     }
 }
@@ -182,7 +182,7 @@ impl BRepAlgoAPI_Cut {
     /// Get the resulting shape (OpenCASCADE API: Shape)
     pub fn Shape(&self) -> Handle<TopoDS_Shape> {
         self.result.as_ref().map(|c| {
-            Handle::new(std::sync::Arc::new(c.clone().into_shape()))
+            Handle::new(std::sync::Arc::new(c.clone().shape().clone()))
         }).unwrap_or_else(|| Handle::new(std::sync::Arc::new(TopoDS_Shape::new(crate::topology::ShapeType::Compound))))
     }
 }
@@ -226,7 +226,7 @@ impl BRepAlgoAPI_Common {
     /// Get the resulting shape (OpenCASCADE API: Shape)
     pub fn Shape(&self) -> Handle<TopoDS_Shape> {
         self.result.as_ref().map(|c| {
-            Handle::new(std::sync::Arc::new(c.clone().into_shape()))
+            Handle::new(std::sync::Arc::new(c.clone().shape().clone()))
         }).unwrap_or_else(|| Handle::new(std::sync::Arc::new(TopoDS_Shape::new(crate::topology::ShapeType::Compound))))
     }
 }
@@ -280,7 +280,7 @@ impl BRepAlgoAPI_Section {
     /// Get the resulting shape (OpenCASCADE API: Shape)
     pub fn Shape(&self) -> Handle<TopoDS_Shape> {
         self.result.as_ref().map(|c| {
-            Handle::new(std::sync::Arc::new(c.clone().into_shape()))
+            Handle::new(std::sync::Arc::new(c.clone().shape().clone()))
         }).unwrap_or_else(|| Handle::new(std::sync::Arc::new(TopoDS_Shape::new(crate::topology::ShapeType::Compound))))
     }
 }

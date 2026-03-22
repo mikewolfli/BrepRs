@@ -41,7 +41,7 @@ impl PointCloud {
                 "Number of points and normals must match",
                 Some(format!("from_points_with_normals: points.len()={}, normals.len()={}", points.len(), normals.len())),
                 None,
-            ));
+            ).to_string());
         }
         
         Ok(Self {
@@ -58,7 +58,7 @@ impl PointCloud {
                 "Number of points and colors must match",
                 Some(format!("from_points_with_colors: points.len()={}, colors.len()={}", points.len(), colors.len())),
                 None,
-            ));
+            ).to_string());
         }
         
         Ok(Self {
@@ -79,7 +79,7 @@ impl PointCloud {
                 "Number of points, normals, and colors must match",
                 Some(format!("from_points_with_normals_and_colors: points.len()={}, normals.len()={}, colors.len()={}", points.len(), normals.len(), colors.len())),
                 None,
-            ));
+            ).to_string());
         }
         
         Ok(Self {
@@ -224,8 +224,9 @@ impl PointCloud {
             return Point::origin();
         }
         
-        let sum = self.points.iter().fold(Point::origin(), |sum, p| sum + *p);
-        sum / self.points.len() as f64
+        let sum = self.points.iter().fold(Vector::zero(), |sum, p| sum + (*p - Point::origin()));
+        let avg = sum / self.points.len() as f64;
+        Point::origin() + avg
     }
 
     /// Transform the point cloud
@@ -240,7 +241,9 @@ impl PointCloud {
                 // For normals, we should use the inverse transpose of the transformation
                 // This is a simplified version - in a real implementation, we would need
                 // to handle the transformation matrix properly
-                *normal = (transformation(&(*normal + Point::origin())) - Point::origin()).normalize();
+                let normal_as_point = Point::origin() + *normal;
+                let transformed_point = transformation(&normal_as_point);
+                *normal = (transformed_point - Point::origin()).normalized();
             }
         }
     }

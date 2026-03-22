@@ -14,11 +14,7 @@ pub struct PointCloudIO;
 impl PointCloudIO {
     /// Load a point cloud from a PCD file
     pub fn load_pcd(path: &str) -> Result<PointCloud, String> {
-        let file = File::open(path).map_err(|e| crate::foundation::exception::Failure::io_error(
-            format!("Failed to open file: {}", e),
-            Some(format!("load_pcd: path={:?}", path)),
-            Some(Box::new(e)),
-        ))?;
+        let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
         let reader = BufReader::new(file);
         
         let mut cloud = PointCloud::new();
@@ -27,11 +23,7 @@ impl PointCloudIO {
         let mut has_colors = false;
         
         for line in reader.lines() {
-            let line = line.map_err(|e| crate::foundation::exception::Failure::io_error(
-                format!("Failed to read line: {}", e),
-                Some(format!("load_pcd: path={:?}", path)),
-                Some(Box::new(e)),
-            ))?;
+            let line = line.map_err(|e| format!("Failed to read line: {}", e))?;
             let line = line.trim();
             
             if line.starts_with("DATA") {
@@ -88,11 +80,7 @@ impl PointCloudIO {
 
     /// Save a point cloud to a PCD file
     pub fn save_pcd(cloud: &PointCloud, path: &str) -> Result<(), String> {
-        let mut file = File::create(path).map_err(|e| crate::foundation::exception::Failure::io_error(
-            format!("Failed to create file: {}", e),
-            Some(format!("save_pcd: path={:?}", path)),
-            Some(Box::new(e)),
-        ))?;
+        let mut file = File::create(path).map_err(|e| format!("Failed to create file: {}", e))?;
         
         // Write header
         writeln!(file, "# .PCD v0.7 - Point Cloud Data file format").map_err(|e| format!("Failed to write header: {}", e))?;
@@ -108,7 +96,7 @@ impl PointCloudIO {
         writeln!(file, "DATA ascii").map_err(|e| format!("Failed to write data: {}", e))?;
         
         // Write points
-        for (i, point) in cloud.points().iter().enumerate() {
+        for (_i, point) in cloud.points().iter().enumerate() {
             writeln!(file, "{} {} {}", point.x, point.y, point.z).map_err(|e| format!("Failed to write point: {}", e))?;
         }
         
@@ -117,25 +105,17 @@ impl PointCloudIO {
 
     /// Load a point cloud from a PLY file
     pub fn load_ply(path: &str) -> Result<PointCloud, String> {
-        let file = File::open(path).map_err(|e| crate::foundation::exception::Failure::io_error(
-            format!("Failed to open file: {}", e),
-            Some(format!("load_ply: path={:?}", path)),
-            Some(Box::new(e)),
-        ))?;
+        let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
         let reader = BufReader::new(file);
         
         let mut cloud = PointCloud::new();
         let mut in_data = false;
-        let mut vertex_count = 0;
+        let mut _vertex_count = 0;
         let mut has_normals = false;
         let mut has_colors = false;
         
         for line in reader.lines() {
-            let line = line.map_err(|e| crate::foundation::exception::Failure::io_error(
-                format!("Failed to read line: {}", e),
-                Some(format!("load_ply: path={:?}", path)),
-                Some(Box::new(e)),
-            ))?;
+            let line = line.map_err(|e| format!("Failed to read line: {}", e))?;
             let line = line.trim();
             
             if line == "end_header" {
@@ -181,7 +161,7 @@ impl PointCloudIO {
             } else {
                 if line.starts_with("element vertex") {
                     let parts: Vec<&str> = line.split_whitespace().collect();
-                    vertex_count = parts[2].parse::<usize>().map_err(|e| format!("Failed to parse vertex count: {}", e))?;
+                    _vertex_count = parts[2].parse::<usize>().map_err(|e| format!("Failed to parse vertex count: {}", e))?;
                 } else if line.starts_with("property float nx") || line.starts_with("property float32 nx") {
                     has_normals = true;
                 } else if line.starts_with("property uchar red") || line.starts_with("property uchar r") {
@@ -207,7 +187,7 @@ impl PointCloudIO {
         writeln!(file, "end_header").map_err(|e| format!("Failed to write end header: {}", e))?;
         
         // Write points
-        for (i, point) in cloud.points().iter().enumerate() {
+        for (_i, point) in cloud.points().iter().enumerate() {
             writeln!(file, "{} {} {}", point.x, point.y, point.z).map_err(|e| format!("Failed to write point: {}", e))?;
         }
         
@@ -246,7 +226,7 @@ impl PointCloudIO {
         let mut file = File::create(path).map_err(|e| format!("Failed to create file: {}", e))?;
         
         // Write points
-        for (i, point) in cloud.points().iter().enumerate() {
+        for (_i, point) in cloud.points().iter().enumerate() {
             writeln!(file, "v {} {} {}", point.x, point.y, point.z).map_err(|e| format!("Failed to write point: {}", e))?;
         }
         
@@ -289,7 +269,7 @@ impl PointCloudIO {
         writeln!(file, "# {} points", cloud.len()).map_err(|e| format!("Failed to write point count: {}", e))?;
         
         // Write points
-        for (i, point) in cloud.points().iter().enumerate() {
+        for (_i, point) in cloud.points().iter().enumerate() {
             writeln!(file, "{} {} {}", point.x, point.y, point.z).map_err(|e| format!("Failed to write point: {}", e))?;
         }
         
@@ -301,7 +281,6 @@ impl PointCloudIO {
 mod tests {
     use super::*;
     use crate::geometry::Point;
-    use std::fs;
     use tempfile::tempdir;
 
     #[test]

@@ -1,5 +1,10 @@
 use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 
+/// Direction vector representing a unit vector in 3D space
+///
+/// A direction is a normalized vector that represents orientation in 3D space.
+/// It is always normalized to unit length and is used to define orientations
+/// and directions for geometric operations.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Direction {

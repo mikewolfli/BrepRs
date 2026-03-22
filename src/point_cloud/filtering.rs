@@ -173,15 +173,16 @@ impl VoxelGrid {
         for points in voxel_map.values() {
             if !points.is_empty() {
                 // Calculate centroid
-                let centroid = points.iter()
-                    .fold(Point::origin(), |sum, (p, _, _)| sum + *p)
-                    / points.len() as f64;
+                let (sum_x, sum_y, sum_z) = points.iter()
+                    .fold((0.0, 0.0, 0.0), |(sx, sy, sz), (p, _, _)| (sx + p.x, sy + p.y, sz + p.z));
+                let count = points.len() as f64;
+                let centroid = Point::new(sum_x / count, sum_y / count, sum_z / count);
                 
                 // Calculate average normal if available
                 let normal = if points[0].1.is_some() {
                     let avg_normal = points.iter()
                         .fold(Vector::zero(), |sum, (_, n, _)| sum + n.unwrap())
-                        .normalize();
+                        .normalized();
                     Some(avg_normal)
                 } else {
                     None

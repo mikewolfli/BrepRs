@@ -1,6 +1,10 @@
 use crate::foundation::types::StandardReal;
 use crate::geometry::{Point, Direction, Axis, Transform};
 
+/// Sphere geometric primitive
+///
+/// A sphere is a perfectly round geometrical object in three-dimensional space that is the surface
+/// of a completely round ball. It is defined by its location (center) and radius.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Sphere {

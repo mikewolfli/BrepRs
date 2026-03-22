@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrepRs WASM Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #output {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            min-height: 200px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        canvas {
+            border: 1px solid #ddd;
+            background-color: #fff;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <h1>BrepRs WebAssembly Example</h1>
+    
+    <div class="container">
+        <div class="panel">
+            <h2>Controls</h2>
+            
+            <div>
+                <h3>Geometry</h3>
+                <button onclick="createPoint()">Create Point</button>
+                <button onclick="createVector()">Create Vector</button>
+                <button onclick="createPlane()">Create Plane</button>
+            </div>
+            
+            <div>
+                <h3>Primitives</h3>
+                <button onclick="createBox()">Create Box</button>
+                <button onclick="createSphere()">Create Sphere</button>
+                <button onclick="createCylinder()">Create Cylinder</button>
+                <button onclick="createTorus()">Create Torus</button>
+            </div>
+            
+            <div>
+                <h3>Boolean Operations</h3>
+                <button onclick="fuseShapes()">Fuse</button>
+                <button onclick="cutShapes()">Cut</button>
+                <button onclick="intersectShapes()">Intersect</button>
+            </div>
+            
+            <div>
+                <h3>Mesh Generation</h3>
+                <button onclick="generateBoxMesh()">Generate Box Mesh</button>
+                <button onclick="generateSphereMesh()">Generate Sphere Mesh</button>
+                <button onclick="generateCylinderMesh()">Generate Cylinder Mesh</button>
+            </div>
+            
+            <div>
+                <h3>I/O Operations</h3>
+                <button onclick="exportSTL()">Export STL</button>
+                <button onclick="exportOBJ()">Export OBJ</button>
+                <input type="file" id="fileInput" accept=".stl,.obj,.step,.iges" onchange="importFile(event)">
+            </div>
+            
+            <div>
+                <h3>Internationalization</h3>
+                <button onclick="setLanguage('en')">English</button>
+                <button onclick="setLanguage('zh-CN')">简体中文</button>
+                <button onclick="setLanguage('fr')">Français</button>
+                <button onclick="setLanguage('de')">Deutsch</button>
+            </div>
+            
+            <div>
+                <h3>Utilities</h3>
+                <button onclick="getVersion()">Get Version</button>
+                <button onclick="getMemoryStats()">Get Memory Stats</button>
+                <button onclick="testWasm()">Test WASM</button>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h2>Output</h2>
+            <div id="status"></div>
+            <div id="output"></div>
+            <canvas id="canvas" width="500" height="500"></canvas>
+        </div>
+    </div>
+
+    <script type="module">
+        import init, { 
+            Point, Vector, Plane,
+            Box, Sphere, Cylinder, Torus,
+            BooleanOperations,
+            MeshGenerator, MeshType,
+            FileReader as BrepRsFileReader,
+            FileWriter as BrepRsFileWriter,
+            FileFormat,
+            I18n, Language, MessageKey,
+            Utils, IoUtils,
+            getVersion as wasmGetVersion,
+            getMemoryStats as wasmGetMemoryStats,
+            testWasm as wasmTestWasm,
+            getLibraryName
+        } from './pkg/breprs_wasm.js';
+
+        let wasmModule = null;
+        let i18n = null;
+        let currentShape = null;
+
+        async function initWasm() {
+            try {
+                await init();
+                wasmModule = { Point, Vector, Plane, Box, Sphere, Cylinder, Torus, BooleanOperations };
+                i18n = new I18n();
+                showStatus('WASM initialized successfully!', 'success');
+            } catch (error) {
+                showStatus('Failed to initialize WASM: ' + error, 'error');
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => {
+                statusDiv.innerHTML = '';
+            }, 5000);
+        }
+
+        function appendOutput(text) {
+            const outputDiv = document.getElementById('output');
+            outputDiv.textContent += text + '\n';
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+
+        function clearOutput() {
+            document.getElementById('output').textContent = '';
+        }
+
+        function createPoint() {
+            clearOutput();
+            const point = new Point(1.0, 2.0, 3.0);
+            appendOutput(`Created point: ${point.toString()}`);
+            appendOutput(`X: ${point.x}, Y: ${point.y}, Z: ${point.z}`);
+        }
+
+        function createVector() {
+            clearOutput();
+            const vector = new Vector(1.0, 0.0, 0.0);
+            appendOutput(`Created vector: ${vector.toString()}`);
+            appendOutput(`Magnitude: ${vector.magnitude()}`);
+            appendOutput(`Normalized: ${vector.normalized().toString()}`);
+        }
+
+        function createPlane() {
+            clearOutput();
+            const point = new Point(0.0, 0.0, 0.0);
+            const normal = new Vector(0.0, 1.0, 0.0);
+            const plane = Plane.fromPointNormal(point, normal);
+            appendOutput(`Created plane: ${plane.toString()}`);
+            appendOutput(`Origin: ${plane.origin().toString()}`);
+            appendOutput(`Normal: ${plane.normal().toString()}`);
+        }
+
+        function createBox() {
+            clearOutput();
+            const box = new Box(10.0, 10.0, 10.0);
+            currentShape = box;
+            appendOutput(`Created box: ${box.toString()}`);
+            appendOutput(`Volume: ${box.volume()}`);
+            appendOutput(`Surface area: ${box.surfaceArea()}`);
+        }
+
+        function createSphere() {
+            clearOutput();
+            const sphere = new Sphere(5.0);
+            currentShape = sphere;
+            appendOutput(`Created sphere: ${sphere.toString()}`);
+            appendOutput(`Volume: ${sphere.volume()}`);
+            appendOutput(`Surface area: ${sphere.surfaceArea()}`);
+        }
+
+        function createCylinder() {
+            clearOutput();
+            const cylinder = new Cylinder(3.0, 10.0);
+            currentShape = cylinder;
+            appendOutput(`Created cylinder: ${cylinder.toString()}`);
+            appendOutput(`Volume: ${cylinder.volume()}`);
+            appendOutput(`Surface area: ${cylinder.surfaceArea()}`);
+        }
+
+        function createTorus() {
+            clearOutput();
+            const torus = new Torus(5.0, 2.0);
+            currentShape = torus;
+            appendOutput(`Created torus: ${torus.toString()}`);
+            appendOutput(`Volume: ${torus.volume()}`);
+            appendOutput(`Surface area: ${torus.surfaceArea()}`);
+        }
+
+        function fuseShapes() {
+            if (!currentShape) {
+                showStatus('No shape selected', 'error');
+                return;
+            }
+            clearOutput();
+            appendOutput('Boolean fuse operation would be performed here');
+        }
+
+        function cutShapes() {
+            if (!currentShape) {
+                showStatus('No shape selected', 'error');
+                return;
+            }
+            clearOutput();
+            appendOutput('Boolean cut operation would be performed here');
+        }
+
+        function intersectShapes() {
+            if (!currentShape) {
+                showStatus('No shape selected', 'error');
+                return;
+            }
+            clearOutput();
+            appendOutput('Boolean intersect operation would be performed here');
+        }
+
+        function generateBoxMesh() {
+            clearOutput();
+            const generator = new MeshGenerator(MeshType.Triangle);
+            const mesh = generator.generateBoxMesh(10.0, 10.0, 10.0);
+            appendOutput(`Generated box mesh: ${mesh.toString()}`);
+            appendOutput(`Vertex count: ${mesh.vertexCount()}`);
+            appendOutput(`Index count: ${mesh.indexCount()}`);
+            appendOutput(`Triangle count: ${mesh.triangleCount()}`);
+            
+            const boundingBox = mesh.calculateBoundingBox();
+            appendOutput(`Bounding box: ${boundingBox.toString()}`);
+        }
+
+        function generateSphereMesh() {
+            clearOutput();
+            const generator = new MeshGenerator(MeshType.Triangle);
+            const mesh = generator.generateSphereMesh(5.0, 16);
+            appendOutput(`Generated sphere mesh: ${mesh.toString()}`);
+            appendOutput(`Vertex count: ${mesh.vertexCount()}`);
+            appendOutput(`Index count: ${mesh.indexCount()}`);
+            appendOutput(`Triangle count: ${mesh.triangleCount()}`);
+        }
+
+        function generateCylinderMesh() {
+            clearOutput();
+            const generator = new MeshGenerator(MeshType.Triangle);
+            const mesh = generator.generateCylinderMesh(3.0, 10.0, 16);
+            appendOutput(`Generated cylinder mesh: ${mesh.toString()}`);
+            appendOutput(`Vertex count: ${mesh.vertexCount()}`);
+            appendOutput(`Index count: ${mesh.indexCount()}`);
+            appendOutput(`Triangle count: ${mesh.triangleCount()}`);
+        }
+
+        function exportSTL() {
+            if (!currentShape) {
+                showStatus('No shape selected', 'error');
+                return;
+            }
+            clearOutput();
+            appendOutput('Exporting to STL format...');
+            showStatus('STL export would be performed here', 'success');
+        }
+
+        function exportOBJ() {
+            if (!currentShape) {
+                showStatus('No shape selected', 'error');
+                return;
+            }
+            clearOutput();
+            appendOutput('Exporting to OBJ format...');
+            showStatus('OBJ export would be performed here', 'success');
+        }
+
+        function importFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            clearOutput();
+            appendOutput(`Importing file: ${file.name}`);
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const format = IoUtils.detectFormat(file.name);
+                const breprsReader = new BrepRsFileReader(format);
+                
+                try {
+                    const shapeData = breprsReader.readBytes(data);
+                    appendOutput(`Successfully imported ${shapeData.format()}`);
+                    appendOutput(`Vertices: ${shapeData.vertexCount()}`);
+                    appendOutput(`Indices: ${shapeData.indexCount()}`);
+                    showStatus('File imported successfully!', 'success');
+                } catch (error) {
+                    appendOutput(`Import failed: ${error}`);
+                    showStatus('Failed to import file', 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function setLanguage(code) {
+            if (!i18n) return;
+            
+            clearOutput();
+            let language;
+            switch(code) {
+                case 'en':
+                    language = Language.English;
+                    break;
+                case 'zh-CN':
+                    language = Language.SimplifiedChinese;
+                    break;
+                case 'fr':
+                    language = Language.French;
+                    break;
+                case 'de':
+                    language = Language.German;
+                    break;
+                default:
+                    language = Language.English;
+            }
+            
+            i18n.setLanguage(language);
+            appendOutput(`Language set to: ${i18n.getLanguageName(language)}`);
+            appendOutput(`Error message: ${i18n.translate(MessageKey.ErrorUnknown)}`);
+            appendOutput(`File label: ${i18n.translate(MessageKey.LabelFile)}`);
+        }
+
+        function getVersion() {
+            clearOutput();
+            const version = wasmGetVersion();
+            appendOutput(`BrepRs version: ${version}`);
+            appendOutput(`Library name: ${getLibraryName()}`);
+        }
+
+        function getMemoryStats() {
+            clearOutput();
+            const stats = wasmGetMemoryStats();
+            appendOutput(`Memory stats: ${JSON.stringify(stats, null, 2)}`);
+        }
+
+        function testWasm() {
+            clearOutput();
+            const result = wasmTestWasm();
+            appendOutput(`WASM test: ${result}`);
+            showStatus('WASM test completed!', 'success');
+        }
+
+        initWasm();
+    </script>
+</body>
+</html>

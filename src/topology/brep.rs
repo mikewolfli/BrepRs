@@ -790,7 +790,7 @@ impl BrepBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::geometry::{Point, Vector};
+    use crate::geometry::Vector;
 
     #[test]
     fn test_brep_model_creation() {

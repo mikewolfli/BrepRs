@@ -217,6 +217,22 @@ pub fn get_translations(lang: Language) -> &'static HashMap<MessageKey, &'static
     }).get(&lang).unwrap()
 }
 
+/// Get a single translation for a message key in a specific language
+/// 
+/// Returns the English translation as fallback if the key is not found in the requested language.
+#[allow(dead_code)]
+pub fn get(lang: Language, key: MessageKey) -> &'static str {
+    get_translations(lang)
+        .get(&key)
+        .copied()
+        .unwrap_or_else(|| {
+            get_translations(Language::English)
+                .get(&key)
+                .copied()
+                .unwrap_or("")
+        })
+}
+
 /// English translations
 fn english_translations() -> HashMap<MessageKey, &'static str> {
     use MessageKey::*;

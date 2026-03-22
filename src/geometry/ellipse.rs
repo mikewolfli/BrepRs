@@ -2,6 +2,11 @@ use crate::foundation::types::{StandardReal, STANDARD_REAL_EPSILON};
 use crate::geometry::{Axis, Direction, Point, Vector};
 use serde::{Deserialize, Serialize};
 
+/// 3D ellipse geometric primitive
+///
+/// An ellipse is a plane curve surrounding two focal points, such that for all points on the curve,
+/// the sum of the two distances to the focal points is a constant. It is defined by its location,
+/// x-direction, y-direction, major radius, and minor radius.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Ellipse {
     location: Point,

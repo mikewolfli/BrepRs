@@ -1,4 +1,19 @@
 use crate::geometry::traits::{GetCoord, SetCoord};
+use crate::foundation::types::StandardReal;
+use crate::geometry::{Axis, Direction, Point, Transform};
+
+/// 3D coordinate system
+///
+/// A coordinate system defines a reference frame in 3D space with an origin point,
+/// a main direction (z-axis), and two orthogonal directions (x-axis and y-axis).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CoordinateSystem {
+    location: Point,
+    direction: Direction,
+    x_direction: Direction,
+    y_direction: Direction,
+}
+
 impl GetCoord for CoordinateSystem {
     fn coord(&self) -> (f64, f64, f64) {
         self.location.coord()
@@ -9,16 +24,6 @@ impl SetCoord for CoordinateSystem {
     fn set_coord(&mut self, x: f64, y: f64, z: f64) {
         self.location.set_coord(x, y, z);
     }
-}
-use crate::foundation::types::StandardReal;
-use crate::geometry::{Axis, Direction, Point, Transform};
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct CoordinateSystem {
-    location: Point,
-    direction: Direction,
-    x_direction: Direction,
-    y_direction: Direction,
 }
 
 impl CoordinateSystem {

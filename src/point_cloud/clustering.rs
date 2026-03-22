@@ -4,7 +4,7 @@
 //! including K-means, DBSCAN, and hierarchical clustering.
 
 use super::PointCloud;
-use crate::geometry::{Point, Vector};
+use crate::geometry::Point;
 
 /// K-means clustering
 pub struct KMeans {
@@ -13,6 +13,7 @@ pub struct KMeans {
     /// Maximum number of iterations
     max_iterations: usize,
     /// Tolerance for convergence
+    #[allow(dead_code)]
     tolerance: f64,
 }
 
@@ -32,19 +33,19 @@ impl KMeans {
         
         if cloud.len() < self.k {
             // Not enough points for k clusters
-            let mut labeled_cloud = cloud.clone();
+            let labeled_cloud = cloud.clone();
             let labels: Vec<usize> = (0..cloud.len()).collect();
             return (labeled_cloud, labels);
         }
         
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         
         // Initialize centroids randomly
         let mut centroids: Vec<Point> = Vec::new();
         let mut used_indices = std::collections::HashSet::new();
         
         while centroids.len() < self.k {
-            let index = rng.gen_range(0..cloud.len());
+            let index = rng.random_range(0..cloud.len());
             if !used_indices.contains(&index) {
                 centroids.push(cloud.points()[index]);
                 used_indices.insert(index);
@@ -99,7 +100,9 @@ impl KMeans {
                 }
                 
                 if count > 0 {
-                    centroids[j] = sum / count as f64;
+                    let sum_vec = sum - Point::origin();
+                    let avg_vec = sum_vec / count as f64;
+                    centroids[j] = Point::origin() + avg_vec;
                 }
             }
         }
@@ -161,11 +164,11 @@ impl DBSCAN {
 
     /// Apply the clustering to a point cloud
     pub fn apply(&self, cloud: &PointCloud) -> (PointCloud, Vec<usize>) {
-        let mut labels: Vec<usize> = vec![-1 as usize; cloud.len()]; // -1 for unassigned
+        let mut labels: Vec<usize> = vec![usize::MAX; cloud.len()]; // usize::MAX for unassigned
         let mut cluster_id = 0;
         
         for i in 0..cloud.len() {
-            if labels[i] != -1 as usize {
+            if labels[i] != usize::MAX {
                 continue;
             }
             
@@ -174,7 +177,7 @@ impl DBSCAN {
             
             if neighbors.len() < self.min_points {
                 // Mark as noise
-                labels[i] = -2 as usize;
+                labels[i] = usize::MAX - 1;
             } else {
                 // Start a new cluster
                 self.expand_cluster(cloud, &mut labels, i, neighbors, &mut cluster_id);
@@ -187,7 +190,7 @@ impl DBSCAN {
         
         for (i, point) in cloud.points().iter().enumerate() {
             let cluster = labels[i];
-            let color = if cluster == -2 as usize {
+            let color = if cluster == usize::MAX - 1 {
                 (128, 128, 128) // Gray for noise
             } else {
                 colors[cluster % colors.len()]
@@ -224,14 +227,14 @@ impl DBSCAN {
         let mut queue = std::collections::VecDeque::from(neighbors);
         
         while let Some(current) = queue.pop_front() {
-            if labels[current] == -1 as usize {
+            if labels[current] == usize::MAX {
                 labels[current] = *cluster_id;
                 
                 let current_neighbors = self.find_neighbors(cloud, current);
                 if current_neighbors.len() >= self.min_points {
                     queue.extend(current_neighbors);
                 }
-            } else if labels[current] == -2 as usize {
+            } else if labels[current] == usize::MAX - 1 {
                 labels[current] = *cluster_id;
             }
         }
@@ -277,7 +280,7 @@ impl HierarchicalClustering {
     pub fn apply(&self, cloud: &PointCloud) -> (PointCloud, Vec<usize>) {
         if cloud.len() <= self.k {
             // Not enough points for k clusters
-            let mut labeled_cloud = cloud.clone();
+            let labeled_cloud = cloud.clone();
             let labels: Vec<usize> = (0..cloud.len()).collect();
             return (labeled_cloud, labels);
         }

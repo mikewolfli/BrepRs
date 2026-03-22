@@ -59,6 +59,14 @@ impl WasmBrepBuilder {
         }
     }
 
+    /// Create a face from a wire
+    #[wasm_bindgen(js_name = makeFaceFromWire)]
+    pub fn make_face_from_wire(&self, wire: &WasmWire) -> WasmFace {
+        WasmFace {
+            inner: self.inner.make_face_with_wire(wire.inner.clone()),
+        }
+    }
+
     /// Create a shell
     #[wasm_bindgen(js_name = makeShell)]
     pub fn make_shell(&self) -> WasmShell {
@@ -72,6 +80,14 @@ impl WasmBrepBuilder {
     pub fn make_solid(&self) -> WasmSolid {
         WasmSolid {
             inner: self.inner.make_solid(),
+        }
+    }
+
+    /// Create a solid from a shell
+    #[wasm_bindgen(js_name = makeSolidFromShell)]
+    pub fn make_solid_from_shell(&self, shell: &WasmShell) -> WasmSolid {
+        WasmSolid {
+            inner: self.inner.make_solid_from_shell(shell.inner.clone()),
         }
     }
 

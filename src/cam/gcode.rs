@@ -1,6 +1,5 @@
 use crate::foundation::types::StandardReal;
-use crate::geometry::{Point, Vector};
-use super::toolpath::{Toolpath, ToolpathPoint, SegmentType};
+use super::toolpath::{Toolpath, ToolpathPoint};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GCodeUnit {
@@ -544,6 +543,7 @@ impl Default for GCodeParser {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::geometry::Point;
 
     #[test]
     fn test_gcode_command_to_string() {

@@ -5,6 +5,7 @@
 
 use super::PointCloud;
 use crate::geometry::Point;
+use rand::Rng;
 
 /// Random sampling
 pub struct RandomSampling {
@@ -22,9 +23,7 @@ impl RandomSampling {
 
     /// Apply the sampling to a point cloud
     pub fn apply(&self, cloud: &PointCloud) -> PointCloud {
-        use rand::Rng;
-        
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut sampled = PointCloud::new();
         
         if cloud.len() <= self.num_points {
@@ -33,7 +32,8 @@ impl RandomSampling {
         
         // Create a list of indices and shuffle them
         let mut indices: Vec<usize> = (0..cloud.len()).collect();
-        rng.shuffle(&mut indices);
+        use rand::seq::SliceRandom;
+        indices.shuffle(&mut rng);
         
         // Take the first num_points indices
         for &i in &indices[..self.num_points] {
@@ -143,20 +143,20 @@ impl PoissonDiskSampling {
         
         // Create a grid for efficient neighbor search
         let cell_size = self.radius / 2.0_f64.sqrt();
-        let grid_width = ((max.x - min.x) / cell_size).ceil() as i32;
-        let grid_height = ((max.y - min.y) / cell_size).ceil() as i32;
-        let grid_depth = ((max.z - min.z) / cell_size).ceil() as i32;
+        let _grid_width = ((max.x - min.x) / cell_size).ceil() as i32;
+        let _grid_height = ((max.y - min.y) / cell_size).ceil() as i32;
+        let _grid_depth = ((max.z - min.z) / cell_size).ceil() as i32;
         
         let mut grid: HashSet<(i32, i32, i32)> = HashSet::new();
         let mut points: Vec<Point> = Vec::new();
         let mut active_list: VecDeque<Point> = VecDeque::new();
         
         // Generate first point randomly
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let first_point = Point::new(
-            min.x + rng.gen_range(0.0..(max.x - min.x)),
-            min.y + rng.gen_range(0.0..(max.y - min.y)),
-            min.z + rng.gen_range(0.0..(max.z - min.z)),
+            min.x + rng.random_range(min.x..max.x),
+            min.y + rng.random_range(min.y..max.y),
+            min.z + rng.random_range(min.z..max.z),
         );
         
         // Add first point to grid and active list
@@ -167,15 +167,15 @@ impl PoissonDiskSampling {
         
         // Generate samples
         while !active_list.is_empty() && points.len() < self.num_samples {
-            let random_index = rng.gen_range(0..active_list.len());
+            let random_index = rng.random_range(0..active_list.len());
             let center = active_list[random_index];
             let mut found = false;
             
             for _ in 0..self.num_attempts {
                 // Generate random point in annulus [radius, 2*radius]
-                let angle1 = rng.gen_range(0.0..2.0 * std::f64::consts::PI);
-                let angle2 = rng.gen_range(0.0..2.0 * std::f64::consts::PI);
-                let distance = self.radius + rng.gen_range(0.0..self.radius);
+                let angle1 = rng.random_range(0.0..2.0 * std::f64::consts::PI);
+                let angle2 = rng.random_range(0.0..2.0 * std::f64::consts::PI);
+                let distance = self.radius + rng.random_range(0.0..self.radius);
                 
                 let x = center.x + distance * angle1.cos() * angle2.cos();
                 let y = center.y + distance * angle1.sin() * angle2.cos();
@@ -283,9 +283,8 @@ impl FarthestPointSampling {
         let mut distances = vec![f64::MAX; cloud.len()];
         
         // Select first point randomly
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
-        let first_index = rng.gen_range(0..cloud.len());
+        let mut rng = rand::rng();
+        let first_index = rng.random_range(0..cloud.len());
         selected[first_index] = true;
         
         let first_point = cloud.points()[first_index];

@@ -1,38 +1,65 @@
+//! Toolpath Generation Module
+//!
+//! This module provides functionality for generating and managing CNC toolpaths.
+//! It includes types for representing toolpath points, segments, and complete toolpaths.
+
 use crate::foundation::types::StandardReal;
 use crate::geometry::{Point, Vector};
 use crate::topology::topods_shape::TopoDsShape;
 
+/// Type of toolpath operation
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ToolpathType {
+    /// Contour following operation
     Contour,
+    /// Pocket milling operation
     Pocket,
+    /// Drilling operation
     Drill,
+    /// Face milling operation
     Face,
+    /// Engraving operation
     Engrave,
+    /// Adaptive clearing operation
     Adaptive,
+    /// Spiral toolpath pattern
     Spiral,
+    /// Zigzag (back-and-forth) pattern
     Zigzag,
+    /// Offset contour pattern
     Offset,
+    /// Parallel passes pattern
     Parallel,
 }
 
+/// Direction of cut for machining operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CutDirection {
+    /// Climb milling (down-cut)
     Climb,
+    /// Conventional milling (up-cut)
     Conventional,
+    /// Both directions allowed
     Both,
 }
 
+/// A single point in a toolpath
 #[derive(Debug, Clone)]
 pub struct ToolpathPoint {
+    /// 3D position of the tool
     pub position: Point,
+    /// Feed rate at this point (mm/min)
     pub feed_rate: Option<StandardReal>,
+    /// Spindle speed at this point (RPM)
     pub spindle_speed: Option<StandardReal>,
+    /// Tool orientation vector (for 5-axis machining)
     pub tool_orientation: Option<Vector>,
+    /// Whether this is a rapid (non-cutting) move
     pub is_rapid: bool,
 }
 
 impl ToolpathPoint {
+    /// Create a new toolpath point at the given position
     pub fn new(position: Point) -> Self {
         Self {
             position,
@@ -43,59 +70,86 @@ impl ToolpathPoint {
         }
     }
 
+    /// Set the feed rate for this point
     pub fn with_feed_rate(mut self, feed_rate: StandardReal) -> Self {
         self.feed_rate = Some(feed_rate);
         self
     }
 
+    /// Set the spindle speed for this point
     pub fn with_spindle_speed(mut self, spindle_speed: StandardReal) -> Self {
         self.spindle_speed = Some(spindle_speed);
         self
     }
 
+    /// Set the tool orientation for this point
     pub fn with_orientation(mut self, orientation: Vector) -> Self {
         self.tool_orientation = Some(orientation);
         self
     }
 
+    /// Mark this point as a rapid move
     pub fn rapid(mut self) -> Self {
         self.is_rapid = true;
         self
     }
 }
 
+/// A segment connecting two toolpath points
 #[derive(Debug, Clone)]
 pub struct ToolpathSegment {
+    /// Starting point of the segment
     pub start: ToolpathPoint,
+    /// Ending point of the segment
     pub end: ToolpathPoint,
+    /// Type of motion for this segment
     pub segment_type: SegmentType,
 }
 
+/// Type of motion segment
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SegmentType {
+    /// Linear (straight line) motion
     Linear,
+    /// Clockwise arc motion
     ArcCW,
+    /// Counter-clockwise arc motion
     ArcCCW,
+    /// Helical motion
     Helix,
 }
 
+/// Complete toolpath containing all points and segments
 #[derive(Debug, Clone)]
 pub struct Toolpath {
+    /// Name identifier for this toolpath
     pub name: String,
+    /// Type of toolpath operation
     pub toolpath_type: ToolpathType,
+    /// List of toolpath points
     pub points: Vec<ToolpathPoint>,
+    /// List of toolpath segments
     pub segments: Vec<ToolpathSegment>,
+    /// Stock material to leave (for roughing)
     pub stock_to_leave: StandardReal,
+    /// Stepover distance between passes
     pub stepover: StandardReal,
+    /// Stepdown distance between levels
     pub stepdown: StandardReal,
+    /// Safe height for rapid moves
     pub safe_height: StandardReal,
+    /// Retract height for tool changes
     pub retract_height: StandardReal,
+    /// Default feed rate (mm/min)
     pub feed_rate: StandardReal,
+    /// Plunge feed rate (mm/min)
     pub plunge_feed_rate: StandardReal,
+    /// Default spindle speed (RPM)
     pub spindle_speed: StandardReal,
 }
 
 impl Toolpath {
+    /// Create a new toolpath with the given name and type
     pub fn new(name: String, toolpath_type: ToolpathType) -> Self {
         Self {
             name,

@@ -33,7 +33,7 @@ To use BrepRs in your Rust project, add it as a dependency in your `Cargo.toml` 
 
 ```toml
 [dependencies]
-breprs = "0.6.0-alpha"
+breprs = "0.1.0"
 
 # Optional features
 [features]

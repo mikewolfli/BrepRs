@@ -261,9 +261,10 @@ dependencies = [
 
 [[package]]
 name = "breprs"
-version = "0.6.0-alpha"
+version = "0.6.1-alpha"
 dependencies = [
  "anyhow",
+ "base64",
  "bincode",
  "bson",
  "cbindgen",
@@ -291,6 +292,7 @@ dependencies = [
  "reqwest",
  "rmp-serde",
  "serde",
+ "serde-wasm-bindgen",
  "serde_json",
  "tch",
  "tempfile",
@@ -3241,6 +3243,17 @@ checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
 dependencies = [
  "serde_core",
  "serde_derive",
+]
+
+[[package]]
+name = "serde-wasm-bindgen"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8302e169f0eddcc139c70f139d19d6467353af16f9fce27e8c30158036a1e16b"
+dependencies = [
+ "js-sys",
+ "serde",
+ "wasm-bindgen",
 ]
 
 [[package]]

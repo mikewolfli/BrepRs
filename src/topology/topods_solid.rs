@@ -147,11 +147,6 @@ impl TopoDsSolid {
         self.shape.set_mutable(mutable);
     }
 
-    /// Convert the solid into a shape
-    pub fn into_shape(self) -> TopoDsShape {
-        self.shape
-    }
-
     /// Get the centroid of the solid
     pub fn centroid(&self) -> Option<Point> {
         if let Some(outer_shell) = self.outer_shell() {
