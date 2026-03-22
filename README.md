@@ -1,10 +1,18 @@
 # BrepRs
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/mikewolfli/BrepRs/rust.yml?branch=main)](https://github.com/mikewolfli/BrepRs/actions)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE)
 [![Crates.io](https://img.shields.io/crates/v/breprs.svg)](https://crates.io/crates/breprs)
 
 BrepRs is a Rust implementation of a Boundary Representation (BRep) solid modeling library. It provides a comprehensive set of tools for creating, manipulating, and analyzing 3D geometric models.
+
+## License
+
+This project is dual-licensed under your choice of either:
+- **MIT License** - See [LICENSE-MIT](LICENSE-MIT)
+- **Apache License 2.0** - See [LICENSE-APACHE](LICENSE-APACHE)
+
+You may choose to use this software under either license. Both are OSI-approved and compatible with most open source projects.
 
 ## Features
 
