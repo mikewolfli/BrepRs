@@ -5,8 +5,8 @@ edition = "2021"
 description = "Rust implementation of boundary representation (BRep) with API compatibility for CAD/CAE/CAM applications"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/mikewolfli/breprs"
-keywords = [ "cam", "cae", "brep", "3d"]
-categories = ["cad", "graphics", "mathematics", "science"]
+keywords = ["cad", "cam", "cae", "brep", "3d"]
+categories = ["graphics", "mathematics", "science", "rendering"]
 
 [lib]
 name = "breprs"
